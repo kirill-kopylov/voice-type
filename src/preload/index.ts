@@ -1,0 +1,90 @@
+import { contextBridge, ipcRenderer } from 'electron'
+
+export interface VoiceTypeAPI {
+  submitAudio: (audioData: ArrayBuffer, durationMs: number) => Promise<TranscriptionRecord>
+  getHistory: () => Promise<TranscriptionRecord[]>
+  deleteHistoryItem: (id: string) => Promise<void>
+  clearHistory: () => Promise<void>
+  rePaste: (id: string) => Promise<void>
+  copyText: (text: string) => Promise<void>
+  getAudio: (fileName: string) => Promise<ArrayBuffer | null>
+  getSettings: () => Promise<AppSettings>
+  updateSettings: (partial: Partial<AppSettings>) => Promise<AppSettings>
+  testConnection: () => Promise<{ ok: boolean; error?: string }>
+  windowMinimize: () => Promise<void>
+  windowMaximize: () => Promise<void>
+  windowClose: () => Promise<void>
+  onRecordingStateChanged: (callback: (isRecording: boolean) => void) => () => void
+  onTranscriptionComplete: (callback: (record: TranscriptionRecord) => void) => () => void
+}
+
+interface TranscriptionRecord {
+  id: string
+  text: string
+  audioFileName: string
+  durationMs: number
+  createdAt: string
+  provider: 'openai' | 'openrouter'
+  model: string
+  status: 'success' | 'error'
+  error?: string
+}
+
+interface AppSettings {
+  provider: 'openai' | 'openrouter'
+  openAiApiKey: string
+  openRouterApiKey: string
+  model: string
+  language: string
+  hotkey: string
+  autoPaste: boolean
+  keepInClipboard: boolean
+  autoStart: boolean
+}
+
+const api: VoiceTypeAPI = {
+  submitAudio: (audioData, durationMs) =>
+    ipcRenderer.invoke('submit-audio', audioData, durationMs),
+
+  getHistory: () => ipcRenderer.invoke('get-history'),
+
+  deleteHistoryItem: (id) => ipcRenderer.invoke('delete-history-item', id),
+
+  clearHistory: () => ipcRenderer.invoke('clear-history'),
+
+  rePaste: (id) => ipcRenderer.invoke('re-paste', id),
+
+  copyText: (text) => ipcRenderer.invoke('copy-text', text),
+
+  getAudio: (fileName) => ipcRenderer.invoke('get-audio', fileName),
+
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+
+  updateSettings: (partial) => ipcRenderer.invoke('update-settings', partial),
+
+  testConnection: () => ipcRenderer.invoke('test-connection'),
+
+  windowMinimize: () => ipcRenderer.invoke('window-minimize'),
+
+  windowMaximize: () => ipcRenderer.invoke('window-maximize'),
+
+  windowClose: () => ipcRenderer.invoke('window-close'),
+
+  onRecordingStateChanged: (callback) => {
+    const handler = (_event: Electron.IpcRendererEvent, isRecording: boolean): void => {
+      callback(isRecording)
+    }
+    ipcRenderer.on('recording-state-changed', handler)
+    return () => ipcRenderer.removeListener('recording-state-changed', handler)
+  },
+
+  onTranscriptionComplete: (callback) => {
+    const handler = (_event: Electron.IpcRendererEvent, record: TranscriptionRecord): void => {
+      callback(record)
+    }
+    ipcRenderer.on('transcription-complete', handler)
+    return () => ipcRenderer.removeListener('transcription-complete', handler)
+  }
+}
+
+contextBridge.exposeInMainWorld('api', api)
