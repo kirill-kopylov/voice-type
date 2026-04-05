@@ -2,4 +2,8 @@ node_modules/
 out/
 release/
 *.png
+!docs/*.png
+!resources/icon.png
 *.log
+check*.png
+screenshot-full.png
