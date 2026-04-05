@@ -32,7 +32,7 @@ function createMainWindow(): void {
     show: false,
     frame: false,
     backgroundColor: '#e8725a',
-    icon: nativeImage.createFromBuffer(createCircleIcon(99, 102, 241)),
+    icon: nativeImage.createFromBuffer(createCircleIcon(232, 114, 90)),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -264,7 +264,7 @@ app.on('will-quit', () => { globalShortcut.unregisterAll() })
 app.on('window-all-closed', () => {})
 
 // ────────────────────────────────────────────────────────────
-// Overlay HTML — waveform + plasma-эффект обработки
+// Overlay HTML — sunset стиль с шумом и sparkles
 // ────────────────────────────────────────────────────────────
 const OVERLAY_HTML = `<!DOCTYPE html>
 <html><head>
@@ -273,29 +273,36 @@ const OVERLAY_HTML = `<!DOCTYPE html>
   body{background:transparent;overflow:hidden}
   .badge{
     display:flex;align-items:center;
-    height:36px;padding:0 14px;
-    background:rgba(7,14,12,0.93);
-    border-radius:12px;
-    backdrop-filter:blur(20px);
-    box-shadow:0 2px 16px rgba(0,0,0,0.35);
+    height:38px;padding:0 14px;
+    background:linear-gradient(135deg, rgba(240,128,48,0.92), rgba(212,82,74,0.92), rgba(168,56,120,0.92));
+    border-radius:14px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.25);
     overflow:hidden;position:relative;
   }
-  .badge.recording{border:1px solid rgba(200,168,76,0.2)}
-  .badge.processing{border:1px solid rgba(200,168,76,0.15);padding:0}
+  .badge.recording{border:1px solid rgba(255,255,255,0.2)}
+  .badge.processing{border:1px solid rgba(255,255,255,0.15);padding:0}
+
+  /* Шум поверх бейджа */
+  .badge::after{
+    content:'';position:absolute;inset:0;
+    pointer-events:none;z-index:10;
+    border-radius:inherit;
+    opacity:0.12;
+  }
 
   .dot{
-    width:7px;height:7px;background:#c9a84c;border-radius:50%;flex-shrink:0;
+    width:7px;height:7px;background:#fbbf24;border-radius:50%;flex-shrink:0;
     animation:glow 1.4s ease-in-out infinite;
   }
   @keyframes glow{
-    0%,100%{box-shadow:0 0 3px rgba(201,168,76,0.5);opacity:1}
-    50%{box-shadow:0 0 8px rgba(201,168,76,0.8);opacity:0.65}
+    0%,100%{box-shadow:0 0 4px rgba(251,191,36,0.6);opacity:1}
+    50%{box-shadow:0 0 10px rgba(251,191,36,0.9);opacity:0.65}
   }
 
-  .rec-row{display:flex;align-items:center;gap:10px}
+  .rec-row{display:flex;align-items:center;gap:10px;position:relative;z-index:5}
   canvas{display:block}
 
-  .proc-wrap{position:relative;width:100%;height:100%}
+  .proc-wrap{position:relative;width:100%;height:100%;z-index:5}
   #pcv{display:block;width:100%;height:100%}
 
   .hide{display:none}
@@ -315,6 +322,26 @@ const OVERLAY_HTML = `<!DOCTYPE html>
   </div>
 </div>
 <script>
+// ═══════ NOISE+SPARKLES ═══════
+(function(){
+  const nc=document.createElement('canvas');
+  nc.width=150;nc.height=38;
+  const nx=nc.getContext('2d');
+  const nd=nx.createImageData(150,38);
+  for(let i=0;i<nd.data.length;i+=4){
+    const v=Math.random()*255;
+    nd.data[i]=v;nd.data[i+1]=v;nd.data[i+2]=v;nd.data[i+3]=8;
+    if(Math.random()<0.01){nd.data[i]=nd.data[i+1]=nd.data[i+2]=255;nd.data[i+3]=90+Math.random()*80;}
+  }
+  nx.putImageData(nd,0,0);
+  document.querySelector('.badge').style.setProperty('--noise',
+    'url('+nc.toDataURL()+')');
+  const style=document.querySelector('.badge::after');
+})();
+// Применяем шум через стиль
+document.querySelector('.badge').insertAdjacentHTML('beforeend',
+  '<div style="position:absolute;inset:0;pointer-events:none;z-index:10;border-radius:inherit;opacity:0.15;background-image:var(--noise);background-size:150px 38px"></div>');
+
 // ═══════ WAVEFORM (запись) ═══════
 const cv=document.getElementById('cv');
 const c=cv.getContext('2d');
@@ -361,7 +388,7 @@ function renderWave(){
     const v=cur[si];
     const h=Math.max(2,v*RH);
     const x=i*(BW+GAP), y=(RH-h)/2;
-    c.fillStyle='rgba(160,195,140,'+(0.3+v*0.65)+')';
+    c.fillStyle='rgba(255,255,255,'+(0.35+v*0.6)+')';
     c.beginPath();c.roundRect(x,y,BW,h,1.2);c.fill();
   }
   raf=requestAnimationFrame(renderWave);
@@ -398,7 +425,7 @@ function renderTunnel(){
 
   // Шлейф — более агрессивное затухание
   pc.globalCompositeOperation='source-over';
-  pc.fillStyle='rgba(7,14,12,0.22)';
+  pc.fillStyle='rgba(120,40,60,0.22)';
   pc.fillRect(0,0,PW,PH);
 
   pc.globalCompositeOperation='lighter';
@@ -416,7 +443,7 @@ function renderTunnel(){
     if(baseRx<1)continue;
 
     const a=Math.sin(r.z*Math.PI)*0.22;
-    const hue=140+r.ho+Math.sin(t*1.2+r.z*5)*20;
+    const hue=15+r.ho+Math.sin(t*1.2+r.z*5)*20;
     const lit=35+p*22;
     const lw=0.3+p*2;
 

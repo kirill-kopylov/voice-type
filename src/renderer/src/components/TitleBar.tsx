@@ -12,8 +12,8 @@ export function TitleBar({ isRecording, isProcessing }: TitleBarProps): JSX.Elem
       style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border)' }}
     >
       <div className="flex items-center gap-2.5">
-        <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'var(--accent-bg)' }}>
-          <Mic size={13} style={{ color: 'var(--text-1)' }} />
+        <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'var(--accent-bg-hover)' }}>
+          <Mic size={13} style={{ color: 'var(--accent)' }} />
         </div>
         <span className="text-sm font-semibold tracking-wide" style={{ color: 'var(--text-2)' }}>VoiceType</span>
 

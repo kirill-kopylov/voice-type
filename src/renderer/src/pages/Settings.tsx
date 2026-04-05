@@ -87,7 +87,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function ChoiceBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }): JSX.Element {
   return (
     <button onClick={onClick} className="flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all"
-      style={{ background: active ? 'var(--accent-bg-hover)' : 'var(--surface)', border: `1px solid ${active ? 'var(--accent-border)' : 'var(--border)'}`, color: active ? 'var(--text-1)' : 'var(--text-3)' }}>
+      style={{ background: active ? 'var(--accent-bg-hover)' : 'var(--surface)', border: `1px solid ${active ? 'var(--accent-border)' : 'var(--border)'}`, color: active ? 'var(--accent)' : 'var(--text-3)' }}>
       {label}
     </button>
   )
@@ -109,8 +109,8 @@ function KeyInput({ label, value, show, toggle, onChange, ph, active }: { label:
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }): JSX.Element {
   return (
     <label className="flex items-center gap-3 cursor-pointer" onClick={onChange}>
-      <div className="w-10 h-6 rounded-full relative transition-colors" style={{ background: checked ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)' }}>
-        <div className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow transition-transform" style={{ background: 'white', transform: checked ? 'translateX(16px)' : 'translateX(0)' }} />
+      <div className="w-10 h-6 rounded-full relative transition-colors" style={{ background: checked ? 'var(--accent-bg-hover)' : 'rgba(255,255,255,0.1)' }}>
+        <div className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow transition-transform" style={{ background: checked ? 'var(--accent)' : 'rgba(255,255,255,0.6)', transform: checked ? 'translateX(16px)' : 'translateX(0)' }} />
       </div>
       <span className="text-sm" style={{ color: 'var(--text-2)' }}>{label}</span>
     </label>

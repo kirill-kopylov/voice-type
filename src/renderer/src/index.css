@@ -4,14 +4,14 @@
 
 @layer base {
   :root {
-    /* Градиент фона */
-    --gradient: linear-gradient(135deg, #f97316, #e8725a, #d946a8);
+    /* Градиент фона — насыщенный */
+    --gradient: linear-gradient(135deg, #f08030, #d4524a, #a83878, #7a3060);
 
-    /* Поверхности — тёмные полупрозрачные поверх градиента */
-    --surface: rgba(0, 0, 0, 0.18);
-    --surface-hover: rgba(0, 0, 0, 0.24);
-    --surface-strong: rgba(0, 0, 0, 0.30);
-    --surface-panel: rgba(0, 0, 0, 0.25);
+    /* Поверхности — тонированные, пропускают цвет */
+    --surface: linear-gradient(135deg, rgb(120, 42, 62), rgb(90, 32, 80));
+    --surface-hover: linear-gradient(135deg, rgb(135, 50, 70), rgb(105, 40, 88));
+    --surface-strong: linear-gradient(135deg, rgb(95, 30, 55), rgb(75, 22, 68));
+    --surface-panel: linear-gradient(135deg, rgb(105, 35, 58), rgb(80, 28, 72));
 
     /* Бордеры */
     --border: rgba(255, 255, 255, 0.15);
@@ -23,21 +23,21 @@
     --text-3: rgba(255, 255, 255, 0.6);
     --text-4: rgba(255, 255, 255, 0.4);
 
-    /* Акцент — белый на ярком фоне, или ещё ярче */
-    --accent: #ffffff;
-    --accent-bg: rgba(255, 255, 255, 0.15);
-    --accent-bg-hover: rgba(255, 255, 255, 0.22);
-    --accent-border: rgba(255, 255, 255, 0.3);
+    /* Акцент — яркий жёлтый на sunset */
+    --accent: #fbbf24;
+    --accent-bg: rgba(251, 191, 36, 0.18);
+    --accent-bg-hover: rgba(251, 191, 36, 0.28);
+    --accent-border: rgba(251, 191, 36, 0.35);
 
     /* Статусы */
     --success: rgba(74, 222, 128, 0.9);
     --error: rgba(248, 113, 113, 0.9);
 
     /* Блобы */
-    --blob-1: rgba(251, 191, 36, 0.3);
-    --blob-2: rgba(217, 70, 168, 0.28);
-    --blob-3: rgba(249, 115, 22, 0.32);
-    --blob-4: rgba(244, 63, 94, 0.22);
+    --blob-1: rgba(251, 191, 36, 0.5);
+    --blob-2: rgba(232, 80, 160, 0.45);
+    --blob-3: rgba(255, 140, 50, 0.48);
+    --blob-4: rgba(255, 255, 255, 0.15);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box }
@@ -70,8 +70,24 @@
 
 /* Glass — полупрозрачные панели */
 .glass {
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  position: relative;
+  overflow: hidden;
+}
+.glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--noise-plain);
+  background-size: 200px 200px;
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+}
+.glass > * {
+  position: relative;
+  z-index: 2;
 }
 
 /* Токены как утилиты */

@@ -10,8 +10,8 @@ export function createTray(
   onToggleRecording: () => void,
   onQuit: () => void
 ): Tray {
-  normalIcon = nativeImage.createFromBuffer(createCircleIcon(99, 102, 241))
-  recordingIcon = nativeImage.createFromBuffer(createCircleIcon(239, 68, 68))
+  normalIcon = nativeImage.createFromBuffer(createCircleIcon(232, 114, 90))
+  recordingIcon = nativeImage.createFromBuffer(createCircleIcon(251, 191, 36))
 
   tray = new Tray(normalIcon)
   tray.setToolTip('VoiceType — голосовой ввод')
@@ -25,7 +25,7 @@ export function createTray(
       }
     },
     {
-      label: 'Запись (Ctrl+Shift+Space)',
+      label: 'Запись',
       click: onToggleRecording
     },
     { type: 'separator' },

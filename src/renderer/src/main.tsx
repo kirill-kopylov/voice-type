@@ -18,9 +18,9 @@ function generateNoiseTexture(): void {
     data[i] = v
     data[i + 1] = v
     data[i + 2] = v
-    data[i + 3] = 10 // базовый мелкий шум
+    data[i + 3] = 10
 
-    // Редкие белые искорки — крупнее, ярче
+    // Редкие белые искорки — только на фоне
     if (Math.random() < 0.008) {
       data[i] = 255
       data[i + 1] = 255
@@ -31,6 +31,19 @@ function generateNoiseTexture(): void {
 
   ctx.putImageData(imageData, 0, 0)
   document.documentElement.style.setProperty('--noise-url', `url(${canvas.toDataURL()})`)
+
+  // Второй шум — только зерно, без sparkles (для glass-элементов)
+  const canvas2 = document.createElement('canvas')
+  canvas2.width = size
+  canvas2.height = size
+  const ctx2 = canvas2.getContext('2d')!
+  const id2 = ctx2.createImageData(size, size)
+  for (let i = 0; i < id2.data.length; i += 4) {
+    const v = Math.random() * 255
+    id2.data[i] = v; id2.data[i + 1] = v; id2.data[i + 2] = v; id2.data[i + 3] = 10
+  }
+  ctx2.putImageData(id2, 0, 0)
+  document.documentElement.style.setProperty('--noise-plain', `url(${canvas2.toDataURL()})`)
 }
 
 generateNoiseTexture()

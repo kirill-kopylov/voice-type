@@ -20,10 +20,9 @@ export function initBlobs(): void {
   window.addEventListener('resize', resize)
 
   const blobs: Blob[] = [
-    { x: 100, y: 100, vx: 0.8, vy: 0.5, radius: 200, color: 'rgba(251, 191, 36, 0.3)' },
-    { x: 300, y: 400, vx: -0.6, vy: 0.7, radius: 180, color: 'rgba(217, 70, 168, 0.28)' },
-    { x: 600, y: 200, vx: 0.5, vy: -0.8, radius: 170, color: 'rgba(249, 115, 22, 0.32)' },
-    { x: 400, y: 300, vx: -0.4, vy: -0.5, radius: 150, color: 'rgba(244, 63, 94, 0.22)' },
+    { x: 150, y: 150, vx: 0.7, vy: 0.5, radius: 400, color: 'rgba(240, 128, 48, 0.45)' },
+    { x: 500, y: 300, vx: -0.5, vy: 0.6, radius: 380, color: 'rgba(212, 82, 74, 0.4)' },
+    { x: 300, y: 500, vx: 0.6, vy: -0.7, radius: 420, color: 'rgba(168, 56, 120, 0.42)' },
   ]
 
   function render(): void {
