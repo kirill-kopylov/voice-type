@@ -15,14 +15,18 @@ interface LayoutProps {
 export function Layout({ children, page, onPageChange, isRecording, isProcessing, hotkey }: LayoutProps): JSX.Element {
   return (
     <div className="h-screen flex flex-col relative overflow-hidden">
-      {/* Блобы — рендерятся canvas'ом, отскакивают от стен */}
-      <canvas id="blobs-canvas" className="absolute inset-0 w-full h-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
-
       <TitleBar isRecording={isRecording} isProcessing={isProcessing} />
-      <div className="flex flex-1 overflow-hidden relative z-10">
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar page={page} onPageChange={onPageChange} hotkey={hotkey} />
-        <main className="flex-1 overflow-y-auto p-8 noise-bg">
-          {children}
+        <main className="flex-1 overflow-y-auto p-8 relative">
+          {/* Блобы — размытые, за шумом */}
+          <canvas id="blobs-canvas" className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0, filter: 'blur(40px)' }} />
+          {/* Шум поверх блобов */}
+          <div className="absolute inset-0 pointer-events-none noise-bg" style={{ zIndex: 1 }} />
+          {/* Контент поверх всего */}
+          <div className="relative" style={{ zIndex: 2 }}>
+            {children}
+          </div>
         </main>
       </div>
     </div>

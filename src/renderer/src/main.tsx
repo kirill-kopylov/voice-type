@@ -18,14 +18,14 @@ function generateNoiseTexture(): void {
     data[i] = v
     data[i + 1] = v
     data[i + 2] = v
-    data[i + 3] = 10
+    data[i + 3] = 5
 
     // Редкие белые искорки — только на фоне
-    if (Math.random() < 0.008) {
+    if (Math.random() < 0.005) {
       data[i] = 255
       data[i + 1] = 255
       data[i + 2] = 255
-      data[i + 3] = 60 + Math.random() * 80
+      data[i + 3] = 30 + Math.random() * 40
     }
   }
 
@@ -40,7 +40,7 @@ function generateNoiseTexture(): void {
   const id2 = ctx2.createImageData(size, size)
   for (let i = 0; i < id2.data.length; i += 4) {
     const v = Math.random() * 255
-    id2.data[i] = v; id2.data[i + 1] = v; id2.data[i + 2] = v; id2.data[i + 3] = 10
+    id2.data[i] = v; id2.data[i + 1] = v; id2.data[i + 2] = v; id2.data[i + 3] = 5
   }
   ctx2.putImageData(id2, 0, 0)
   document.documentElement.style.setProperty('--noise-plain', `url(${canvas2.toDataURL()})`)

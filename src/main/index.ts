@@ -276,11 +276,11 @@ const OVERLAY_HTML = `<!DOCTYPE html>
     height:38px;padding:0 14px;
     background:linear-gradient(135deg, rgba(240,128,48,0.92), rgba(212,82,74,0.92), rgba(168,56,120,0.92));
     border-radius:14px;
-    box-shadow:0 4px 20px rgba(0,0,0,0.25);
+    box-shadow:none;
     overflow:hidden;position:relative;
   }
-  .badge.recording{border:1px solid rgba(255,255,255,0.2)}
-  .badge.processing{border:1px solid rgba(255,255,255,0.15);padding:0}
+  .badge.recording{border:none}
+  .badge.processing{border:none;padding:0}
 
   /* Шум поверх бейджа */
   .badge::after{
