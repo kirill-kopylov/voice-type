@@ -24,7 +24,7 @@ export function Dashboard({ isRecording, isProcessing, history, settings }: Dash
       <h1 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Дашборд</h1>
 
       {!hasApiKey && (
-        <div className="flex items-center gap-3 p-4 glass rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-3 p-4 glass rounded-xl" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <AlertCircle size={20} style={{ color: 'var(--text-2)' }} />
           <p className="text-sm" style={{ color: 'var(--text-2)' }}>
             API ключ не настроен. Перейдите в <span className="font-semibold">Настройки</span>.
@@ -35,8 +35,9 @@ export function Dashboard({ isRecording, isProcessing, history, settings }: Dash
       <div className="flex items-center justify-center py-10">
         <div className="flex flex-col items-center gap-5">
           <div
-            className={`w-28 h-28 rounded-full flex items-center justify-center glass transition-all duration-300`}
+            className={`w-28 h-28 flex items-center justify-center glass transition-all duration-300`}
             style={{
+              borderRadius: 'var(--radius-pill)',
               background: isRecording ? 'rgba(255,255,255,0.15)' : isProcessing ? 'rgba(255,255,255,0.1)' : 'var(--surface)',
               border: `2px solid ${isRecording ? 'rgba(255,255,255,0.4)' : 'var(--border)'}`,
               boxShadow: isRecording ? '0 0 40px rgba(255,255,255,0.15)' : 'none'
@@ -68,7 +69,7 @@ export function Dashboard({ isRecording, isProcessing, history, settings }: Dash
           { icon: Clock, label: 'Длительность', value: formatDuration(totalDuration) },
           { icon: AlertCircle, label: 'Ошибки', value: String(errorCount) },
         ].map((card, i) => (
-          <div key={i} className="p-4 rounded-xl glass" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div key={i} className="p-4 rounded-xl glass" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
             <card.icon size={20} className="mb-2" style={{ color: 'var(--text-3)' }} />
             <p className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>{card.value}</p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-4)' }}>{card.label}</p>
@@ -84,7 +85,7 @@ export function Dashboard({ isRecording, isProcessing, history, settings }: Dash
               <div
                 key={item.id}
                 className="flex items-center gap-4 p-4 glass rounded-xl transition-colors"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
               >
                 <div className={`w-2 h-2 rounded-full shrink-0 ${item.status === 'success' ? 'bg-green-300' : 'bg-red-300'}`} />
                 <p className="flex-1 text-sm truncate" style={{ color: 'var(--text-2)' }}>

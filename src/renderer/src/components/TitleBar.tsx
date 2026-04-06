@@ -34,8 +34,8 @@ export function TitleBar({ isRecording, isProcessing, currentTheme, onThemeChang
 
   return (
     <div
-      className="titlebar-drag flex items-center justify-between h-10 glass px-4 shrink-0 relative"
-      style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border)', zIndex: 30 }}
+      className="titlebar-drag flex items-center justify-between h-10 px-4 shrink-0 relative"
+      style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border)', zIndex: 30, borderRadius: 'var(--radius-panel)' }}
     >
       <div className="flex items-center gap-2.5">
         <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'var(--accent-bg-hover)' }}>
@@ -44,14 +44,14 @@ export function TitleBar({ isRecording, isProcessing, currentTheme, onThemeChang
         <span className="text-sm font-semibold tracking-wide" style={{ color: 'var(--text-2)' }}>VoiceType</span>
 
         {isRecording && (
-          <div className="flex items-center gap-1.5 ml-3 px-2.5 py-0.5 rounded-full" style={{ background: 'var(--accent-bg)', border: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-1.5 ml-3 px-2.5 py-0.5" style={{ background: 'var(--accent-bg)', borderColor: 'var(--border)', borderRadius: 'var(--radius-pill)' }}>
             <div className="w-2 h-2 bg-white rounded-full animate-pulse-recording" />
             <span className="text-xs font-medium" style={{ color: 'var(--text-2)' }}>Запись</span>
           </div>
         )}
 
         {isProcessing && (
-          <div className="flex items-center gap-1.5 ml-3 px-2.5 py-0.5 rounded-full" style={{ background: 'var(--accent-bg)', border: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-1.5 ml-3 px-2.5 py-0.5" style={{ background: 'var(--accent-bg)', borderColor: 'var(--border)', borderRadius: 'var(--radius-pill)' }}>
             <div className="w-2 h-2 bg-white/80 rounded-full animate-pulse" />
             <span className="text-xs font-medium" style={{ color: 'var(--text-2)' }}>Обработка</span>
           </div>
@@ -73,7 +73,7 @@ export function TitleBar({ isRecording, isProcessing, currentTheme, onThemeChang
             <div
               ref={dropRef}
               className="fixed py-1 rounded-lg min-w-[120px]"
-              style={{ top: dropPos.top, left: dropPos.left, background: 'var(--surface-strong)', border: '1px solid var(--border)', zIndex: 99999, backdropFilter: 'blur(12px)' }}
+              style={{ top: dropPos.top, left: dropPos.left, background: 'var(--surface-strong)', borderColor: 'var(--border)', zIndex: 99999, backdropFilter: 'blur(12px)' }}
             >
               {themes.map((t) => (
                 <button

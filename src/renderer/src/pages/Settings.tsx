@@ -14,7 +14,7 @@ const LANGUAGES = [
   { code: 'zh', label: '中文' }, { code: 'ja', label: '日本語' }
 ]
 
-const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-1)' }
+const inputStyle = { background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-1)' }
 const inputClass = 'w-full px-3.5 py-2.5 glass rounded-xl text-sm focus:outline-none'
 
 export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.Element {
@@ -48,7 +48,7 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
         </div>
         <button onClick={handleTest} disabled={testing}
           className="mt-4 flex items-center gap-2 px-4 py-2 text-sm rounded-xl disabled:opacity-50 transition-colors"
-          style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', color: 'var(--text-1)' }}>
+          style={{ background: 'var(--accent-bg)', borderColor: 'var(--accent-border)', color: 'var(--text-1)' }}>
           {testing ? <Loader2 size={15} className="animate-spin" /> : testResult?.ok ? <CheckCircle size={15} className="text-green-300" /> : testResult ? <XCircle size={15} className="text-red-300" /> : null}
           {testing ? 'Проверка...' : 'Проверить'}
         </button>

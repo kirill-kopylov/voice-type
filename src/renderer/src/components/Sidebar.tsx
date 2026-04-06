@@ -15,7 +15,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
 
 export function Sidebar({ page, onPageChange, hotkey }: SidebarProps): JSX.Element {
   return (
-    <aside className="w-56 glass flex flex-col shrink-0" style={{ background: 'var(--surface-panel)', borderRight: '1px solid var(--border)' }}>
+    <aside className="w-56 flex flex-col shrink-0" style={{ background: 'var(--surface-panel)', borderRight: '1px solid var(--border)', borderRadius: 'var(--radius-panel)' }}>
       <nav className="flex-1 p-3 space-y-1">
         {NAV_ITEMS.map((item) => {
           const isActive = page === item.id

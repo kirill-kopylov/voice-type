@@ -16,12 +16,14 @@ export interface ThemeNoise {
 }
 
 export interface ThemeUI {
-  borderRadius: number    // px
+  radius: number          // карточки, инпуты
+  radiusPill: number      // бейджи, теги (9999 = pill)
+  radiusPanel: number     // titlebar, sidebar (0 = прямые)
   font: string
-  glassBlur: number       // px, 0 = без blur
-  borderWidth: number     // px
-  borderStyle: string     // solid, ridge, outset...
-  cardShadow: string      // CSS box-shadow
+  glassBlur: number
+  borderWidth: number
+  borderStyle: string
+  cardShadow: string
 }
 
 export interface Theme {
@@ -78,7 +80,7 @@ export const themes: Theme[] = [
       ]
     },
     noise: { enabled: true, intensity: 5, sparkles: true, sparkleDensity: 0.005, sparkleIntensity: 50 },
-    ui: { borderRadius: 12, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
+    ui: { radius: 12, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
   },
   {
     id: 'ocean',
@@ -106,7 +108,7 @@ export const themes: Theme[] = [
       ]
     },
     noise: { enabled: true, intensity: 4, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
-    ui: { borderRadius: 14, font: "'Inter', system-ui, sans-serif", glassBlur: 2, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
+    ui: { radius: 14, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 2, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
   },
   {
     id: 'aurora',
@@ -134,7 +136,7 @@ export const themes: Theme[] = [
       ]
     },
     noise: { enabled: true, intensity: 3, sparkles: true, sparkleDensity: 0.003, sparkleIntensity: 35 },
-    ui: { borderRadius: 16, font: "'Inter', system-ui, sans-serif", glassBlur: 2, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
+    ui: { radius: 16, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 2, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
   },
   {
     id: 'midnight',
@@ -162,7 +164,7 @@ export const themes: Theme[] = [
       ]
     },
     noise: { enabled: true, intensity: 4, sparkles: true, sparkleDensity: 0.006, sparkleIntensity: 45 },
-    ui: { borderRadius: 12, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
+    ui: { radius: 12, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
   },
   {
     id: 'retro90',
@@ -190,7 +192,34 @@ export const themes: Theme[] = [
       ]
     },
     noise: { enabled: true, intensity: 8, sparkles: true, sparkleDensity: 0.01, sparkleIntensity: 70 },
-    ui: { borderRadius: 8, font: "'Inter', system-ui, sans-serif", glassBlur: 0, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
+    ui: { radius: 8, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 0, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
+  },
+  {
+    id: 'macos',
+    name: 'macOS',
+    gradient: 'linear-gradient(180deg, #e8e4e0, #d4d0cc, #c8c4c0)',
+    surface: 'rgba(255, 255, 255, 0.72)',
+    surfaceHover: 'rgba(255, 255, 255, 0.82)',
+    surfaceStrong: 'rgba(255, 255, 255, 0.6)',
+    surfacePanel: 'rgba(245, 243, 241, 0.85)',
+    border: 'rgba(0, 0, 0, 0.08)',
+    borderStrong: 'rgba(0, 0, 0, 0.15)',
+    text1: '#1d1d1f',
+    text2: '#3a3a3c',
+    text3: '#8e8e93',
+    text4: '#aeaeb2',
+    accent: '#007aff',
+    accentBg: 'rgba(0, 122, 255, 0.12)',
+    accentBgHover: 'rgba(0, 122, 255, 0.2)',
+    accentBorder: 'rgba(0, 122, 255, 0.3)',
+    blobs: {
+      enabled: true, count: 3, sizeMultiplier: 1.5, speed: 0.3, blur: 150, opacity: 0.4,
+      colors: [
+        { r: 200, g: 180, b: 220 }, { r: 180, g: 210, b: 230 }, { r: 220, g: 200, b: 190 }
+      ]
+    },
+    noise: { enabled: false, intensity: 0, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
+    ui: { radius: 10, radiusPill: 9999, radiusPanel: 0, font: "-apple-system, 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif", glassBlur: 20, borderWidth: 1, borderStyle: 'solid', cardShadow: '0 1px 3px rgba(0,0,0,0.06)' }
   },
   {
     id: 'win95',
@@ -215,7 +244,7 @@ export const themes: Theme[] = [
       colors: []
     },
     noise: { enabled: false, intensity: 0, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
-    ui: { borderRadius: 0, font: "'Tahoma', 'MS Sans Serif', sans-serif", glassBlur: 0, borderWidth: 2, borderStyle: 'outset', cardShadow: 'inset -1px -1px 0 #808080, inset 1px 1px 0 #ffffff' }
+    ui: { radius: 0, radiusPill: 0, radiusPanel: 0, font: "'Tahoma', 'MS Sans Serif', sans-serif", glassBlur: 0, borderWidth: 2, borderStyle: 'outset', cardShadow: 'inset -1px -1px 0 #808080, inset 1px 1px 0 #ffffff' }
   }
 ]
 
@@ -237,7 +266,9 @@ export function applyTheme(theme: Theme): void {
   r.setProperty('--accent-bg-hover', theme.accentBgHover)
   r.setProperty('--accent-border', theme.accentBorder)
   // UI
-  r.setProperty('--radius', theme.ui.borderRadius + 'px')
+  r.setProperty('--radius', theme.ui.radius + 'px')
+  r.setProperty('--radius-pill', theme.ui.radiusPill + 'px')
+  r.setProperty('--radius-panel', theme.ui.radiusPanel + 'px')
   r.setProperty('--font', theme.ui.font)
   r.setProperty('--glass-blur', theme.ui.glassBlur + 'px')
   r.setProperty('--border-width', theme.ui.borderWidth + 'px')

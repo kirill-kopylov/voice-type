@@ -58,7 +58,7 @@ export function History({ history, onDelete, onClear, showToast }: HistoryProps)
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-4)' }} />
           <input type="text" placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 glass rounded-xl text-sm"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-1)' }} />
+            style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-1)' }} />
           {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-4)' }}><X size={14} /></button>}
         </div>
       )}
@@ -71,7 +71,7 @@ export function History({ history, onDelete, onClear, showToast }: HistoryProps)
         <div className="space-y-2">
           {filtered.map((record) => (
             <div key={record.id} className="glass rounded-xl overflow-hidden transition-colors"
-              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={() => setExpandedId(expandedId === record.id ? null : record.id)}>
                 <div className={`w-2 h-2 rounded-full shrink-0 ${record.status === 'success' ? 'bg-green-300' : 'bg-red-300'}`} />
                 <p className="flex-1 text-sm truncate" style={{ color: 'var(--text-2)' }}>

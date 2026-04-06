@@ -47,15 +47,11 @@
     user-select: none;
     background: var(--gradient);
     color: var(--text-1);
-    font-family: var(--font, 'Inter', system-ui, sans-serif);
+    font-family: var(--font);
   }
 
   #noise-overlay { display: none }
 
-  /* Все скругления берутся из темы */
-  .rounded-xl { border-radius: var(--radius, 12px) !important }
-  .rounded-lg { border-radius: calc(var(--radius, 12px) * 0.67) !important }
-  .rounded-full { border-radius: 9999px !important }
 
   .noise-bg {
     background-image: var(--noise-url);
@@ -69,6 +65,11 @@
   ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25) }
 }
 
+/* Скругления карточек — управляются темой */
+.rounded-xl { border-radius: var(--radius) }
+.rounded-lg { border-radius: calc(var(--radius) * 0.67) }
+/* rounded-full — не трогаем, всегда круглый */
+
 .titlebar-drag { -webkit-app-region: drag }
 .titlebar-no-drag { -webkit-app-region: no-drag }
 
@@ -76,14 +77,14 @@
 
 /* Glass — полупрозрачные панели */
 .glass {
-  backdrop-filter: blur(var(--glass-blur, 1px));
-  -webkit-backdrop-filter: blur(var(--glass-blur, 1px));
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius, 12px);
-  border-style: var(--border-style, solid);
-  border-width: var(--border-width, 1px);
-  box-shadow: var(--card-shadow, none);
+  border-radius: var(--radius);
+  border-style: var(--border-style);
+  border-width: var(--border-width);
+  box-shadow: var(--card-shadow);
 }
 .glass::after {
   content: '';
