@@ -37,7 +37,8 @@ export interface ThemeTitlebar {
 }
 
 export interface ThemeOverlay {
-  animation: 'tunnel' | 'wave'
+  recordingStyle: 'bars' | 'wave'     // бары или синусоида при записи
+  processingStyle: 'tunnel' | 'wave'  // тоннель или синусоида при обработке
   gradient: string
   waveColor: string
   dotColor: string
@@ -87,7 +88,7 @@ export const themes: Theme[] = [
     noise: { enabled: true, intensity: 5, sparkles: true, sparkleDensity: 0.005, sparkleIntensity: 50 },
     ui: { radius: 12, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
     titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
-    overlay: { animation: 'tunnel', gradient: 'linear-gradient(135deg, rgba(240,128,48,0.92), rgba(168,56,120,0.92))', waveColor: 'rgba(255,255,255,0.7)', dotColor: '#fbbf24', dotGlow: 'rgba(251,191,36,0.6)', textColor: 'rgba(255,255,255,0.7)', radius: 14 }
+    overlay: { recordingStyle: 'bars', processingStyle: 'tunnel', gradient: 'linear-gradient(135deg, rgba(240,128,48,0.92), rgba(168,56,120,0.92))', waveColor: 'rgba(255,255,255,0.7)', dotColor: '#fbbf24', dotGlow: 'rgba(251,191,36,0.6)', textColor: 'rgba(255,255,255,0.7)', radius: 14 }
   },
   {
     id: 'ocean', name: 'Ocean',
@@ -104,7 +105,7 @@ export const themes: Theme[] = [
     noise: { enabled: true, intensity: 4, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
     ui: { radius: 14, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 2, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
     titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
-    overlay: { animation: 'tunnel', gradient: 'linear-gradient(135deg, rgba(12,74,110,0.92), rgba(21,94,117,0.92))', waveColor: 'rgba(56,189,248,0.7)', dotColor: '#38bdf8', dotGlow: 'rgba(56,189,248,0.6)', textColor: 'rgba(224,242,255,0.7)', radius: 14 }
+    overlay: { recordingStyle: 'bars', processingStyle: 'tunnel', gradient: 'linear-gradient(135deg, rgba(12,74,110,0.92), rgba(21,94,117,0.92))', waveColor: 'rgba(56,189,248,0.7)', dotColor: '#38bdf8', dotGlow: 'rgba(56,189,248,0.6)', textColor: 'rgba(224,242,255,0.7)', radius: 14 }
   },
   {
     id: 'aurora', name: 'Aurora',
@@ -121,7 +122,7 @@ export const themes: Theme[] = [
     noise: { enabled: true, intensity: 3, sparkles: true, sparkleDensity: 0.003, sparkleIntensity: 35 },
     ui: { radius: 16, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 2, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
     titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
-    overlay: { animation: 'tunnel', gradient: 'linear-gradient(135deg, rgba(6,78,59,0.92), rgba(6,95,70,0.92))', waveColor: 'rgba(52,211,153,0.7)', dotColor: '#34d399', dotGlow: 'rgba(52,211,153,0.6)', textColor: 'rgba(209,250,229,0.7)', radius: 14 }
+    overlay: { recordingStyle: 'bars', processingStyle: 'tunnel', gradient: 'linear-gradient(135deg, rgba(6,78,59,0.92), rgba(6,95,70,0.92))', waveColor: 'rgba(52,211,153,0.7)', dotColor: '#34d399', dotGlow: 'rgba(52,211,153,0.6)', textColor: 'rgba(209,250,229,0.7)', radius: 14 }
   },
   {
     id: 'midnight', name: 'Midnight',
@@ -138,7 +139,7 @@ export const themes: Theme[] = [
     noise: { enabled: true, intensity: 4, sparkles: true, sparkleDensity: 0.006, sparkleIntensity: 45 },
     ui: { radius: 12, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
     titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
-    overlay: { animation: 'tunnel', gradient: 'linear-gradient(135deg, rgba(30,27,75,0.92), rgba(49,46,129,0.92))', waveColor: 'rgba(167,139,250,0.7)', dotColor: '#a78bfa', dotGlow: 'rgba(167,139,250,0.6)', textColor: 'rgba(224,231,255,0.7)', radius: 14 }
+    overlay: { recordingStyle: 'bars', processingStyle: 'tunnel', gradient: 'linear-gradient(135deg, rgba(30,27,75,0.92), rgba(49,46,129,0.92))', waveColor: 'rgba(167,139,250,0.7)', dotColor: '#a78bfa', dotGlow: 'rgba(167,139,250,0.6)', textColor: 'rgba(224,231,255,0.7)', radius: 14 }
   },
   {
     id: 'retro90', name: '90s Retro',
@@ -155,7 +156,7 @@ export const themes: Theme[] = [
     noise: { enabled: true, intensity: 8, sparkles: true, sparkleDensity: 0.01, sparkleIntensity: 70 },
     ui: { radius: 8, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 0, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
     titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
-    overlay: { animation: 'tunnel', gradient: 'linear-gradient(135deg, rgba(0,180,216,0.92), rgba(224,64,251,0.92))', waveColor: 'rgba(0,230,118,0.8)', dotColor: '#00e676', dotGlow: 'rgba(0,230,118,0.6)', textColor: 'rgba(220,255,220,0.7)', radius: 8 }
+    overlay: { recordingStyle: 'bars', processingStyle: 'tunnel', gradient: 'linear-gradient(135deg, rgba(0,180,216,0.92), rgba(224,64,251,0.92))', waveColor: 'rgba(0,230,118,0.8)', dotColor: '#00e676', dotGlow: 'rgba(0,230,118,0.6)', textColor: 'rgba(220,255,220,0.7)', radius: 8 }
   },
   {
     id: 'macos', name: 'macOS',
@@ -171,7 +172,7 @@ export const themes: Theme[] = [
     noise: { enabled: false, intensity: 0, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
     ui: { radius: 10, radiusPill: 9999, radiusPanel: 0, font: "-apple-system, 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif", glassBlur: 20, borderWidth: 1, borderStyle: 'solid', cardShadow: '0 1px 3px rgba(0,0,0,0.06)' },
     titlebar: { buttonStyle: 'icons', buttonRadius: 9999, buttonBg: 'transparent', buttonBgHover: 'rgba(0,0,0,0.06)', buttonColor: '#8e8e93', buttonCloseHover: 'rgba(239,68,68,0.15)', titleColor: '#3a3a3c' },
-    overlay: { animation: 'wave', gradient: 'linear-gradient(135deg, rgba(232,228,224,0.95), rgba(212,208,204,0.95))', waveColor: 'rgba(0,122,255,0.5)', dotColor: '#007aff', dotGlow: 'rgba(0,122,255,0.4)', textColor: 'rgba(29,29,31,0.6)', radius: 10 }
+    overlay: { recordingStyle: 'wave', processingStyle: 'wave', gradient: 'linear-gradient(135deg, rgba(232,228,224,0.95), rgba(212,208,204,0.95))', waveColor: 'rgba(0,122,255,0.5)', dotColor: '#007aff', dotGlow: 'rgba(0,122,255,0.4)', textColor: 'rgba(29,29,31,0.6)', radius: 10 }
   },
   {
     id: 'win95', name: 'Windows 95',
@@ -187,7 +188,7 @@ export const themes: Theme[] = [
     noise: { enabled: false, intensity: 0, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
     ui: { radius: 0, radiusPill: 0, radiusPanel: 0, font: "'Tahoma', 'MS Sans Serif', sans-serif", glassBlur: 0, borderWidth: 2, borderStyle: 'outset', cardShadow: 'inset -1px -1px 0 #808080, inset 1px 1px 0 #ffffff' },
     titlebar: { buttonStyle: 'classic', buttonRadius: 0, buttonBg: '#c0c0c0', buttonBgHover: '#d0d0d0', buttonColor: '#000000', buttonCloseHover: '#c0c0c0', titleColor: '#000000' },
-    overlay: { animation: 'wave', gradient: '#c0c0c0', waveColor: 'rgba(0,0,128,0.6)', dotColor: '#000080', dotGlow: 'rgba(0,0,128,0.3)', textColor: '#000000', radius: 0 }
+    overlay: { recordingStyle: 'wave', processingStyle: 'wave', gradient: '#c0c0c0', waveColor: 'rgba(0,0,128,0.6)', dotColor: '#000080', dotGlow: 'rgba(0,0,128,0.3)', textColor: '#000000', radius: 0 }
   }
 ]
 

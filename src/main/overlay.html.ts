@@ -5,65 +5,75 @@ export const OVERLAY_HTML = `<!DOCTYPE html>
   body{background:transparent;overflow:hidden}
   .badge{
     display:flex;align-items:center;
-    height:38px;padding:0 14px;
+    height:38px;
     overflow:hidden;position:relative;
     border:none;
   }
-
-  .rec-row{display:flex;align-items:center;gap:10px;position:relative;z-index:5}
+  .badge.has-padding{padding:0 14px}
+  .badge.no-padding{padding:0}
   canvas{display:block}
-  .proc-wrap{position:relative;width:100%;height:100%;z-index:5}
-  #pcv{display:block;width:100%;height:100%}
   .hide{display:none}
 </style>
 </head><body>
-<div class="badge" id="badge">
+<div class="badge has-padding" id="badge">
   <div id="recUI">
-    <div class="rec-row">
+    <div style="display:flex;align-items:center;gap:10px;position:relative;z-index:5">
       <div id="dot" style="width:7px;height:7px;border-radius:50%;flex-shrink:0"></div>
       <canvas id="cv"></canvas>
     </div>
   </div>
-  <div id="procUI" class="hide">
-    <div class="proc-wrap">
-      <canvas id="pcv"></canvas>
-    </div>
+  <div id="recWaveUI" class="hide" style="position:absolute;inset:0;z-index:5">
+    <canvas id="rwcv" style="width:100%;height:100%"></canvas>
+  </div>
+  <div id="procUI" class="hide" style="position:absolute;inset:0;z-index:5">
+    <canvas id="pcv" style="width:100%;height:100%"></canvas>
   </div>
 </div>
 <script>
-// ═══════ КОНФИГ ТЕМЫ ═══════
+// ═══════ ТЕМА ═══════
 let T = {
-  animation: 'tunnel',
-  gradient: 'linear-gradient(135deg, rgba(240,128,48,0.92), rgba(168,56,120,0.92))',
-  waveColor: 'rgba(255,255,255,0.7)',
-  dotColor: '#fbbf24',
-  dotGlow: 'rgba(251,191,36,0.6)',
-  textColor: 'rgba(255,255,255,0.7)',
-  radius: 14
+  recordingStyle:'bars', processingStyle:'tunnel',
+  gradient:'linear-gradient(135deg,rgba(240,128,48,0.92),rgba(168,56,120,0.92))',
+  waveColor:'rgba(255,255,255,0.7)', dotColor:'#fbbf24',
+  dotGlow:'rgba(251,191,36,0.6)', textColor:'rgba(255,255,255,0.7)', radius:14
 };
 
-function applyOverlayTheme(cfg) {
-  T = cfg;
-  const badge = document.getElementById('badge');
-  badge.style.background = T.gradient;
-  badge.style.borderRadius = T.radius + 'px';
-  const dot = document.getElementById('dot');
-  dot.style.background = T.dotColor;
-  dot.style.boxShadow = '0 0 6px ' + T.dotGlow;
+function applyOverlayTheme(cfg){
+  T=cfg;
+  const badge=document.getElementById('badge');
+  badge.style.background=T.gradient;
+  badge.style.borderRadius=T.radius+'px';
+  document.getElementById('dot').style.background=T.dotColor;
+  document.getElementById('dot').style.boxShadow='0 0 6px '+T.dotGlow;
 }
 
-// ═══════ WAVEFORM (запись) ═══════
-const cv = document.getElementById('cv');
-const c = cv.getContext('2d');
-const SRC=10, TOTAL=SRC*2, BW=2.5, GAP=2, RH=22;
-const RW = TOTAL*(BW+GAP)-GAP;
-const dpr = window.devicePixelRatio||1;
-cv.width=RW*dpr; cv.height=RH*dpr;
-cv.style.width=RW+'px'; cv.style.height=RH+'px';
-c.scale(dpr,dpr);
+const dpr=window.devicePixelRatio||1;
 
-const cur = new Float32Array(SRC);
-let analyser=null, freqData=null, micStream=null, raf=null;
+// ═══════ BARS WAVEFORM (запись — бары) ═══════
+const cv=document.getElementById('cv');
+const c=cv.getContext('2d');
+const SRC=10,TOTAL=SRC*2,BW=2.5,GAP=2,RH=22;
+const RW=TOTAL*(BW+GAP)-GAP;
+cv.width=RW*dpr;cv.height=RH*dpr;
+cv.style.width=RW+'px';cv.style.height=RH+'px';
+c.scale(dpr,dpr);
+const cur=new Float32Array(SRC);
+
+// ═══════ WAVE RECORDING (запись — синусоида) ═══════
+const rwcv=document.getElementById('rwcv');
+const rwc=rwcv.getContext('2d');
+const RWW=150,RWH=38;
+rwcv.width=RWW*dpr;rwcv.height=RWH*dpr;
+rwc.scale(dpr,dpr);
+
+// ═══════ PROCESSING CANVAS ═══════
+const pcv=document.getElementById('pcv');
+const pc=pcv.getContext('2d');
+const PW=150,PH=38;
+pcv.width=PW*dpr;pcv.height=PH*dpr;
+pc.scale(dpr,dpr);
+
+let analyser=null,freqData=null,micStream=null,raf=null,praf=null;
 
 function startMic(){
   navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{
@@ -75,7 +85,8 @@ function startMic(){
     analyser.smoothingTimeConstant=0.55;
     src.connect(analyser);
     freqData=new Uint8Array(analyser.frequencyBinCount);
-    renderWave();
+    if(T.recordingStyle==='wave') renderRecWave();
+    else renderBars();
   }).catch(()=>{});
 }
 
@@ -83,79 +94,96 @@ function stopMic(){
   if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}
   analyser=null;
   c.clearRect(0,0,RW,RH);
+  rwc.clearRect(0,0,RWW,RWH);
   cur.fill(0);
 }
 
-function renderWave(){
-  if(!analyser) return;
+// ─── Bars ───
+function renderBars(){
+  if(!analyser)return;
   c.clearRect(0,0,RW,RH);
   analyser.getByteFrequencyData(freqData);
-  for(let i=0;i<SRC;i++){
-    cur[i]+=(freqData[i]/255-cur[i])*0.38;
-  }
-  // Парсим цвет волны
+  for(let i=0;i<SRC;i++) cur[i]+=(freqData[i]/255-cur[i])*0.38;
   for(let i=0;i<TOTAL;i++){
     const si=i<SRC?(SRC-1-i):(i-SRC);
     const v=cur[si];
     const h=Math.max(2,v*RH);
-    const x=i*(BW+GAP), y=(RH-h)/2;
+    const x=i*(BW+GAP),y=(RH-h)/2;
     c.fillStyle=T.waveColor.replace(/[\\d.]+\\)$/,(0.3+v*0.65)+')');
     c.beginPath();c.roundRect(x,y,BW,h,1.2);c.fill();
   }
-  raf=requestAnimationFrame(renderWave);
+  raf=requestAnimationFrame(renderBars);
 }
 
-// ═══════ PROCESSING CANVAS ═══════
-const pcv=document.getElementById('pcv');
-const pc=pcv.getContext('2d');
-let praf=null;
+// ─── Wave recording (синусоида от голоса) ───
+function renderRecWave(){
+  if(!analyser)return;
+  rwc.clearRect(0,0,RWW,RWH);
+  analyser.getByteFrequencyData(freqData);
 
-const PW=150, PH=38;
-pcv.width=PW*dpr; pcv.height=PH*dpr;
-pcv.style.width=PW+'px'; pcv.style.height=PH+'px';
-pc.scale(dpr,dpr);
+  // Средняя амплитуда
+  let sum=0;
+  for(let i=0;i<freqData.length;i++) sum+=freqData[i];
+  const amp=(sum/freqData.length/255)*14;
 
-// ─── TUNNEL ───
-const NRINGS=50, NSEG=28;
+  const t=performance.now()*0.004;
+  const midY=RWH/2;
+
+  for(let layer=0;layer<3;layer++){
+    const ph=layer*1.5;
+    const a=amp*(1-layer*0.25);
+    const alpha=0.5-layer*0.12;
+    rwc.beginPath();
+    rwc.moveTo(0,midY);
+    for(let x=0;x<RWW;x++){
+      const y=midY+Math.sin(x*0.06+t+ph)*a+Math.sin(x*0.1+t*0.7+ph)*a*0.3;
+      rwc.lineTo(x,y);
+    }
+    rwc.strokeStyle=T.waveColor.replace(/[\\d.]+\\)$/,alpha+')');
+    rwc.lineWidth=2-layer*0.5;
+    rwc.stroke();
+  }
+  raf=requestAnimationFrame(renderRecWave);
+}
+
+// ═══════ PROCESSING ═══════
+
+// ─── Tunnel ───
+const NRINGS=50,NSEG=28;
 const rings=[];
 function spawnRing(z){
-  const segs=[];
-  for(let j=0;j<NSEG;j++) segs.push(0.6+Math.random()*0.8);
+  const segs=[];for(let j=0;j<NSEG;j++)segs.push(0.6+Math.random()*0.8);
   return{z,ho:Math.random()*40,segs,rot:Math.random()*6.28,drift:Math.random()*2-1};
 }
-for(let i=0;i<NRINGS;i++) rings.push(spawnRing(i/NRINGS));
+for(let i=0;i<NRINGS;i++)rings.push(spawnRing(i/NRINGS));
 
 function renderTunnel(){
   const t=performance.now()*0.001;
   const cx=PW/2+Math.sin(t*0.7)*8+Math.sin(t*1.9)*3;
   const cy=PH/2+Math.cos(t*0.9)*4+Math.sin(t*2.3)*1.5;
-
   pc.globalCompositeOperation='source-over';
   pc.fillStyle='rgba(120,40,60,0.22)';
   pc.fillRect(0,0,PW,PH);
   pc.globalCompositeOperation='lighter';
-
   for(const r of rings){
     r.z+=0.018;
     if(r.z>1){const nr=spawnRing(r.z-1);r.z=nr.z;r.ho=nr.ho;r.segs=nr.segs;r.rot=nr.rot;r.drift=nr.drift}
     const p=r.z*r.z;
-    const baseRx=p*PW*0.6, baseRy=p*PH*0.55;
-    if(baseRx<1)continue;
+    const brx=p*PW*0.6,bry=p*PH*0.55;
+    if(brx<1)continue;
     const a=Math.sin(r.z*Math.PI)*0.22;
     const hue=15+r.ho+Math.sin(t*1.2+r.z*5)*20;
     const lit=35+p*22;
     const lw=0.3+p*2;
-    const offx=r.drift*p*6;
-    const offy=r.drift*p*2*Math.sin(t+r.rot);
+    const offx=r.drift*p*6,offy=r.drift*p*2*Math.sin(t+r.rot);
     pc.strokeStyle='hsla('+hue+',70%,'+lit+'%,'+a+')';
     pc.lineWidth=lw;
     pc.beginPath();
     for(let j=0;j<=NSEG;j++){
       const angle=r.rot+(j/NSEG)*Math.PI*2;
-      const noise=r.segs[j%NSEG];
-      const rx=baseRx*noise, ry=baseRy*noise;
-      const x=cx+offx+Math.cos(angle)*rx;
-      const y=cy+offy+Math.sin(angle)*ry;
+      const n=r.segs[j%NSEG];
+      const x=cx+offx+Math.cos(angle)*brx*n;
+      const y=cy+offy+Math.sin(angle)*bry*n;
       if(j===0)pc.moveTo(x,y);else pc.lineTo(x,y);
     }
     pc.stroke();
@@ -164,65 +192,65 @@ function renderTunnel(){
   praf=requestAnimationFrame(renderTunnel);
 }
 
-// ─── WAVE (синусоида) ───
+// ─── Wave processing (бегущая синусоида) ───
 let waveOffset=0;
-
-function renderWaveProcessing(){
-  const t=performance.now()*0.001;
+function renderWaveProc(){
   pc.clearRect(0,0,PW,PH);
-
   waveOffset+=0.03;
   const midY=PH/2;
-
-  // Рисуем 3 слоя волн с разной фазой и прозрачностью
   for(let layer=0;layer<3;layer++){
-    const phaseOff=layer*1.2;
-    const amp=(8-layer*2);
+    const ph=layer*1.2;
+    const amp=8-layer*2;
     const freq=0.04+layer*0.01;
     const alpha=0.3-layer*0.08;
-
-    pc.beginPath();
-    pc.moveTo(0,midY);
+    pc.beginPath();pc.moveTo(0,midY);
     for(let x=0;x<PW;x++){
-      const y=midY+Math.sin((x*freq)+waveOffset+phaseOff)*amp
-               +Math.sin((x*freq*1.7)+waveOffset*0.7+phaseOff)*amp*0.4;
+      const y=midY+Math.sin(x*freq+waveOffset+ph)*amp+Math.sin(x*freq*1.7+waveOffset*0.7+ph)*amp*0.4;
       pc.lineTo(x,y);
     }
     pc.strokeStyle=T.waveColor.replace(/[\\d.]+\\)$/,alpha+')');
     pc.lineWidth=2-layer*0.4;
     pc.stroke();
   }
-
-  praf=requestAnimationFrame(renderWaveProcessing);
+  praf=requestAnimationFrame(renderWaveProc);
 }
 
 // ═══════ STATE ═══════
-let mode='hidden';
-
 function setState(s){
   if(raf){cancelAnimationFrame(raf);raf=null}
   if(praf){cancelAnimationFrame(praf);praf=null}
 
   const badge=document.getElementById('badge');
-  const r=document.getElementById('recUI');
-  const p=document.getElementById('procUI');
-  mode=s;
-  r.className=s==='recording'?'':'hide';
-  p.className=s==='processing'?'':'hide';
+  const recBars=document.getElementById('recUI');
+  const recWave=document.getElementById('recWaveUI');
+  const proc=document.getElementById('procUI');
 
-  // Применяем стиль
   badge.style.background=T.gradient;
   badge.style.borderRadius=T.radius+'px';
 
+  recBars.className='hide';
+  recWave.className='hide';
+  proc.className='hide';
+
   if(s==='recording'){
+    if(T.recordingStyle==='wave'){
+      recWave.className='';
+      badge.className='badge no-padding';
+    }else{
+      recBars.className='';
+      badge.className='badge has-padding';
+    }
     startMic();
   }else{
     stopMic();
   }
+
   if(s==='processing'){
+    proc.className='';
+    badge.className='badge no-padding';
     pc.clearRect(0,0,PW,PH);
     waveOffset=0;
-    if(T.animation==='wave') renderWaveProcessing();
+    if(T.processingStyle==='wave') renderWaveProc();
     else renderTunnel();
   }
 }
@@ -232,8 +260,8 @@ let audioCtx=null;
 function playBeep(type){
   if(!audioCtx)audioCtx=new AudioContext();
   const ac=audioCtx;
-  if(type==='start') bip(ac,880,0.11,0.2,0);
-  else{ bip(ac,520,0.08,0.16,0); bip(ac,640,0.08,0.16,0.1); }
+  if(type==='start')bip(ac,880,0.11,0.2,0);
+  else{bip(ac,520,0.08,0.16,0);bip(ac,640,0.08,0.16,0.1)}
 }
 function bip(ac,f,d,v,dl){
   const tm=ac.currentTime+(dl||0);
@@ -245,7 +273,6 @@ function bip(ac,f,d,v,dl){
   o.start(tm);o.stop(tm+d);
 }
 
-// Инициализация
 applyOverlayTheme(T);
 </script>
 </body></html>`;
