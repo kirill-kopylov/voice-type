@@ -26,6 +26,16 @@ export interface ThemeUI {
   cardShadow: string
 }
 
+export interface ThemeTitlebar {
+  buttonStyle: 'icons' | 'classic'  // icons = lucide иконки, classic = текстовые ▬ □ ✕
+  buttonRadius: number
+  buttonBg: string
+  buttonBgHover: string
+  buttonColor: string
+  buttonCloseHover: string
+  titleColor: string
+}
+
 export interface ThemeOverlay {
   animation: 'tunnel' | 'wave'
   gradient: string
@@ -57,6 +67,7 @@ export interface Theme {
   blobs: ThemeBlobs & { colors: { r: number; g: number; b: number }[] }
   noise: ThemeNoise
   ui: ThemeUI
+  titlebar: ThemeTitlebar
   overlay: ThemeOverlay
 }
 
@@ -75,6 +86,7 @@ export const themes: Theme[] = [
       colors: [{ r:255,g:140,b:50 },{ r:230,g:90,b:80 },{ r:200,g:60,b:140 },{ r:250,g:180,b:60 },{ r:220,g:50,b:100 }] },
     noise: { enabled: true, intensity: 5, sparkles: true, sparkleDensity: 0.005, sparkleIntensity: 50 },
     ui: { radius: 12, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
+    titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
     overlay: { animation: 'tunnel', gradient: 'linear-gradient(135deg, rgba(240,128,48,0.92), rgba(168,56,120,0.92))', waveColor: 'rgba(255,255,255,0.7)', dotColor: '#fbbf24', dotGlow: 'rgba(251,191,36,0.6)', textColor: 'rgba(255,255,255,0.7)', radius: 14 }
   },
   {
@@ -91,6 +103,7 @@ export const themes: Theme[] = [
       colors: [{ r:30,g:140,b:220 },{ r:20,g:180,b:200 },{ r:60,g:100,b:240 },{ r:40,g:200,b:180 },{ r:80,g:120,b:210 }] },
     noise: { enabled: true, intensity: 4, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
     ui: { radius: 14, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 2, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
+    titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
     overlay: { animation: 'tunnel', gradient: 'linear-gradient(135deg, rgba(12,74,110,0.92), rgba(21,94,117,0.92))', waveColor: 'rgba(56,189,248,0.7)', dotColor: '#38bdf8', dotGlow: 'rgba(56,189,248,0.6)', textColor: 'rgba(224,242,255,0.7)', radius: 14 }
   },
   {
@@ -107,6 +120,7 @@ export const themes: Theme[] = [
       colors: [{ r:16,g:185,b:129 },{ r:20,g:220,b:160 },{ r:45,g:140,b:200 },{ r:80,g:200,b:120 },{ r:30,g:160,b:180 }] },
     noise: { enabled: true, intensity: 3, sparkles: true, sparkleDensity: 0.003, sparkleIntensity: 35 },
     ui: { radius: 16, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 2, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
+    titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
     overlay: { animation: 'tunnel', gradient: 'linear-gradient(135deg, rgba(6,78,59,0.92), rgba(6,95,70,0.92))', waveColor: 'rgba(52,211,153,0.7)', dotColor: '#34d399', dotGlow: 'rgba(52,211,153,0.6)', textColor: 'rgba(209,250,229,0.7)', radius: 14 }
   },
   {
@@ -123,6 +137,7 @@ export const themes: Theme[] = [
       colors: [{ r:120,g:80,b:240 },{ r:80,g:60,b:220 },{ r:160,g:100,b:255 },{ r:60,g:50,b:200 },{ r:140,g:120,b:250 }] },
     noise: { enabled: true, intensity: 4, sparkles: true, sparkleDensity: 0.006, sparkleIntensity: 45 },
     ui: { radius: 12, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
+    titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
     overlay: { animation: 'tunnel', gradient: 'linear-gradient(135deg, rgba(30,27,75,0.92), rgba(49,46,129,0.92))', waveColor: 'rgba(167,139,250,0.7)', dotColor: '#a78bfa', dotGlow: 'rgba(167,139,250,0.6)', textColor: 'rgba(224,231,255,0.7)', radius: 14 }
   },
   {
@@ -139,6 +154,7 @@ export const themes: Theme[] = [
       colors: [{ r:0,g:180,b:216 },{ r:224,g:64,b:251 },{ r:0,g:230,b:118 },{ r:255,g:234,b:0 },{ r:255,g:23,b:68 }] },
     noise: { enabled: true, intensity: 8, sparkles: true, sparkleDensity: 0.01, sparkleIntensity: 70 },
     ui: { radius: 8, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 0, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
+    titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
     overlay: { animation: 'tunnel', gradient: 'linear-gradient(135deg, rgba(0,180,216,0.92), rgba(224,64,251,0.92))', waveColor: 'rgba(0,230,118,0.8)', dotColor: '#00e676', dotGlow: 'rgba(0,230,118,0.6)', textColor: 'rgba(220,255,220,0.7)', radius: 8 }
   },
   {
@@ -154,6 +170,7 @@ export const themes: Theme[] = [
     blobs: { enabled: false, count: 0, sizeMultiplier: 0, speed: 0, blur: 0, opacity: 0, colors: [] },
     noise: { enabled: false, intensity: 0, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
     ui: { radius: 10, radiusPill: 9999, radiusPanel: 0, font: "-apple-system, 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif", glassBlur: 20, borderWidth: 1, borderStyle: 'solid', cardShadow: '0 1px 3px rgba(0,0,0,0.06)' },
+    titlebar: { buttonStyle: 'icons', buttonRadius: 9999, buttonBg: 'transparent', buttonBgHover: 'rgba(0,0,0,0.06)', buttonColor: '#8e8e93', buttonCloseHover: 'rgba(239,68,68,0.15)', titleColor: '#3a3a3c' },
     overlay: { animation: 'wave', gradient: 'linear-gradient(135deg, rgba(232,228,224,0.95), rgba(212,208,204,0.95))', waveColor: 'rgba(0,122,255,0.5)', dotColor: '#007aff', dotGlow: 'rgba(0,122,255,0.4)', textColor: 'rgba(29,29,31,0.6)', radius: 10 }
   },
   {
@@ -169,6 +186,7 @@ export const themes: Theme[] = [
     blobs: { enabled: false, count: 0, sizeMultiplier: 0, speed: 0, blur: 0, opacity: 0, colors: [] },
     noise: { enabled: false, intensity: 0, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
     ui: { radius: 0, radiusPill: 0, radiusPanel: 0, font: "'Tahoma', 'MS Sans Serif', sans-serif", glassBlur: 0, borderWidth: 2, borderStyle: 'outset', cardShadow: 'inset -1px -1px 0 #808080, inset 1px 1px 0 #ffffff' },
+    titlebar: { buttonStyle: 'classic', buttonRadius: 0, buttonBg: '#c0c0c0', buttonBgHover: '#d0d0d0', buttonColor: '#000000', buttonCloseHover: '#c0c0c0', titleColor: '#000000' },
     overlay: { animation: 'wave', gradient: '#c0c0c0', waveColor: 'rgba(0,0,128,0.6)', dotColor: '#000080', dotGlow: 'rgba(0,0,128,0.3)', textColor: '#000000', radius: 0 }
   }
 ]

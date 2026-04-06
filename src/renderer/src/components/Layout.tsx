@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { Sidebar } from './Sidebar'
 import { TitleBar } from './TitleBar'
 import { Page } from '../App'
+import { ThemeTitlebar } from '../themes'
 
 interface LayoutProps {
   children: ReactNode
@@ -12,12 +13,13 @@ interface LayoutProps {
   hotkey: string
   currentTheme: string
   onThemeChange: (id: string) => void
+  titlebarConfig: ThemeTitlebar
 }
 
-export function Layout({ children, page, onPageChange, isRecording, isProcessing, hotkey, currentTheme, onThemeChange }: LayoutProps): JSX.Element {
+export function Layout({ children, page, onPageChange, isRecording, isProcessing, hotkey, currentTheme, onThemeChange, titlebarConfig }: LayoutProps): JSX.Element {
   return (
     <div className="h-screen flex flex-col relative">
-      <TitleBar isRecording={isRecording} isProcessing={isProcessing} currentTheme={currentTheme} onThemeChange={onThemeChange} />
+      <TitleBar isRecording={isRecording} isProcessing={isProcessing} currentTheme={currentTheme} onThemeChange={onThemeChange} titlebarConfig={titlebarConfig} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar page={page} onPageChange={onPageChange} hotkey={hotkey} />
         <main className="flex-1 overflow-y-auto p-8 relative">
