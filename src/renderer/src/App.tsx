@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard'
 import { History } from './pages/History'
 import { Settings } from './pages/Settings'
 import { TranscriptionRecord, AppSettings } from './types'
+import { themes, applyTheme, getThemeById } from './themes'
 
 export type Page = 'dashboard' | 'history' | 'settings'
 
@@ -15,16 +16,28 @@ export function App(): JSX.Element {
   const [history, setHistory] = useState<TranscriptionRecord[]>([])
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [themeId, setThemeId] = useState(() => localStorage.getItem('voice-type-theme') ?? 'sunset')
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const recordingStartRef = useRef<number>(0)
 
+  // Применяем тему
+  useEffect(() => {
+    const theme = getThemeById(themeId)
+    applyTheme(theme)
+    initBlobs(theme.blobs)
+  }, [themeId])
+
+  const handleThemeChange = useCallback((id: string) => {
+    setThemeId(id)
+    localStorage.setItem('voice-type-theme', id)
+  }, [])
+
   useEffect(() => {
     if (!window.api) return
     window.api.getHistory().then(setHistory)
     window.api.getSettings().then(setSettings)
-    initBlobs()
   }, [])
 
   useEffect(() => {
@@ -113,7 +126,7 @@ export function App(): JSX.Element {
   }
 
   return (
-    <Layout page={page} onPageChange={setPage} isRecording={isRecording} isProcessing={isProcessing} hotkey={settings?.hotkey ?? ''}>
+    <Layout page={page} onPageChange={setPage} isRecording={isRecording} isProcessing={isProcessing} hotkey={settings?.hotkey ?? ''} currentTheme={themeId} onThemeChange={handleThemeChange}>
       {page === 'dashboard' && (
         <Dashboard
           isRecording={isRecording}

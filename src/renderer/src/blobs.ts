@@ -1,4 +1,10 @@
-interface Blob {
+interface BlobDef {
+  r: number
+  g: number
+  b: number
+}
+
+interface BlobState {
   x: number
   y: number
   angle: number
@@ -10,10 +16,19 @@ interface Blob {
   b: number
 }
 
-export function initBlobs(): void {
+let animationId: number | null = null
+let blobStates: BlobState[] = []
+
+export function initBlobs(colors?: BlobDef[]): void {
   const canvas = document.getElementById('blobs-canvas') as HTMLCanvasElement
   if (!canvas) return
   const ctx = canvas.getContext('2d')!
+
+  // Если уже запущено — остановить, обновить цвета
+  if (animationId) {
+    cancelAnimationFrame(animationId)
+    animationId = null
+  }
 
   function resize(): void {
     canvas.width = canvas.offsetWidth
@@ -22,14 +37,40 @@ export function initBlobs(): void {
   resize()
   window.addEventListener('resize', resize)
 
-  // Каждый блоб движется по плавной кривой — угол медленно меняется
-  const blobs: Blob[] = [
-    { x: 200, y: 200, angle: 0.3, speed: 0.8, turnSpeed: 0.008, radius: 450, r: 255, g: 140, b: 50 },
-    { x: 600, y: 350, angle: 2.1, speed: 0.7, turnSpeed: 0.006, radius: 420, r: 230, g: 90, b: 80 },
-    { x: 350, y: 500, angle: 4.2, speed: 0.65, turnSpeed: 0.009, radius: 460, r: 200, g: 60, b: 140 },
-    { x: 700, y: 150, angle: 1.0, speed: 0.55, turnSpeed: 0.007, radius: 380, r: 250, g: 180, b: 60 },
-    { x: 100, y: 400, angle: 3.5, speed: 0.6, turnSpeed: 0.01, radius: 400, r: 220, g: 50, b: 100 },
+  const defs = colors ?? [
+    { r: 255, g: 140, b: 50 },
+    { r: 230, g: 90, b: 80 },
+    { r: 200, g: 60, b: 140 },
+    { r: 250, g: 180, b: 60 },
+    { r: 220, g: 50, b: 100 },
   ]
+
+  const speeds = [0.6, 0.45, 0.5, 0.55, 0.6]
+  const turns = [0.008, 0.006, 0.009, 0.007, 0.01]
+  function calcRadius(): number {
+    const diag = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height)
+    return diag * 0.5
+  }
+
+  let baseRadius = calcRadius()
+
+  window.addEventListener('resize', () => {
+    resize()
+    baseRadius = calcRadius()
+    for (const bl of blobStates) {
+      bl.radius = baseRadius * (0.85 + Math.random() * 0.3)
+    }
+  })
+
+  blobStates = defs.map((c, i) => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    angle: Math.random() * Math.PI * 2,
+    speed: speeds[i % speeds.length],
+    turnSpeed: turns[i % turns.length],
+    radius: baseRadius * (0.85 + Math.random() * 0.3),
+    ...c
+  }))
 
   function render(): void {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -38,17 +79,30 @@ export function initBlobs(): void {
     const cx = canvas.width / 2
     const cy = canvas.height / 2
 
-    for (const bl of blobs) {
-      // Плавный поворот — постоянно меняет направление
+    for (const bl of blobStates) {
       bl.angle += bl.turnSpeed
 
-      // Притяжение к центру — чем дальше от центра, тем сильнее тянет обратно
+      // Притяжение к центру экрана
       const dx = cx - bl.x
       const dy = cy - bl.y
       const dist = Math.sqrt(dx * dx + dy * dy)
       const pullAngle = Math.atan2(dy, dx)
       const pull = Math.min(dist / (canvas.width * 0.6), 1) * 0.02
       bl.angle += Math.sin(pullAngle - bl.angle) * pull
+
+      // Ленивое отталкивание от других блобов
+      for (const other of blobStates) {
+        if (other === bl) continue
+        const odx = bl.x - other.x
+        const ody = bl.y - other.y
+        const odist = Math.sqrt(odx * odx + ody * ody)
+        const minDist = (bl.radius + other.radius) * 0.3
+        if (odist < minDist && odist > 0) {
+          const repelAngle = Math.atan2(ody, odx)
+          const strength = (1 - odist / minDist) * 0.015
+          bl.angle += Math.sin(repelAngle - bl.angle) * strength
+        }
+      }
 
       bl.x += Math.cos(bl.angle) * bl.speed
       bl.y += Math.sin(bl.angle) * bl.speed
@@ -63,8 +117,16 @@ export function initBlobs(): void {
       ctx.fillRect(0, 0, canvas.width, canvas.height)
     }
 
-    requestAnimationFrame(render)
+    animationId = requestAnimationFrame(render)
   }
 
   render()
+}
+
+export function updateBlobColors(colors: BlobDef[]): void {
+  for (let i = 0; i < blobStates.length && i < colors.length; i++) {
+    blobStates[i].r = colors[i].r
+    blobStates[i].g = colors[i].g
+    blobStates[i].b = colors[i].b
+  }
 }
