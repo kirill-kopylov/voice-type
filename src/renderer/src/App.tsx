@@ -29,6 +29,9 @@ export function App(): JSX.Element {
     applyTheme(theme)
     initBlobs(theme.blobs)
     generateNoiseTextures(theme.noise)
+    if (window.api) {
+      window.api.setOverlayTheme(theme.overlay as unknown as Record<string, string | number>)
+    }
   }, [themeId])
 
   const handleThemeChange = useCallback((id: string) => {

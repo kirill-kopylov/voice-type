@@ -36,6 +36,7 @@ export interface VoiceTypeAPI {
   windowMinimize: () => Promise<void>
   windowMaximize: () => Promise<void>
   windowClose: () => Promise<void>
+  setOverlayTheme: (config: Record<string, string | number>) => void
   onRecordingStateChanged: (callback: (isRecording: boolean) => void) => () => void
   onTranscriptionComplete: (callback: (record: TranscriptionRecord) => void) => () => void
 }

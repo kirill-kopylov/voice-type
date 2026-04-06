@@ -14,6 +14,7 @@ export interface VoiceTypeAPI {
   windowMinimize: () => Promise<void>
   windowMaximize: () => Promise<void>
   windowClose: () => Promise<void>
+  setOverlayTheme: (config: Record<string, string | number>) => void
   onRecordingStateChanged: (callback: (isRecording: boolean) => void) => () => void
   onTranscriptionComplete: (callback: (record: TranscriptionRecord) => void) => () => void
 }
@@ -69,6 +70,8 @@ const api: VoiceTypeAPI = {
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),
 
   windowClose: () => ipcRenderer.invoke('window-close'),
+
+  setOverlayTheme: (config) => ipcRenderer.send('set-overlay-theme', config),
 
   onRecordingStateChanged: (callback) => {
     const handler = (_event: Electron.IpcRendererEvent, isRecording: boolean): void => {
