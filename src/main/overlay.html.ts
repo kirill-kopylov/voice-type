@@ -85,7 +85,8 @@ function startMic(){
     analyser.smoothingTimeConstant=0.55;
     src.connect(analyser);
     freqData=new Uint8Array(analyser.frequencyBinCount);
-    if(T.recordingStyle==='wave') renderRecWave();
+    if(T.recordingStyle==='scope') renderRecScope();
+    else if(T.recordingStyle==='wave') renderRecWave();
     else renderBars();
   }).catch(()=>{});
 }
@@ -116,15 +117,18 @@ function renderBars(){
 }
 
 // ─── Wave recording (синусоида от голоса) ───
+let smoothAmp=0;
 function renderRecWave(){
   if(!analyser)return;
   rwc.clearRect(0,0,RWW,RWH);
   analyser.getByteFrequencyData(freqData);
 
-  // Средняя амплитуда
+  // Средняя амплитуда с плавным сглаживанием
   let sum=0;
   for(let i=0;i<freqData.length;i++) sum+=freqData[i];
-  const amp=(sum/freqData.length/255)*14;
+  const rawAmp=(sum/freqData.length/255)*50;
+  smoothAmp+=(rawAmp-smoothAmp)*0.12; // медленный lerp — плавность
+  const amp=smoothAmp;
 
   const t=performance.now()*0.004;
   const midY=RWH/2;
@@ -215,6 +219,95 @@ function renderWaveProc(){
   praf=requestAnimationFrame(renderWaveProc);
 }
 
+// ─── Scope recording (осциллограф — raw waveform) ───
+let scopeSmooth=new Float32Array(128);
+function renderRecScope(){
+  if(!analyser)return;
+  rwc.clearRect(0,0,RWW,RWH);
+
+  // Сетка
+  rwc.strokeStyle='rgba(0,255,65,0.08)';
+  rwc.lineWidth=0.5;
+  for(let gx=0;gx<RWW;gx+=15){rwc.beginPath();rwc.moveTo(gx,0);rwc.lineTo(gx,RWH);rwc.stroke()}
+  for(let gy=0;gy<RWH;gy+=9){rwc.beginPath();rwc.moveTo(0,gy);rwc.lineTo(RWW,gy);rwc.stroke()}
+
+  // Центральная линия
+  rwc.strokeStyle='rgba(0,255,65,0.15)';
+  rwc.lineWidth=0.5;
+  rwc.beginPath();rwc.moveTo(0,RWH/2);rwc.lineTo(RWW,RWH/2);rwc.stroke();
+
+  // Raw time-domain waveform
+  const timeData=new Uint8Array(analyser.fftSize);
+  analyser.getByteTimeDomainData(timeData);
+
+  // Сглаживание
+  const step=timeData.length/RWW;
+  for(let i=0;i<RWW;i++){
+    const raw=(timeData[Math.floor(i*step)]-128)/128;
+    if(scopeSmooth.length<RWW) scopeSmooth=new Float32Array(RWW);
+    scopeSmooth[i]+=(raw-scopeSmooth[i])*0.3;
+  }
+
+  // Послесвечение (тень)
+  rwc.strokeStyle='rgba(0,255,65,0.15)';
+  rwc.lineWidth=4;
+  rwc.beginPath();
+  for(let x=0;x<RWW;x++){
+    const y=RWH/2+scopeSmooth[x]*(RWH*0.42);
+    if(x===0)rwc.moveTo(x,y);else rwc.lineTo(x,y);
+  }
+  rwc.stroke();
+
+  // Основной луч
+  rwc.strokeStyle=T.waveColor;
+  rwc.lineWidth=1.5;
+  rwc.shadowColor=T.dotColor;
+  rwc.shadowBlur=6;
+  rwc.beginPath();
+  for(let x=0;x<RWW;x++){
+    const y=RWH/2+scopeSmooth[x]*(RWH*0.42);
+    if(x===0)rwc.moveTo(x,y);else rwc.lineTo(x,y);
+  }
+  rwc.stroke();
+  rwc.shadowBlur=0;
+
+  raf=requestAnimationFrame(renderRecScope);
+}
+
+// ─── Scope processing (развёртка с шумом) ───
+let scopeScanX=0;
+function renderScopeProc(){
+  // Затухание
+  pc.fillStyle='rgba(0,0,0,0.06)';
+  pc.fillRect(0,0,PW,PH);
+
+  // Сетка
+  pc.strokeStyle='rgba(0,255,65,0.06)';
+  pc.lineWidth=0.5;
+  for(let gx=0;gx<PW;gx+=15){pc.beginPath();pc.moveTo(gx,0);pc.lineTo(gx,PH);pc.stroke()}
+  for(let gy=0;gy<PH;gy+=9){pc.beginPath();pc.moveTo(0,gy);pc.lineTo(PW,gy);pc.stroke()}
+
+  // Луч развёртки
+  scopeScanX=(scopeScanX+1.2)%PW;
+  const y=PH/2+Math.sin(scopeScanX*0.08+performance.now()*0.002)*4
+           +Math.sin(scopeScanX*0.2)*2+(Math.random()-0.5)*3;
+
+  pc.shadowColor=T.dotColor;
+  pc.shadowBlur=8;
+  pc.fillStyle=T.waveColor;
+  pc.beginPath();
+  pc.arc(scopeScanX,y,1.5,0,Math.PI*2);
+  pc.fill();
+  pc.shadowBlur=0;
+
+  // Вертикальная линия курсора
+  pc.strokeStyle='rgba(0,255,65,0.1)';
+  pc.lineWidth=1;
+  pc.beginPath();pc.moveTo(scopeScanX,0);pc.lineTo(scopeScanX,PH);pc.stroke();
+
+  praf=requestAnimationFrame(renderScopeProc);
+}
+
 // ═══════ STATE ═══════
 function setState(s){
   if(raf){cancelAnimationFrame(raf);raf=null}
@@ -233,7 +326,7 @@ function setState(s){
   proc.className='hide';
 
   if(s==='recording'){
-    if(T.recordingStyle==='wave'){
+    if(T.recordingStyle==='wave' || T.recordingStyle==='scope'){
       recWave.className='';
       badge.className='badge no-padding';
     }else{
@@ -250,7 +343,9 @@ function setState(s){
     badge.className='badge no-padding';
     pc.clearRect(0,0,PW,PH);
     waveOffset=0;
-    if(T.processingStyle==='wave') renderWaveProc();
+    scopeScanX=0;
+    if(T.processingStyle==='scope') renderScopeProc();
+    else if(T.processingStyle==='wave') renderWaveProc();
     else renderTunnel();
   }
 }
