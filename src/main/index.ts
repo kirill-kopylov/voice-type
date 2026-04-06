@@ -23,6 +23,7 @@ let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
 let isRecording = false
 let currentHotkey: string | null = null
+let currentOverlayTheme: Record<string, string | number> | null = null
 
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
@@ -99,6 +100,10 @@ function showOverlay(state: 'recording' | 'processing' | 'hidden'): void {
     return
   }
 
+  // Применяем тему перед переключением состояния
+  if (currentOverlayTheme) {
+    overlayWindow.webContents.executeJavaScript(`applyOverlayTheme(${JSON.stringify(currentOverlayTheme)})`)
+  }
   overlayWindow.show()
   overlayWindow.webContents.executeJavaScript(`setState('${state}')`)
 }
@@ -148,6 +153,7 @@ function applyAutoStart(): void {
 function setupIpcHandlers(): void {
   // Тема overlay — из renderer
   ipcMain.on('set-overlay-theme', (_event, config: Record<string, string | number>) => {
+    currentOverlayTheme = config
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       overlayWindow.webContents.executeJavaScript(`applyOverlayTheme(${JSON.stringify(config)})`)
     }
