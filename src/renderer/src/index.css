@@ -47,9 +47,15 @@
     user-select: none;
     background: var(--gradient);
     color: var(--text-1);
+    font-family: var(--font, 'Inter', system-ui, sans-serif);
   }
 
   #noise-overlay { display: none }
+
+  /* Все скругления берутся из темы */
+  .rounded-xl { border-radius: var(--radius, 12px) !important }
+  .rounded-lg { border-radius: calc(var(--radius, 12px) * 0.67) !important }
+  .rounded-full { border-radius: 9999px !important }
 
   .noise-bg {
     background-image: var(--noise-url);
@@ -70,10 +76,14 @@
 
 /* Glass — полупрозрачные панели */
 .glass {
-  backdrop-filter: blur(1px);
-  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(var(--glass-blur, 1px));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 1px));
   position: relative;
   overflow: hidden;
+  border-radius: var(--radius, 12px);
+  border-style: var(--border-style, solid);
+  border-width: var(--border-width, 1px);
+  box-shadow: var(--card-shadow, none);
 }
 .glass::after {
   content: '';

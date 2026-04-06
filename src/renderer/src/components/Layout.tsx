@@ -21,7 +21,7 @@ export function Layout({ children, page, onPageChange, isRecording, isProcessing
       <div className="flex flex-1 overflow-hidden">
         <Sidebar page={page} onPageChange={onPageChange} hotkey={hotkey} />
         <main className="flex-1 overflow-y-auto p-8 relative">
-          <canvas id="blobs-canvas" className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0, filter: 'blur(80px)' }} />
+          <canvas id="blobs-canvas" className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0, filter: 'blur(var(--blob-blur, 80px))' }} />
           <div className="absolute inset-0 pointer-events-none noise-bg" style={{ zIndex: 1 }} />
           <div className="relative" style={{ zIndex: 2 }}>
             {children}

@@ -5,7 +5,8 @@ import { Dashboard } from './pages/Dashboard'
 import { History } from './pages/History'
 import { Settings } from './pages/Settings'
 import { TranscriptionRecord, AppSettings } from './types'
-import { themes, applyTheme, getThemeById } from './themes'
+import { applyTheme, getThemeById } from './themes'
+import { generateNoiseTextures } from './noise'
 
 export type Page = 'dashboard' | 'history' | 'settings'
 
@@ -27,6 +28,7 @@ export function App(): JSX.Element {
     const theme = getThemeById(themeId)
     applyTheme(theme)
     initBlobs(theme.blobs)
+    generateNoiseTextures(theme.noise)
   }, [themeId])
 
   const handleThemeChange = useCallback((id: string) => {

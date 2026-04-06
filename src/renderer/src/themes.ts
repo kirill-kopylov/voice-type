@@ -1,6 +1,33 @@
+export interface ThemeBlobs {
+  enabled: boolean
+  count: number
+  sizeMultiplier: number  // 1 = 50% диагонали
+  speed: number           // 1 = обычная
+  blur: number            // px
+  opacity: number         // 0-1
+}
+
+export interface ThemeNoise {
+  enabled: boolean
+  intensity: number       // alpha 0-255
+  sparkles: boolean
+  sparkleDensity: number  // 0-1
+  sparkleIntensity: number // alpha 0-255
+}
+
+export interface ThemeUI {
+  borderRadius: number    // px
+  font: string
+  glassBlur: number       // px, 0 = без blur
+  borderWidth: number     // px
+  borderStyle: string     // solid, ridge, outset...
+  cardShadow: string      // CSS box-shadow
+}
+
 export interface Theme {
   id: string
   name: string
+  // Цвета
   gradient: string
   surface: string
   surfaceHover: string
@@ -16,7 +43,12 @@ export interface Theme {
   accentBg: string
   accentBgHover: string
   accentBorder: string
-  blobs: { r: number; g: number; b: number }[]
+  // Блобы
+  blobs: ThemeBlobs & { colors: { r: number; g: number; b: number }[] }
+  // Шум
+  noise: ThemeNoise
+  // UI
+  ui: ThemeUI
 }
 
 export const themes: Theme[] = [
@@ -38,13 +70,15 @@ export const themes: Theme[] = [
     accentBg: 'rgba(251, 191, 36, 0.18)',
     accentBgHover: 'rgba(251, 191, 36, 0.28)',
     accentBorder: 'rgba(251, 191, 36, 0.35)',
-    blobs: [
-      { r: 255, g: 140, b: 50 },
-      { r: 230, g: 90, b: 80 },
-      { r: 200, g: 60, b: 140 },
-      { r: 250, g: 180, b: 60 },
-      { r: 220, g: 50, b: 100 },
-    ]
+    blobs: {
+      enabled: true, count: 5, sizeMultiplier: 1, speed: 1, blur: 80, opacity: 1,
+      colors: [
+        { r: 255, g: 140, b: 50 }, { r: 230, g: 90, b: 80 },
+        { r: 200, g: 60, b: 140 }, { r: 250, g: 180, b: 60 }, { r: 220, g: 50, b: 100 }
+      ]
+    },
+    noise: { enabled: true, intensity: 5, sparkles: true, sparkleDensity: 0.005, sparkleIntensity: 50 },
+    ui: { borderRadius: 12, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
   },
   {
     id: 'ocean',
@@ -64,13 +98,15 @@ export const themes: Theme[] = [
     accentBg: 'rgba(56, 189, 248, 0.18)',
     accentBgHover: 'rgba(56, 189, 248, 0.28)',
     accentBorder: 'rgba(56, 189, 248, 0.35)',
-    blobs: [
-      { r: 30, g: 140, b: 220 },
-      { r: 20, g: 180, b: 200 },
-      { r: 60, g: 100, b: 240 },
-      { r: 40, g: 200, b: 180 },
-      { r: 80, g: 120, b: 210 },
-    ]
+    blobs: {
+      enabled: true, count: 5, sizeMultiplier: 1, speed: 0.7, blur: 100, opacity: 0.8,
+      colors: [
+        { r: 30, g: 140, b: 220 }, { r: 20, g: 180, b: 200 },
+        { r: 60, g: 100, b: 240 }, { r: 40, g: 200, b: 180 }, { r: 80, g: 120, b: 210 }
+      ]
+    },
+    noise: { enabled: true, intensity: 4, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
+    ui: { borderRadius: 14, font: "'Inter', system-ui, sans-serif", glassBlur: 2, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
   },
   {
     id: 'aurora',
@@ -90,13 +126,15 @@ export const themes: Theme[] = [
     accentBg: 'rgba(52, 211, 153, 0.18)',
     accentBgHover: 'rgba(52, 211, 153, 0.28)',
     accentBorder: 'rgba(52, 211, 153, 0.35)',
-    blobs: [
-      { r: 16, g: 185, b: 129 },
-      { r: 20, g: 220, b: 160 },
-      { r: 45, g: 140, b: 200 },
-      { r: 80, g: 200, b: 120 },
-      { r: 30, g: 160, b: 180 },
-    ]
+    blobs: {
+      enabled: true, count: 5, sizeMultiplier: 1.2, speed: 0.5, blur: 120, opacity: 0.7,
+      colors: [
+        { r: 16, g: 185, b: 129 }, { r: 20, g: 220, b: 160 },
+        { r: 45, g: 140, b: 200 }, { r: 80, g: 200, b: 120 }, { r: 30, g: 160, b: 180 }
+      ]
+    },
+    noise: { enabled: true, intensity: 3, sparkles: true, sparkleDensity: 0.003, sparkleIntensity: 35 },
+    ui: { borderRadius: 16, font: "'Inter', system-ui, sans-serif", glassBlur: 2, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
   },
   {
     id: 'midnight',
@@ -116,13 +154,15 @@ export const themes: Theme[] = [
     accentBg: 'rgba(167, 139, 250, 0.18)',
     accentBgHover: 'rgba(167, 139, 250, 0.28)',
     accentBorder: 'rgba(167, 139, 250, 0.35)',
-    blobs: [
-      { r: 120, g: 80, b: 240 },
-      { r: 80, g: 60, b: 220 },
-      { r: 160, g: 100, b: 255 },
-      { r: 60, g: 50, b: 200 },
-      { r: 140, g: 120, b: 250 },
-    ]
+    blobs: {
+      enabled: true, count: 5, sizeMultiplier: 0.9, speed: 0.8, blur: 90, opacity: 0.9,
+      colors: [
+        { r: 120, g: 80, b: 240 }, { r: 80, g: 60, b: 220 },
+        { r: 160, g: 100, b: 255 }, { r: 60, g: 50, b: 200 }, { r: 140, g: 120, b: 250 }
+      ]
+    },
+    noise: { enabled: true, intensity: 4, sparkles: true, sparkleDensity: 0.006, sparkleIntensity: 45 },
+    ui: { borderRadius: 12, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
   },
   {
     id: 'retro90',
@@ -142,33 +182,68 @@ export const themes: Theme[] = [
     accentBg: 'rgba(0, 230, 118, 0.2)',
     accentBgHover: 'rgba(0, 230, 118, 0.3)',
     accentBorder: 'rgba(0, 230, 118, 0.38)',
-    blobs: [
-      { r: 0, g: 180, b: 216 },
-      { r: 224, g: 64, b: 251 },
-      { r: 0, g: 230, b: 118 },
-      { r: 255, g: 234, b: 0 },
-      { r: 255, g: 23, b: 68 },
-    ]
+    blobs: {
+      enabled: true, count: 5, sizeMultiplier: 0.8, speed: 1.5, blur: 60, opacity: 1,
+      colors: [
+        { r: 0, g: 180, b: 216 }, { r: 224, g: 64, b: 251 },
+        { r: 0, g: 230, b: 118 }, { r: 255, g: 234, b: 0 }, { r: 255, g: 23, b: 68 }
+      ]
+    },
+    noise: { enabled: true, intensity: 8, sparkles: true, sparkleDensity: 0.01, sparkleIntensity: 70 },
+    ui: { borderRadius: 8, font: "'Inter', system-ui, sans-serif", glassBlur: 0, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' }
+  },
+  {
+    id: 'win95',
+    name: 'Windows 95',
+    gradient: 'linear-gradient(180deg, #008080, #006868)',
+    surface: '#c0c0c0',
+    surfaceHover: '#d0d0d0',
+    surfaceStrong: '#b0b0b0',
+    surfacePanel: '#c0c0c0',
+    border: '#808080',
+    borderStrong: '#404040',
+    text1: '#000000',
+    text2: '#000000',
+    text3: '#404040',
+    text4: '#808080',
+    accent: '#000080',
+    accentBg: '#000080',
+    accentBgHover: '#0000a0',
+    accentBorder: '#000080',
+    blobs: {
+      enabled: false, count: 0, sizeMultiplier: 0, speed: 0, blur: 0, opacity: 0,
+      colors: []
+    },
+    noise: { enabled: false, intensity: 0, sparkles: false, sparkleDensity: 0, sparkleIntensity: 0 },
+    ui: { borderRadius: 0, font: "'Tahoma', 'MS Sans Serif', sans-serif", glassBlur: 0, borderWidth: 2, borderStyle: 'outset', cardShadow: 'inset -1px -1px 0 #808080, inset 1px 1px 0 #ffffff' }
   }
 ]
 
 export function applyTheme(theme: Theme): void {
-  const root = document.documentElement.style
-  root.setProperty('--gradient', theme.gradient)
-  root.setProperty('--surface', theme.surface)
-  root.setProperty('--surface-hover', theme.surfaceHover)
-  root.setProperty('--surface-strong', theme.surfaceStrong)
-  root.setProperty('--surface-panel', theme.surfacePanel)
-  root.setProperty('--border', theme.border)
-  root.setProperty('--border-strong', theme.borderStrong)
-  root.setProperty('--text-1', theme.text1)
-  root.setProperty('--text-2', theme.text2)
-  root.setProperty('--text-3', theme.text3)
-  root.setProperty('--text-4', theme.text4)
-  root.setProperty('--accent', theme.accent)
-  root.setProperty('--accent-bg', theme.accentBg)
-  root.setProperty('--accent-bg-hover', theme.accentBgHover)
-  root.setProperty('--accent-border', theme.accentBorder)
+  const r = document.documentElement.style
+  r.setProperty('--gradient', theme.gradient)
+  r.setProperty('--surface', theme.surface)
+  r.setProperty('--surface-hover', theme.surfaceHover)
+  r.setProperty('--surface-strong', theme.surfaceStrong)
+  r.setProperty('--surface-panel', theme.surfacePanel)
+  r.setProperty('--border', theme.border)
+  r.setProperty('--border-strong', theme.borderStrong)
+  r.setProperty('--text-1', theme.text1)
+  r.setProperty('--text-2', theme.text2)
+  r.setProperty('--text-3', theme.text3)
+  r.setProperty('--text-4', theme.text4)
+  r.setProperty('--accent', theme.accent)
+  r.setProperty('--accent-bg', theme.accentBg)
+  r.setProperty('--accent-bg-hover', theme.accentBgHover)
+  r.setProperty('--accent-border', theme.accentBorder)
+  // UI
+  r.setProperty('--radius', theme.ui.borderRadius + 'px')
+  r.setProperty('--font', theme.ui.font)
+  r.setProperty('--glass-blur', theme.ui.glassBlur + 'px')
+  r.setProperty('--border-width', theme.ui.borderWidth + 'px')
+  r.setProperty('--border-style', theme.ui.borderStyle)
+  r.setProperty('--card-shadow', theme.ui.cardShadow)
+  r.setProperty('--blob-blur', theme.blobs.blur + 'px')
 }
 
 export function getThemeById(id: string): Theme {
