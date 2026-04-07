@@ -11,15 +11,19 @@ export interface TranscriptionRecord {
 }
 
 export interface AppSettings {
-  provider: 'openai' | 'openrouter'
+  provider: 'openai' | 'openrouter' | 'groq'
   openAiApiKey: string
   openRouterApiKey: string
+  groqApiKey: string
   model: string
   language: string
   hotkey: string
   autoPaste: boolean
   keepInClipboard: boolean
+  autoEnter: boolean
+  autoEnterTriggers: string
   autoStart: boolean
+  theme: string
 }
 
 export interface VoiceTypeAPI {

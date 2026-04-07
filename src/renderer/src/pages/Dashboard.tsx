@@ -17,7 +17,7 @@ export function Dashboard({ isRecording, isProcessing, history, settings }: Dash
   const errorCount = history.filter((r) => r.status === 'error').length
   const recentItems = history.slice(0, 5)
 
-  const hasApiKey = settings ? (settings.provider === 'openai' ? !!settings.openAiApiKey : !!settings.openRouterApiKey) : false
+  const hasApiKey = settings ? (settings.provider === 'openai' ? !!settings.openAiApiKey : settings.provider === 'groq' ? !!settings.groqApiKey : !!settings.openRouterApiKey) : false
 
   return (
     <div className="space-y-8">

@@ -17,7 +17,7 @@ export function App(): JSX.Element {
   const [history, setHistory] = useState<TranscriptionRecord[]>([])
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-  const [themeId, setThemeId] = useState(() => localStorage.getItem('voice-type-theme') ?? 'sunset')
+  const [themeId, setThemeId] = useState('sunset')
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -36,13 +36,16 @@ export function App(): JSX.Element {
 
   const handleThemeChange = useCallback((id: string) => {
     setThemeId(id)
-    localStorage.setItem('voice-type-theme', id)
+    if (window.api) window.api.updateSettings({ theme: id })
   }, [])
 
   useEffect(() => {
     if (!window.api) return
     window.api.getHistory().then(setHistory)
-    window.api.getSettings().then(setSettings)
+    window.api.getSettings().then((s) => {
+      setSettings(s)
+      if (s.theme) setThemeId(s.theme)
+    })
   }, [])
 
   useEffect(() => {
@@ -131,7 +134,7 @@ export function App(): JSX.Element {
   }
 
   return (
-    <Layout page={page} onPageChange={setPage} isRecording={isRecording} isProcessing={isProcessing} hotkey={settings?.hotkey ?? ''} currentTheme={themeId} onThemeChange={handleThemeChange} titlebarConfig={getThemeById(themeId).titlebar}>
+    <Layout page={page} onPageChange={setPage} isRecording={isRecording} isProcessing={isProcessing} hotkey={settings?.hotkey ?? ''} currentTheme={themeId} onThemeChange={handleThemeChange} titlebarConfig={getThemeById(themeId).titlebar} decor={getThemeById(themeId).decor}>
       {page === 'dashboard' && (
         <Dashboard
           isRecording={isRecording}

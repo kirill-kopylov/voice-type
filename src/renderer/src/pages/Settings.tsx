@@ -1,12 +1,32 @@
 import { useState } from 'react'
 import { Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { AppSettings } from '../types'
+import { Select } from '../components/Select'
 
 interface SettingsProps {
   settings: AppSettings
   onUpdate: (partial: Partial<AppSettings>) => void
   showToast: (message: string, type: 'success' | 'error') => void
 }
+
+const OPENAI_MODELS = [
+  { id: 'whisper-1', name: 'Whisper v2', sub: '$0.006/мин — надёжная, проверенная' },
+  { id: 'gpt-4o-transcribe', name: 'GPT-4o Transcribe', sub: '$0.006/мин — лучшее качество, контекст' },
+  { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe', sub: '$0.003/мин — быстрая и дешёвая' },
+]
+
+const GROQ_MODELS = [
+  { id: 'whisper-large-v3-turbo', name: 'Whisper Large v3 Turbo', sub: 'бесплатно — быстрая, хорошее качество' },
+  { id: 'whisper-large-v3', name: 'Whisper Large v3', sub: 'бесплатно — максимальная точность' },
+  { id: 'distil-whisper-large-v3-en', name: 'Distil Whisper v3', sub: 'бесплатно — только English, самая быстрая' },
+]
+
+const OPENROUTER_MODELS = [
+  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', sub: '$0.15/M tok — быстрая, мультимодальная' },
+  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', sub: '$2.50/M tok — лучшее качество' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o', sub: '$2.50/M tok — высокая точность' },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', sub: '$0.15/M tok — быстрая и дешёвая' },
+]
 
 const LANGUAGES = [
   { code: 'ru', label: 'Русский' }, { code: 'en', label: 'English' }, { code: 'uk', label: 'Українська' },
@@ -20,6 +40,7 @@ const inputClass = 'w-full px-3.5 py-2.5 glass rounded-xl text-sm focus:outline-
 export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.Element {
   const [showKey1, setShowKey1] = useState(false)
   const [showKey2, setShowKey2] = useState(false)
+  const [showKey3, setShowKey3] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null)
 
@@ -38,6 +59,7 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
         <div className="flex gap-3">
           <ChoiceBtn label="OpenAI" active={settings.provider === 'openai'} onClick={() => onUpdate({ provider: 'openai' })} />
           <ChoiceBtn label="OpenRouter" active={settings.provider === 'openrouter'} onClick={() => onUpdate({ provider: 'openrouter' })} />
+          <ChoiceBtn label="Groq" active={settings.provider === 'groq'} onClick={() => onUpdate({ provider: 'groq' })} />
         </div>
       </Section>
 
@@ -45,6 +67,7 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
         <div className="space-y-4">
           <KeyInput label="OpenAI" value={settings.openAiApiKey} show={showKey1} toggle={() => setShowKey1(!showKey1)} onChange={(v) => onUpdate({ openAiApiKey: v })} ph="sk-..." active={settings.provider === 'openai'} />
           <KeyInput label="OpenRouter" value={settings.openRouterApiKey} show={showKey2} toggle={() => setShowKey2(!showKey2)} onChange={(v) => onUpdate({ openRouterApiKey: v })} ph="sk-or-..." active={settings.provider === 'openrouter'} />
+          <KeyInput label="Groq" value={settings.groqApiKey} show={showKey3} toggle={() => setShowKey3(!showKey3)} onChange={(v) => onUpdate({ groqApiKey: v })} ph="gsk_..." active={settings.provider === 'groq'} />
         </div>
         <button onClick={handleTest} disabled={testing}
           className="mt-4 flex items-center gap-2 px-4 py-2 text-sm rounded-xl disabled:opacity-50 transition-colors"
@@ -55,13 +78,20 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
       </Section>
 
       <Section title="Модель">
-        <input type="text" value={settings.model} onChange={(e) => onUpdate({ model: e.target.value })} className={inputClass} style={inputStyle} placeholder="whisper-1" />
+        <Select
+          value={settings.model}
+          options={(settings.provider === 'openai' ? OPENAI_MODELS : settings.provider === 'groq' ? GROQ_MODELS : OPENROUTER_MODELS).map((m) => ({ value: m.id, label: m.name, sub: m.sub }))}
+          onChange={(v) => onUpdate({ model: v })}
+          placeholder="Выбрать модель"
+        />
       </Section>
 
       <Section title="Язык">
-        <select value={settings.language} onChange={(e) => onUpdate({ language: e.target.value })} className={inputClass} style={inputStyle}>
-          {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
-        </select>
+        <Select
+          value={settings.language}
+          options={LANGUAGES.map((l) => ({ value: l.code, label: l.label }))}
+          onChange={(v) => onUpdate({ language: v })}
+        />
       </Section>
 
       <Section title="Горячая клавиша">
@@ -73,6 +103,21 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
         <div className="space-y-4">
           <Toggle label="Автовставка текста" checked={settings.autoPaste} onChange={() => onUpdate({ autoPaste: !settings.autoPaste })} />
           <Toggle label="Оставлять в буфере обмена" checked={settings.keepInClipboard} onChange={() => onUpdate({ keepInClipboard: !settings.keepInClipboard })} />
+          <Toggle label="Auto-Enter по ключевому слову" checked={settings.autoEnter} onChange={() => onUpdate({ autoEnter: !settings.autoEnter })} />
+          {settings.autoEnter && (
+            <div>
+              <label className="block text-xs mb-1.5" style={{ color: 'var(--text-4)' }}>Триггеры (через запятую)</label>
+              <input
+                type="text"
+                value={settings.autoEnterTriggers}
+                onChange={(e) => onUpdate({ autoEnterTriggers: e.target.value })}
+                className={inputClass}
+                style={inputStyle}
+                placeholder="enter,энтер,отправь,send"
+              />
+              <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Если последнее слово совпадает — текст вставится и нажмётся Enter</p>
+            </div>
+          )}
           <Toggle label="Автозапуск с Windows" checked={settings.autoStart} onChange={() => onUpdate({ autoStart: !settings.autoStart })} />
         </div>
       </Section>

@@ -71,6 +71,7 @@ export interface Theme {
   ui: ThemeUI
   titlebar: ThemeTitlebar
   overlay: ThemeOverlay
+  decor?: 'moon'
 }
 
 export const themes: Theme[] = [
@@ -140,7 +141,8 @@ export const themes: Theme[] = [
     noise: { enabled: true, intensity: 4, sparkles: true, sparkleDensity: 0.006, sparkleIntensity: 45 },
     ui: { radius: 12, radiusPill: 9999, radiusPanel: 0, font: "'Inter', system-ui, sans-serif", glassBlur: 1, borderWidth: 1, borderStyle: 'solid', cardShadow: 'none' },
     titlebar: { buttonStyle: 'icons', buttonRadius: 6, buttonBg: 'transparent', buttonBgHover: 'rgba(255,255,255,0.1)', buttonColor: 'var(--text-3)', buttonCloseHover: 'rgba(239,68,68,0.2)', titleColor: 'var(--text-2)' },
-    overlay: { recordingStyle: 'bars', processingStyle: 'tunnel', gradient: 'linear-gradient(135deg, rgba(30,27,75,0.92), rgba(49,46,129,0.92))', waveColor: 'rgba(167,139,250,0.7)', dotColor: '#a78bfa', dotGlow: 'rgba(167,139,250,0.6)', textColor: 'rgba(224,231,255,0.7)', radius: 14 }
+    overlay: { recordingStyle: 'wave', processingStyle: 'wave', gradient: 'linear-gradient(135deg, rgba(30,27,75,0.92), rgba(49,46,129,0.92))', waveColor: 'rgba(167,139,250,0.7)', dotColor: '#a78bfa', dotGlow: 'rgba(167,139,250,0.6)', textColor: 'rgba(224,231,255,0.7)', radius: 14 },
+    decor: 'moon'
   },
   {
     id: 'retro90', name: '90s Retro',
@@ -161,11 +163,11 @@ export const themes: Theme[] = [
   },
   {
     id: 'macos', name: 'macOS',
-    gradient: 'linear-gradient(180deg, #e8e4e0, #d4d0cc, #c8c4c0)',
+    gradient: '#ececec',
     surface: 'rgba(255,255,255,0.72)',
     surfaceHover: 'rgba(255,255,255,0.82)',
     surfaceStrong: 'rgba(255,255,255,0.6)',
-    surfacePanel: 'rgba(245,243,241,0.85)',
+    surfacePanel: 'rgba(245,243,241,0.92)',
     border: 'rgba(0,0,0,0.08)', borderStrong: 'rgba(0,0,0,0.15)',
     text1: '#1d1d1f', text2: '#3a3a3c', text3: '#8e8e93', text4: '#aeaeb2',
     accent: '#007aff', accentOnBg: '#007aff', accentBg: 'rgba(0,122,255,0.12)', accentBgHover: 'rgba(0,122,255,0.2)', accentBorder: 'rgba(0,122,255,0.3)',

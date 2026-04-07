@@ -50,8 +50,8 @@ export function TitleBar({ isRecording, isProcessing, currentTheme, onThemeChang
 
   return (
     <div
-      className="titlebar-drag flex items-center justify-between h-10 px-4 shrink-0 relative"
-      style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border)', zIndex: 30, borderRadius: 'var(--radius-panel)' }}
+      className="titlebar-drag flex items-center justify-between h-10 glass px-4 shrink-0 relative"
+      style={{ background: 'var(--surface-panel)', border: 'none', borderBottom: '1px solid var(--border)', zIndex: 30, borderRadius: 'var(--radius-panel)' }}
     >
       <div className="flex items-center gap-2.5">
         <div className="w-6 h-6 flex items-center justify-center" style={{ background: 'var(--accent-bg-hover)', borderRadius: 'var(--radius)' }}>

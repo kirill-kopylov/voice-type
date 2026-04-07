@@ -13,7 +13,7 @@ import { writeFileSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { store } from './services/store'
 import { transcribeAudio, testConnection } from './services/transcription'
-import { pasteText } from './services/paste'
+import { pasteText, simulateEnter } from './services/paste'
 import { saveAudio, loadAudio, deleteAudio } from './services/audio-storage'
 import { createTray, setTrayRecording } from './services/tray'
 import { createCircleIcon } from './services/icon'
@@ -183,7 +183,37 @@ function setupIpcHandlers(): void {
     store.addHistory(record)
 
     if (!result.error && settings.autoPaste && result.text.trim()) {
-      pasteText(result.text, settings.keepInClipboard)
+      let finalText = result.text.trim()
+      let shouldEnter = false
+
+      // Проверяем триггер auto-enter — вхождение в последних двух словах
+      if (settings.autoEnter && settings.autoEnterTriggers) {
+        const triggers = settings.autoEnterTriggers.split(',').map((t) => t.trim().toLowerCase())
+        const words = finalText.split(/\s+/)
+        const len = words.length
+
+        // Проверяем последние 2 слова (или 1 если текст из одного слова)
+        const checkCount = Math.min(2, len)
+        for (let wi = len - checkCount; wi < len; wi++) {
+          const clean = words[wi].replace(/[.,!?;:…"'()]+/g, '').toLowerCase()
+          const matched = triggers.some((t) => clean.includes(t))
+          if (matched) {
+            // Отрезаем всё начиная с этого слова
+            finalText = words.slice(0, wi).join(' ').replace(/[.,!?\s]+$/, '')
+            shouldEnter = true
+            break
+          }
+        }
+      }
+
+      if (finalText) {
+        pasteText(finalText, settings.keepInClipboard)
+      }
+
+      if (shouldEnter) {
+        // Enter через 400мс после вставки
+        setTimeout(() => simulateEnter(), 1000)
+      }
     }
 
     showOverlay('hidden')
