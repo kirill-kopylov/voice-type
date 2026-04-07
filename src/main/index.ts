@@ -15,7 +15,7 @@ import { store } from './services/store'
 import { transcribeAudio, testConnection } from './services/transcription'
 import { pasteText, simulateEnter } from './services/paste'
 import { saveAudio, loadAudio, deleteAudio } from './services/audio-storage'
-import { createTray, setTrayRecording } from './services/tray'
+import { createTray, setTrayRecording, updateTrayMenu } from './services/tray'
 import { createCircleIcon } from './services/icon'
 import { OVERLAY_HTML } from './overlay.html'
 
@@ -24,6 +24,7 @@ let overlayWindow: BrowserWindow | null = null
 let isRecording = false
 let currentHotkey: string | null = null
 let currentOverlayTheme: Record<string, string | number> | null = null
+let trayCallbacks: { toggle: () => void; quit: () => void } | null = null
 
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
@@ -181,6 +182,7 @@ function setupIpcHandlers(): void {
     }
 
     store.addHistory(record)
+    if (mainWindow && trayCallbacks) updateTrayMenu(mainWindow, trayCallbacks.toggle, trayCallbacks.quit)
 
     if (!result.error && settings.autoPaste && result.text.trim()) {
       let finalText = result.text.trim()
@@ -265,6 +267,7 @@ function setupIpcHandlers(): void {
 
     store.deleteHistory(id)
     store.addHistory(updated)
+    if (mainWindow && trayCallbacks) updateTrayMenu(mainWindow, trayCallbacks.toggle, trayCallbacks.quit)
 
     if (!result.error && settings.autoPaste && result.text.trim()) {
       pasteText(result.text, settings.keepInClipboard)
@@ -332,11 +335,11 @@ app.whenReady().then(() => {
   applyAutoStart()
 
   if (mainWindow) {
-    createTray(
-      mainWindow,
-      () => toggleRecording(),
-      () => { app.isQuitting = true; app.quit() }
-    )
+    trayCallbacks = {
+      toggle: () => toggleRecording(),
+      quit: () => { app.isQuitting = true; app.quit() }
+    }
+    createTray(mainWindow, trayCallbacks.toggle, trayCallbacks.quit)
   }
 })
 

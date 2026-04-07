@@ -1,5 +1,6 @@
-import { Tray, Menu, nativeImage, BrowserWindow } from 'electron'
+import { Tray, Menu, nativeImage, BrowserWindow, clipboard } from 'electron'
 import { createCircleIcon } from './icon'
+import { store } from './store'
 
 let tray: Tray | null = null
 let normalIcon: Electron.NativeImage
@@ -16,6 +17,28 @@ export function createTray(
   tray = new Tray(normalIcon)
   tray.setToolTip('VoiceType — голосовой ввод')
 
+  updateTrayMenu(mainWindow, onToggleRecording, onQuit)
+
+  tray.on('double-click', () => {
+    mainWindow.show()
+    mainWindow.focus()
+  })
+
+  return tray
+}
+
+export function updateTrayMenu(
+  mainWindow: BrowserWindow,
+  onToggleRecording: () => void,
+  onQuit: () => void
+): void {
+  if (!tray) return
+
+  const history = store.getHistory()
+  const lastSuccess = history.find((r) => r.status === 'success')
+  const lastText = lastSuccess?.text ?? ''
+  const truncated = lastText.length > 40 ? lastText.slice(0, 40) + '…' : lastText
+
   const contextMenu = Menu.buildFromTemplate([
     {
       label: 'Открыть панель',
@@ -30,19 +53,20 @@ export function createTray(
     },
     { type: 'separator' },
     {
+      label: truncated ? `Копировать: "${truncated}"` : 'Нет записей',
+      enabled: !!lastText,
+      click: () => {
+        clipboard.writeText(lastText)
+      }
+    },
+    { type: 'separator' },
+    {
       label: 'Выход',
       click: onQuit
     }
   ])
 
   tray.setContextMenu(contextMenu)
-
-  tray.on('double-click', () => {
-    mainWindow.show()
-    mainWindow.focus()
-  })
-
-  return tray
 }
 
 export function setTrayRecording(isRecording: boolean): void {
