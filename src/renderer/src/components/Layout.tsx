@@ -26,8 +26,8 @@ export function Layout({ children, page, onPageChange, isRecording, isProcessing
         <Sidebar page={page} onPageChange={onPageChange} hotkey={hotkey} />
         <main className="flex-1 overflow-y-auto p-8 relative">
           <canvas id="blobs-canvas" className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0, filter: 'blur(var(--blob-blur, 80px))' }} />
-          <div className="absolute inset-0 pointer-events-none noise-bg" style={{ zIndex: 1 }} />
-          {decor === 'moon' && <div className="absolute pointer-events-none" style={{ zIndex: 2, top: 0, right: 0 }}><Moon /></div>}
+          {decor === 'moon' && <div className="absolute pointer-events-none" style={{ zIndex: 1, top: 0, right: 0 }}><Moon /></div>}
+          <div className="absolute inset-0 pointer-events-none noise-bg" style={{ zIndex: 2, mixBlendMode: 'overlay' }} />
           <div className="relative" style={{ zIndex: 3 }}>
             {children}
           </div>
