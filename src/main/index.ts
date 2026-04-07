@@ -239,6 +239,43 @@ function setupIpcHandlers(): void {
     store.clearHistory()
   })
 
+  ipcMain.handle('retry-transcription', async (_event, id: string) => {
+    const item = store.getHistoryItem(id)
+    if (!item) return null
+
+    const audioBuffer = loadAudio(item.audioFileName)
+    if (!audioBuffer) return null
+
+    const settings = store.getSettings()
+    console.log(`[retry] Повторная транскрипция ${id}`)
+
+    showOverlay('processing')
+
+    const result = await transcribeAudio(audioBuffer, settings)
+
+    // Обновляем запись в истории
+    const updated = {
+      ...item,
+      text: result.text,
+      status: result.error ? 'error' as const : 'success' as const,
+      error: result.error,
+      provider: settings.provider,
+      model: settings.model
+    }
+
+    store.deleteHistory(id)
+    store.addHistory(updated)
+
+    if (!result.error && settings.autoPaste && result.text.trim()) {
+      pasteText(result.text, settings.keepInClipboard)
+    }
+
+    showOverlay('hidden')
+    mainWindow?.webContents.send('transcription-complete', updated)
+
+    return updated
+  })
+
   ipcMain.handle('re-paste', (_event, id: string) => {
     const item = store.getHistoryItem(id)
     if (item?.text) {

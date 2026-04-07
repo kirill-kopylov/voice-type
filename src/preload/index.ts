@@ -6,6 +6,7 @@ export interface VoiceTypeAPI {
   deleteHistoryItem: (id: string) => Promise<void>
   clearHistory: () => Promise<void>
   rePaste: (id: string) => Promise<void>
+  retryTranscription: (id: string) => Promise<TranscriptionRecord>
   copyText: (text: string) => Promise<void>
   getAudio: (fileName: string) => Promise<ArrayBuffer | null>
   getSettings: () => Promise<AppSettings>
@@ -58,6 +59,8 @@ const api: VoiceTypeAPI = {
   clearHistory: () => ipcRenderer.invoke('clear-history'),
 
   rePaste: (id) => ipcRenderer.invoke('re-paste', id),
+
+  retryTranscription: (id) => ipcRenderer.invoke('retry-transcription', id),
 
   copyText: (text) => ipcRenderer.invoke('copy-text', text),
 

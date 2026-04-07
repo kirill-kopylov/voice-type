@@ -32,6 +32,7 @@ export interface VoiceTypeAPI {
   deleteHistoryItem: (id: string) => Promise<void>
   clearHistory: () => Promise<void>
   rePaste: (id: string) => Promise<void>
+  retryTranscription: (id: string) => Promise<TranscriptionRecord>
   copyText: (text: string) => Promise<void>
   getAudio: (fileName: string) => Promise<ArrayBuffer | null>
   getSettings: () => Promise<AppSettings>

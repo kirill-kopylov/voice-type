@@ -12,7 +12,7 @@ export function Moon(): JSX.Element {
     if (!canvas) return
 
     const dpr = window.devicePixelRatio || 1
-    const size = 300
+    const size = 500
     canvas.width = size * dpr
     canvas.height = size * dpr
     canvas.style.width = size + 'px'
@@ -48,27 +48,14 @@ export function Moon(): JSX.Element {
       ctx.rotate(tilt)
       ctx.translate(-cx, -cy)
 
-      // Bloom
-      const bloomLayers = [
-        { scale: 2.5, blur: 50, alpha: 0.08 * brightness },
-        { scale: 1.8, blur: 30, alpha: 0.12 * brightness },
-        { scale: 1.3, blur: 15, alpha: 0.2 * brightness },
-        { scale: 1.08, blur: 6, alpha: 0.35 * brightness },
-      ]
-
-      for (const layer of bloomLayers) {
-        ctx.save()
-        ctx.filter = `blur(${layer.blur}px)`
-        drawLitArea(ctx, cx, cy, r * layer.scale, terminatorX * layer.scale, growing)
-        ctx.fillStyle = `rgba(167, 139, 250, ${layer.alpha})`
-        ctx.fill()
-        ctx.restore()
-      }
-
-      // Теневой диск
+      // Непрозрачный диск — градиент по углу терминатора
       ctx.beginPath()
-      ctx.arc(cx, cy, r, 0, Math.PI * 2)
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'
+      ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2)
+      // Градиент: всегда из нижнего-левого в верхний-правый
+      const diskGrad = ctx.createLinearGradient(cx - r, cy + r, cx + r, cy - r)
+      diskGrad.addColorStop(0, '#362e81')
+      diskGrad.addColorStop(1, '#221f54')
+      ctx.fillStyle = diskGrad
       ctx.fill()
 
       // Текстура луны — обрезаем по освещённой области
@@ -77,16 +64,33 @@ export function Moon(): JSX.Element {
         drawLitArea(ctx, cx, cy, r, terminatorX, growing)
         ctx.clip()
 
-        // Рисуем текстуру поверх
-        ctx.globalAlpha = brightness
+        // Текстура — ярче
+        ctx.globalAlpha = Math.min(1, brightness * 2)
         ctx.drawImage(imgRef.current, cx - r, cy - r, r * 2, r * 2)
         ctx.globalAlpha = 1
 
-        // Подкрашиваем в лавандовый
+        // Поверх — яркий светлый слой
         drawLitArea(ctx, cx, cy, r, terminatorX, growing)
-        ctx.fillStyle = `rgba(180, 160, 240, ${0.15 * brightness})`
+        ctx.fillStyle = `rgba(240, 235, 255, ${0.35 * brightness})`
         ctx.fill()
 
+        ctx.restore()
+      }
+
+      // Bloom — всё поверх луны
+      const bloomLayers = [
+        { scale: 3.5, blur: 60, alpha: 0.1 * brightness },
+        { scale: 2.5, blur: 40, alpha: 0.15 * brightness },
+        { scale: 1.6, blur: 20, alpha: 0.25 * brightness },
+        { scale: 1.15, blur: 8, alpha: 0.4 * brightness },
+      ]
+
+      for (const layer of bloomLayers) {
+        ctx.save()
+        ctx.filter = `blur(${layer.blur}px)`
+        drawLitArea(ctx, cx, cy, r * layer.scale, terminatorX * layer.scale, growing)
+        ctx.fillStyle = `rgba(167, 139, 250, ${layer.alpha})`
+        ctx.fill()
         ctx.restore()
       }
 

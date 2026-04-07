@@ -127,6 +127,13 @@ export function App(): JSX.Element {
     setHistory([])
   }
 
+  const handleRetry = async (id: string): Promise<void> => {
+    showToast('Повторная транскрипция...', 'success')
+    await window.api.retryTranscription(id)
+    const updated = await window.api.getHistory()
+    setHistory(updated)
+  }
+
   const handleUpdateSettings = async (partial: Partial<AppSettings>): Promise<void> => {
     const updated = await window.api.updateSettings(partial)
     setSettings(updated)
@@ -148,6 +155,7 @@ export function App(): JSX.Element {
           history={history}
           onDelete={handleDeleteItem}
           onClear={handleClearHistory}
+          onRetry={handleRetry}
           showToast={showToast}
         />
       )}

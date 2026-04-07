@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Search, Trash2, Copy, ClipboardPaste, Play, Pause, X, AlertCircle } from 'lucide-react'
+import { Search, Trash2, Copy, ClipboardPaste, Play, Pause, X, AlertCircle, RotateCcw } from 'lucide-react'
 import { TranscriptionRecord } from '../types'
 import { formatDateTime, formatDuration } from '../utils/format'
 
@@ -7,10 +7,11 @@ interface HistoryProps {
   history: TranscriptionRecord[]
   onDelete: (id: string) => void
   onClear: () => void
+  onRetry: (id: string) => void
   showToast: (message: string, type: 'success' | 'error') => void
 }
 
-export function History({ history, onDelete, onClear, showToast }: HistoryProps): JSX.Element {
+export function History({ history, onDelete, onClear, onRetry, showToast }: HistoryProps): JSX.Element {
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -94,6 +95,9 @@ export function History({ history, onDelete, onClear, showToast }: HistoryProps)
                       <Btn onClick={() => handleCopy(record.text)} icon={Copy}>Копировать</Btn>
                       <Btn onClick={() => handleRePaste(record.id)} icon={ClipboardPaste} accent>Вставить</Btn>
                     </>}
+                    {record.status === 'error' && (
+                      <Btn onClick={() => onRetry(record.id)} icon={RotateCcw} accent>Повторить</Btn>
+                    )}
                     <button onClick={() => onDelete(record.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ml-auto hover:bg-red-500/15"
                       style={{ color: 'var(--text-4)' }}><Trash2 size={13} />Удалить</button>
                   </div>
