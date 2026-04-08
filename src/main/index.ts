@@ -82,6 +82,7 @@ function createOverlayWindow(): void {
     focusable: false,
     resizable: false,
     hasShadow: false,
+    type: 'toolbar',
     webPreferences: {
       contextIsolation: false,
       nodeIntegration: false
@@ -106,6 +107,7 @@ function showOverlay(state: 'recording' | 'processing' | 'hidden'): void {
     overlayWindow.webContents.executeJavaScript(`applyOverlayTheme(${JSON.stringify(currentOverlayTheme)})`)
   }
   overlayWindow.show()
+  overlayWindow.setAlwaysOnTop(true, 'screen-saver')
   overlayWindow.webContents.executeJavaScript(`setState('${state}')`)
 }
 
