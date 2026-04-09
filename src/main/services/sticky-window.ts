@@ -85,7 +85,6 @@ if ($action -eq "capture") {
     Write-Output $h.ToInt64()
 }
 elseif ($action -eq "paste-and-send") {
-    $currentWindow = [StickyWin]::GetForegroundWindow()
     $targetHwnd = [IntPtr]::new([long]$hwnd)
 
     if (-not [StickyWin]::IsWindow($targetHwnd)) {
@@ -103,10 +102,8 @@ elseif ($action -eq "paste-and-send") {
 
     # Enter
     [StickyWin]::SendKeys(0x0D)
-    Start-Sleep -Milliseconds 150
+    Start-Sleep -Milliseconds 100
 
-    # Возвращаемся в исходное окно
-    [StickyWin]::SetForegroundWindow($currentWindow)
     Write-Output "OK"
 }
 `

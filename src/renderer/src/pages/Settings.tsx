@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { AppSettings } from '../types'
 import { Select } from '../components/Select'
+import { HotkeyInput } from '../components/HotkeyInput'
 
 interface SettingsProps {
   settings: AppSettings
@@ -94,9 +95,8 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
         />
       </Section>
 
-      <Section title="Горячая клавиша">
-        <input type="text" value={settings.hotkey} onChange={(e) => onUpdate({ hotkey: e.target.value })} className={inputClass} style={inputStyle} />
-        <p className="text-xs mt-1.5" style={{ color: 'var(--text-4)' }}>Ctrl, Alt, Shift, Space, A-Z, F1-F12</p>
+      <Section title="Горячая клавиша записи">
+        <HotkeyInput value={settings.hotkey} onChange={(v) => onUpdate({ hotkey: v })} />
       </Section>
 
       <Section title="Поведение">
@@ -121,16 +121,9 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
           <Toggle label="Фиксация окна — вставка+Enter в привязанное окно" checked={settings.stickyWindow} onChange={() => onUpdate({ stickyWindow: !settings.stickyWindow })} />
           {settings.stickyWindow && (
             <div>
-              <label className="block text-xs mb-1.5" style={{ color: 'var(--text-4)' }}>Хоткей фиксации</label>
-              <input
-                type="text"
-                value={settings.stickyHotkey}
-                onChange={(e) => onUpdate({ stickyHotkey: e.target.value })}
-                className={inputClass}
-                style={inputStyle}
-                placeholder="CommandOrControl+Shift+L"
-              />
-              <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Нажмите в нужном окне — зафиксирует. Нажмите ещё раз — сбросит.</p>
+              <label className="block text-xs mb-1.5" style={{ color: 'var(--text-4)' }}>Хоткей фиксации окна</label>
+              <HotkeyInput value={settings.stickyHotkey} onChange={(v) => onUpdate({ stickyHotkey: v })} />
+              <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Нажмите в нужном окне — зафиксирует. Ещё раз — сбросит.</p>
             </div>
           )}
           <Toggle label="Автозапуск с Windows" checked={settings.autoStart} onChange={() => onUpdate({ autoStart: !settings.autoStart })} />
