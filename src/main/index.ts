@@ -14,6 +14,7 @@ import { randomUUID } from 'crypto'
 import { store } from './services/store'
 import { transcribeAudio, testConnection } from './services/transcription'
 import { pasteText, simulateEnter } from './services/paste'
+import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
 import { saveAudio, loadAudio, deleteAudio } from './services/audio-storage'
 import { createTray, setTrayRecording, updateTrayMenu } from './services/tray'
 import { createCircleIcon } from './services/icon'
@@ -23,6 +24,7 @@ let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
 let isRecording = false
 let currentHotkey: string | null = null
+let currentStickyHotkey: string | null = null
 let currentOverlayTheme: Record<string, string | number> | null = null
 let trayCallbacks: { toggle: () => void; quit: () => void } | null = null
 
@@ -131,6 +133,30 @@ function registerHotkey(): void {
   if (!registered) {
     console.error(`Не удалось зарегистрировать горячую клавишу: ${currentHotkey}`)
   }
+
+  // Sticky window hotkey
+  if (currentStickyHotkey) {
+    globalShortcut.unregister(currentStickyHotkey)
+  }
+
+  if (settings.stickyWindow && settings.stickyHotkey) {
+    currentStickyHotkey = settings.stickyHotkey
+    const stickyRegistered = globalShortcut.register(currentStickyHotkey, async () => {
+      if (getStickyHwnd()) {
+        clearStickyWindow()
+        mainWindow?.webContents.send('sticky-status', false)
+        playSound('stop')
+      } else {
+        const hwnd = await captureWindow()
+        mainWindow?.webContents.send('sticky-status', !!hwnd)
+        if (hwnd) playSound('start')
+      }
+    })
+
+    if (!stickyRegistered) {
+      console.error(`Не удалось зарегистрировать sticky-хоткей: ${currentStickyHotkey}`)
+    }
+  }
 }
 
 function toggleRecording(): void {
@@ -214,12 +240,15 @@ function setupIpcHandlers(): void {
       }
 
       if (finalText) {
-        pasteText(finalText, settings.keepInClipboard)
-      }
-
-      if (shouldEnter) {
-        // Enter через 400мс после вставки
-        setTimeout(() => simulateEnter(), 1000)
+        if (settings.stickyWindow && getStickyHwnd()) {
+          // Sticky mode — вставка в зафиксированное окно + Enter + возврат
+          pasteToStickyWindow(finalText, settings.keepInClipboard)
+        } else {
+          pasteText(finalText, settings.keepInClipboard)
+          if (shouldEnter) {
+            setTimeout(() => simulateEnter(), 1000)
+          }
+        }
       }
     }
 
@@ -305,7 +334,7 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('update-settings', (_event, partial: Record<string, unknown>) => {
     const updated = store.updateSettings(partial)
-    if ('hotkey' in partial) registerHotkey()
+    if ('hotkey' in partial || 'stickyWindow' in partial || 'stickyHotkey' in partial) registerHotkey()
     if ('autoStart' in partial) applyAutoStart()
     return updated
   })

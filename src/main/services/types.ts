@@ -22,6 +22,8 @@ export interface AppSettings {
   keepInClipboard: boolean
   autoEnter: boolean
   autoEnterTriggers: string
+  stickyWindow: boolean
+  stickyHotkey: string
   autoStart: boolean
   theme: string
 }
@@ -43,6 +45,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   keepInClipboard: false,
   autoEnter: true,
   autoEnterTriggers: 'enter,энтер,ентер,отправь,отправить,send,пуш,push',
+  stickyWindow: false,
+  stickyHotkey: 'CommandOrControl+Shift+L',
   theme: 'sunset',
   autoStart: false
 }

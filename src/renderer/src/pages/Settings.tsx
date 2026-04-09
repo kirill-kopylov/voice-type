@@ -118,6 +118,21 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
               <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Если последнее слово совпадает — текст вставится и нажмётся Enter</p>
             </div>
           )}
+          <Toggle label="Фиксация окна — вставка+Enter в привязанное окно" checked={settings.stickyWindow} onChange={() => onUpdate({ stickyWindow: !settings.stickyWindow })} />
+          {settings.stickyWindow && (
+            <div>
+              <label className="block text-xs mb-1.5" style={{ color: 'var(--text-4)' }}>Хоткей фиксации</label>
+              <input
+                type="text"
+                value={settings.stickyHotkey}
+                onChange={(e) => onUpdate({ stickyHotkey: e.target.value })}
+                className={inputClass}
+                style={inputStyle}
+                placeholder="CommandOrControl+Shift+L"
+              />
+              <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Нажмите в нужном окне — зафиксирует. Нажмите ещё раз — сбросит.</p>
+            </div>
+          )}
           <Toggle label="Автозапуск с Windows" checked={settings.autoStart} onChange={() => onUpdate({ autoStart: !settings.autoStart })} />
         </div>
       </Section>

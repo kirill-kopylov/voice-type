@@ -44,6 +44,8 @@ interface AppSettings {
   keepInClipboard: boolean
   autoEnter: boolean
   autoEnterTriggers: string
+  stickyWindow: boolean
+  stickyHotkey: string
   autoStart: boolean
   theme: string
 }
