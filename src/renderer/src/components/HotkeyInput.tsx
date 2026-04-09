@@ -1,102 +1,115 @@
-import { useState, useRef } from 'react'
-import { Keyboard } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { Plus } from 'lucide-react'
 
 interface HotkeyInputProps {
   value: string
   onChange: (value: string) => void
 }
 
-function keyEventToAccelerator(e: React.KeyboardEvent): string | null {
-  // Игнорируем одиночные модификаторы
-  const modifierKeys = ['Control', 'Shift', 'Alt', 'Meta']
-  if (modifierKeys.includes(e.key)) return null
+const MODIFIERS = [
+  { label: 'Ctrl/Cmd', value: 'CommandOrControl' },
+  { label: 'Shift', value: 'Shift' },
+  { label: 'Alt', value: 'Alt' },
+]
 
-  const parts: string[] = []
-
-  if (e.ctrlKey || e.metaKey) parts.push('CommandOrControl')
-  if (e.altKey) parts.push('Alt')
-  if (e.shiftKey) parts.push('Shift')
-
-  // Маппинг клавиш в формат Electron
-  const keyMap: Record<string, string> = {
-    ' ': 'Space',
-    'ArrowUp': 'Up',
-    'ArrowDown': 'Down',
-    'ArrowLeft': 'Left',
-    'ArrowRight': 'Right',
-    'Enter': 'Return',
-    'Escape': 'Escape',
-    'Backspace': 'Backspace',
-    'Delete': 'Delete',
-    'Tab': 'Tab',
-    'Home': 'Home',
-    'End': 'End',
-    'PageUp': 'PageUp',
-    'PageDown': 'PageDown',
-    'Insert': 'Insert',
-  }
-
-  let key = e.key
-
-  if (keyMap[key]) {
-    key = keyMap[key]
-  } else if (key.startsWith('F') && key.length <= 3 && !isNaN(Number(key.slice(1)))) {
-    // F1-F24 — оставляем как есть
-  } else if (key.length === 1) {
-    key = key.toUpperCase()
-  } else {
-    return null
-  }
-
-  // Нужен хотя бы один модификатор (кроме F-клавиш)
-  if (parts.length === 0 && !key.startsWith('F')) return null
-
-  parts.push(key)
-  return parts.join('+')
-}
+const KEYS = [
+  { label: 'Space', value: 'Space' },
+  { label: 'Enter', value: 'Return' },
+  { label: 'Tab', value: 'Tab' },
+  ...Array.from({ length: 12 }, (_, i) => ({ label: `F${i + 1}`, value: `F${i + 1}` })),
+  ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((c) => ({ label: c, value: c })),
+  ...'0123456789'.split('').map((c) => ({ label: c, value: c })),
+]
 
 export function HotkeyInput({ value, onChange }: HotkeyInputProps): JSX.Element {
-  const [capturing, setCapturing] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [open, setOpen] = useState(false)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    e.preventDefault()
-    e.stopPropagation()
+  useEffect(() => {
+    if (!open) return
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setPos({ top: rect.bottom + 4, left: rect.left })
+    }
+    const handler = (e: MouseEvent): void => {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node) &&
+          btnRef.current && !btnRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
 
-    const accelerator = keyEventToAccelerator(e)
-    if (accelerator) {
-      onChange(accelerator)
-      setCapturing(false)
-      inputRef.current?.blur()
+  const insert = (part: string): void => {
+    const current = value.trim()
+    if (!current) {
+      onChange(part)
+    } else if (current.endsWith('+')) {
+      onChange(current + part)
+    } else {
+      onChange(current + '+' + part)
     }
   }
 
-  const displayValue = value
-    .replace('CommandOrControl', 'Ctrl')
-    .replace('CmdOrCtrl', 'Ctrl')
-
   return (
-    <div className="relative">
+    <div className="flex gap-2">
       <input
-        ref={inputRef}
         type="text"
-        readOnly
-        value={capturing ? 'Нажмите сочетание клавиш...' : displayValue}
-        onFocus={() => setCapturing(true)}
-        onBlur={() => setCapturing(false)}
-        onKeyDown={handleKeyDown}
-        className="w-full px-3.5 py-2.5 pr-10 glass rounded-xl text-sm cursor-pointer focus:outline-none"
-        style={{
-          background: 'var(--surface)',
-          borderColor: capturing ? 'var(--accent)' : 'var(--border)',
-          color: capturing ? 'var(--accent)' : 'var(--text-1)',
-        }}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex-1 px-3.5 py-2.5 glass rounded-xl text-sm focus:outline-none"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-1)' }}
       />
-      <Keyboard
-        size={14}
-        className="absolute right-3 top-1/2 -translate-y-1/2"
-        style={{ color: capturing ? 'var(--accent)' : 'var(--text-4)' }}
-      />
+      <button
+        ref={btnRef}
+        onClick={() => setOpen(!open)}
+        className="px-2.5 py-2.5 glass rounded-xl transition-colors"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-3)' }}
+      >
+        <Plus size={14} />
+      </button>
+
+      {open && createPortal(
+        <div
+          ref={dropRef}
+          className="fixed rounded-xl overflow-hidden"
+          style={{
+            top: pos.top, left: pos.left,
+            width: 280, maxHeight: 320, overflowY: 'auto',
+            background: 'var(--surface-strong)',
+            border: '1px solid var(--border)',
+            zIndex: 99999,
+            backdropFilter: 'blur(12px)',
+            borderRadius: 'var(--radius)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            padding: 8
+          }}
+        >
+          <div className="text-[10px] uppercase tracking-wider px-2 py-1" style={{ color: 'var(--text-4)' }}>Модификаторы</div>
+          <div className="flex flex-wrap gap-1 px-1 mb-2">
+            {MODIFIERS.map((m) => (
+              <button key={m.value} onClick={() => insert(m.value)}
+                className="px-2.5 py-1 text-xs rounded-lg transition-colors"
+                style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <div className="text-[10px] uppercase tracking-wider px-2 py-1" style={{ color: 'var(--text-4)' }}>Клавиши</div>
+          <div className="flex flex-wrap gap-1 px-1">
+            {KEYS.map((k) => (
+              <button key={k.value} onClick={() => { insert(k.value); setOpen(false) }}
+                className="px-2 py-1 text-xs rounded-lg transition-colors"
+                style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}>
+                {k.label}
+              </button>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
