@@ -149,6 +149,9 @@ function toggleRecording(): void {
 }
 
 function applyAutoStart(): void {
+  // В dev-режиме не трогаем автозапуск — иначе electron.exe попадёт в реестр
+  if (process.env.ELECTRON_RENDERER_URL) return
+
   const settings = store.getSettings()
   app.setLoginItemSettings({ openAtLogin: settings.autoStart })
 }
