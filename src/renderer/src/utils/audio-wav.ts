@@ -22,12 +22,20 @@ export async function extractSpeakerWav(
 ): Promise<ArrayBuffer | null> {
   if (segments.length === 0) return null
 
-  const ctx = new AudioContext({ sampleRate: TARGET_SAMPLE_RATE })
+  // На Windows/Electron произвольный sampleRate может не поддерживаться —
+  // фолбэк на дефолтный.
+  let ctx: AudioContext
+  try {
+    ctx = new AudioContext({ sampleRate: TARGET_SAMPLE_RATE })
+  } catch {
+    ctx = new AudioContext()
+  }
+
   let decoded: AudioBuffer
   try {
     decoded = await ctx.decodeAudioData(webmBuffer.slice(0))
   } catch (err) {
-    console.error('Не удалось декодировать аудио:', err)
+    console.error('[extractSpeakerWav] decodeAudioData failed:', err)
     return null
   }
 

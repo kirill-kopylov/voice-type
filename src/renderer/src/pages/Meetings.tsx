@@ -312,32 +312,41 @@ function SpeakerTag({
   onRename: (name: string) => void
   onSaveProfile: (name: string) => void
 }): JSX.Element {
-  const [editing, setEditing] = useState(false)
+  const [mode, setMode] = useState<'view' | 'rename' | 'profile'>('view')
   const [value, setValue] = useState(displayName)
 
   const save = (): void => {
-    if (value.trim() && value !== displayName) onRename(value.trim())
-    setEditing(false)
+    if (mode === 'rename') {
+      if (value.trim() && value !== displayName) onRename(value.trim())
+    } else if (mode === 'profile') {
+      if (value.trim()) onSaveProfile(value.trim())
+    }
+    setMode('view')
   }
 
-  const handleSaveProfile = (): void => {
-    const name = displayName.startsWith('Speaker') ? prompt('Имя для голосового профиля:') ?? '' : displayName
-    if (name.trim()) onSaveProfile(name.trim())
+  const startProfile = (): void => {
+    setValue(displayName.startsWith('Speaker') ? '' : displayName)
+    setMode('profile')
   }
 
-  if (editing) {
+  if (mode !== 'view') {
     return (
-      <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: 'var(--accent-bg)' }}>
+      <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: 'var(--accent-bg)', border: mode === 'profile' ? '1px solid var(--accent)' : 'none' }}>
+        {mode === 'profile' && <UserPlus size={11} style={{ color: 'var(--accent)' }} />}
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setValue(displayName); setEditing(false) } }}
-          className="text-xs bg-transparent focus:outline-none w-24"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save()
+            if (e.key === 'Escape') { setValue(displayName); setMode('view') }
+          }}
+          placeholder={mode === 'profile' ? 'Имя для голоса' : ''}
+          className="text-xs bg-transparent focus:outline-none w-28"
           style={{ color: 'var(--text-1)' }}
           autoFocus
         />
         <button onClick={save} style={{ color: 'var(--accent)' }}><Check size={12} /></button>
-        <button onClick={() => { setValue(displayName); setEditing(false) }} style={{ color: 'var(--text-4)' }}><X size={12} /></button>
+        <button onClick={() => { setValue(displayName); setMode('view') }} style={{ color: 'var(--text-4)' }}><X size={12} /></button>
       </div>
     )
   }
@@ -345,10 +354,10 @@ function SpeakerTag({
   return (
     <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg" style={{ background: 'var(--accent-bg)' }}>
       <span className="text-xs" style={{ color: 'var(--text-2)' }}>{displayName}</span>
-      <button onClick={() => setEditing(true)} title="Переименовать" style={{ color: 'var(--text-4)' }}>
+      <button onClick={() => { setValue(displayName); setMode('rename') }} title="Переименовать" style={{ color: 'var(--text-4)' }}>
         <Edit2 size={10} />
       </button>
-      <button onClick={handleSaveProfile} title="Сохранить голос как профиль" style={{ color: 'var(--accent)' }}>
+      <button onClick={startProfile} title="Сохранить голос как профиль" style={{ color: 'var(--accent)' }}>
         <UserPlus size={11} />
       </button>
     </div>
