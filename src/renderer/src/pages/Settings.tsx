@@ -129,6 +129,17 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
           <Toggle label="Автозапуск с Windows" checked={settings.autoStart} onChange={() => onUpdate({ autoStart: !settings.autoStart })} />
         </div>
       </Section>
+
+      <Section title="Встречи (диаризация)">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs mb-1.5" style={{ color: 'var(--text-4)' }}>Хоткей встречи</label>
+            <HotkeyInput value={settings.meetingHotkey} onChange={(v) => onUpdate({ meetingHotkey: v })} />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Старт/стоп записи встречи. Нужен OpenAI ключ — диаризация через gpt-4o-transcribe-diarize.</p>
+          </div>
+          <Toggle label="Захватывать системный звук (голос коллеги)" checked={settings.captureSystemAudio} onChange={() => onUpdate({ captureSystemAudio: !settings.captureSystemAudio })} />
+        </div>
+      </Section>
     </div>
   )
 }

@@ -12,7 +12,8 @@ import path from 'path'
 import { writeFileSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { store } from './services/store'
-import { transcribeAudio, testConnection } from './services/transcription'
+import { transcribeAudio, testConnection, transcribeDiarized } from './services/transcription'
+import type { MeetingRecord } from './services/types'
 import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
 import { saveAudio, loadAudio, deleteAudio } from './services/audio-storage'
@@ -25,6 +26,8 @@ let overlayWindow: BrowserWindow | null = null
 let isRecording = false
 let currentHotkey: string | null = null
 let currentStickyHotkey: string | null = null
+let currentMeetingHotkey: string | null = null
+let isMeetingRecording = false
 let currentOverlayTheme: Record<string, string | number> | null = null
 let trayCallbacks: { toggle: () => void; quit: () => void } | null = null
 
@@ -157,6 +160,35 @@ function registerHotkey(): void {
       console.error(`Не удалось зарегистрировать sticky-хоткей: ${currentStickyHotkey}`)
     }
   }
+
+  // Meeting hotkey
+  if (currentMeetingHotkey) {
+    globalShortcut.unregister(currentMeetingHotkey)
+  }
+
+  if (settings.meetingHotkey) {
+    currentMeetingHotkey = settings.meetingHotkey
+    const meetingRegistered = globalShortcut.register(currentMeetingHotkey, () => {
+      toggleMeetingRecording()
+    })
+
+    if (!meetingRegistered) {
+      console.error(`Не удалось зарегистрировать meeting-хоткей: ${currentMeetingHotkey}`)
+    }
+  }
+}
+
+function toggleMeetingRecording(): void {
+  isMeetingRecording = !isMeetingRecording
+  console.log(`[meeting] ${isMeetingRecording ? 'START' : 'STOP'}`)
+  playSound(isMeetingRecording ? 'start' : 'stop')
+  mainWindow?.webContents.send('meeting-state-changed', isMeetingRecording)
+
+  if (isMeetingRecording) {
+    showOverlay('recording')
+  } else {
+    showOverlay('processing')
+  }
 }
 
 function toggleRecording(): void {
@@ -257,6 +289,69 @@ function setupIpcHandlers(): void {
     return record
   })
 
+  // ═══ MEETINGS ═══
+  ipcMain.handle('submit-meeting', async (_event, audioData: ArrayBuffer, durationMs: number) => {
+    console.log(`[meeting] submit: ${audioData.byteLength} байт, ${durationMs}мс`)
+    const settings = store.getSettings()
+    const id = randomUUID()
+    const audioBuffer = Buffer.from(audioData)
+    const audioFileName = saveAudio(id, audioBuffer)
+
+    const apiKey = settings.openAiApiKey
+    if (!apiKey) {
+      const record: MeetingRecord = {
+        id, title: `Встреча ${new Date().toLocaleString('ru-RU')}`,
+        audioFileName, durationMs,
+        createdAt: new Date().toISOString(),
+        segments: [], speakerNames: {},
+        status: 'error', error: 'OpenAI API ключ не задан (диаризация только через OpenAI)'
+      }
+      store.addMeeting(record)
+      showOverlay('hidden')
+      return record
+    }
+
+    const result = await transcribeDiarized(audioBuffer, apiKey, settings.language)
+
+    const record: MeetingRecord = {
+      id,
+      title: `Встреча ${new Date().toLocaleString('ru-RU')}`,
+      audioFileName, durationMs,
+      createdAt: new Date().toISOString(),
+      segments: result.segments,
+      speakerNames: {},
+      status: result.error ? 'error' : 'success',
+      error: result.error
+    }
+
+    store.addMeeting(record)
+    showOverlay('hidden')
+    mainWindow?.webContents.send('meeting-complete', record)
+    return record
+  })
+
+  ipcMain.handle('get-meetings', () => store.getMeetings())
+
+  ipcMain.handle('delete-meeting', (_event, id: string) => {
+    const m = store.getMeeting(id)
+    if (m) {
+      deleteAudio(m.audioFileName)
+      store.deleteMeeting(id)
+    }
+  })
+
+  ipcMain.handle('rename-meeting-speaker', (_event, id: string, oldName: string, newName: string) => {
+    const m = store.getMeeting(id)
+    if (!m) return
+    const speakerNames = { ...m.speakerNames, [oldName]: newName }
+    store.updateMeeting(id, { speakerNames })
+  })
+
+  ipcMain.handle('get-meeting-audio', (_event, fileName: string) => {
+    const buffer = loadAudio(fileName)
+    return buffer ? buffer.buffer : null
+  })
+
   ipcMain.handle('get-history', () => store.getHistory())
 
   ipcMain.handle('delete-history-item', (_event, id: string) => {
@@ -334,7 +429,7 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('update-settings', (_event, partial: Record<string, unknown>) => {
     const updated = store.updateSettings(partial)
-    if ('hotkey' in partial || 'stickyWindow' in partial || 'stickyHotkey' in partial) registerHotkey()
+    if ('hotkey' in partial || 'stickyWindow' in partial || 'stickyHotkey' in partial || 'meetingHotkey' in partial) registerHotkey()
     if ('autoStart' in partial) applyAutoStart()
     return updated
   })

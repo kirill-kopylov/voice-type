@@ -1,4 +1,4 @@
-import { AppSettings } from './types'
+import { AppSettings, DialogSegment } from './types'
 import { randomUUID } from 'crypto'
 import { net } from 'electron'
 
@@ -163,6 +163,62 @@ export async function transcribeAudio(
     const message = err instanceof Error ? err.message : String(err)
     console.error(`[transcribe] Ошибка:`, message)
     return { text: '', error: `Ошибка сети: ${message}` }
+  }
+}
+
+// Диаризация через gpt-4o-transcribe-diarize
+export async function transcribeDiarized(
+  audioBuffer: Buffer,
+  apiKey: string,
+  language: string
+): Promise<{ segments: DialogSegment[]; error?: string }> {
+  const boundary = `----VoiceType${randomUUID().replace(/-/g, '')}`
+
+  const parts: Buffer[] = []
+  parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="meeting.webm"\r\nContent-Type: audio/webm\r\n\r\n`))
+  parts.push(audioBuffer)
+  parts.push(Buffer.from('\r\n'))
+  parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\ngpt-4o-transcribe-diarize\r\n`))
+  parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="response_format"\r\n\r\ndiarized_json\r\n`))
+  parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="chunking_strategy"\r\n\r\nauto\r\n`))
+  if (language) {
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\n${language}\r\n`))
+  }
+  parts.push(Buffer.from(`--${boundary}--\r\n`))
+
+  const body = Buffer.concat(parts)
+
+  try {
+    console.log(`[diarize] Отправка ${audioBuffer.length} байт`)
+    const response = await net.fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`
+      },
+      body
+    })
+
+    if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`[diarize] Ошибка API:`, errorBody)
+      return { segments: [], error: `API ошибка ${response.status}: ${errorBody.slice(0, 300)}` }
+    }
+
+    const data = (await response.json()) as { segments?: Array<{ speaker?: string; text: string; start: number; end: number }> }
+    const segments: DialogSegment[] = (data.segments ?? []).map((s) => ({
+      speaker: s.speaker ?? 'Speaker 1',
+      text: s.text,
+      start: s.start,
+      end: s.end
+    }))
+
+    console.log(`[diarize] Получено ${segments.length} сегментов`)
+    return { segments }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[diarize] Ошибка:`, message)
+    return { segments: [], error: `Ошибка сети: ${message}` }
   }
 }
 

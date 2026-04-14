@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
-import { StoreSchema, DEFAULT_SETTINGS, TranscriptionRecord } from './types'
+import { StoreSchema, DEFAULT_SETTINGS, TranscriptionRecord, MeetingRecord } from './types'
 
 const STORE_FILE = 'store.json'
 
@@ -17,7 +17,8 @@ class AppStore {
   private load(): StoreSchema {
     const defaults: StoreSchema = {
       settings: { ...DEFAULT_SETTINGS },
-      history: []
+      history: [],
+      meetings: []
     }
 
     try {
@@ -25,7 +26,8 @@ class AppStore {
       const parsed = JSON.parse(raw) as Partial<StoreSchema>
       return {
         settings: { ...defaults.settings, ...parsed.settings },
-        history: parsed.history ?? []
+        history: parsed.history ?? [],
+        meetings: parsed.meetings ?? []
       }
     } catch {
       return defaults
@@ -34,9 +36,7 @@ class AppStore {
 
   private save(): void {
     const dir = path.dirname(this.filePath)
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true })
-    }
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2))
   }
 
@@ -71,6 +71,30 @@ class AppStore {
 
   getHistoryItem(id: string): TranscriptionRecord | undefined {
     return this.data.history.find((r) => r.id === id)
+  }
+
+  // Meetings
+  getMeetings(): MeetingRecord[] {
+    return [...this.data.meetings]
+  }
+
+  addMeeting(record: MeetingRecord): void {
+    this.data.meetings.unshift(record)
+    this.save()
+  }
+
+  updateMeeting(id: string, patch: Partial<MeetingRecord>): void {
+    this.data.meetings = this.data.meetings.map((m) => (m.id === id ? { ...m, ...patch } : m))
+    this.save()
+  }
+
+  deleteMeeting(id: string): void {
+    this.data.meetings = this.data.meetings.filter((m) => m.id !== id)
+    this.save()
+  }
+
+  getMeeting(id: string): MeetingRecord | undefined {
+    return this.data.meetings.find((m) => m.id === id)
   }
 }
 

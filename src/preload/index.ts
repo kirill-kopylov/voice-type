@@ -7,6 +7,12 @@ export interface VoiceTypeAPI {
   clearHistory: () => Promise<void>
   rePaste: (id: string) => Promise<void>
   retryTranscription: (id: string) => Promise<TranscriptionRecord>
+  submitMeeting: (audioData: ArrayBuffer, durationMs: number) => Promise<MeetingRecord>
+  getMeetings: () => Promise<MeetingRecord[]>
+  deleteMeeting: (id: string) => Promise<void>
+  renameMeetingSpeaker: (id: string, oldName: string, newName: string) => Promise<void>
+  getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
+  onMeetingStateChanged: (callback: (isRecording: boolean) => void) => () => void
   copyText: (text: string) => Promise<void>
   getAudio: (fileName: string) => Promise<ArrayBuffer | null>
   getSettings: () => Promise<AppSettings>
@@ -32,6 +38,25 @@ interface TranscriptionRecord {
   error?: string
 }
 
+interface DialogSegment {
+  speaker: string
+  text: string
+  start: number
+  end: number
+}
+
+interface MeetingRecord {
+  id: string
+  title: string
+  audioFileName: string
+  durationMs: number
+  createdAt: string
+  segments: DialogSegment[]
+  speakerNames: Record<string, string>
+  status: 'success' | 'error'
+  error?: string
+}
+
 interface AppSettings {
   provider: 'openai' | 'openrouter' | 'groq'
   openAiApiKey: string
@@ -46,6 +71,8 @@ interface AppSettings {
   autoEnterTriggers: string
   stickyWindow: boolean
   stickyHotkey: string
+  meetingHotkey: string
+  captureSystemAudio: boolean
   autoStart: boolean
   theme: string
 }
@@ -63,6 +90,20 @@ const api: VoiceTypeAPI = {
   rePaste: (id) => ipcRenderer.invoke('re-paste', id),
 
   retryTranscription: (id) => ipcRenderer.invoke('retry-transcription', id),
+
+  submitMeeting: (audioData, durationMs) => ipcRenderer.invoke('submit-meeting', audioData, durationMs),
+  getMeetings: () => ipcRenderer.invoke('get-meetings'),
+  deleteMeeting: (id) => ipcRenderer.invoke('delete-meeting', id),
+  renameMeetingSpeaker: (id, oldName, newName) => ipcRenderer.invoke('rename-meeting-speaker', id, oldName, newName),
+  getMeetingAudio: (fileName) => ipcRenderer.invoke('get-meeting-audio', fileName),
+
+  onMeetingStateChanged: (callback) => {
+    const handler = (_event: Electron.IpcRendererEvent, isRecording: boolean): void => {
+      callback(isRecording)
+    }
+    ipcRenderer.on('meeting-state-changed', handler)
+    return () => ipcRenderer.removeListener('meeting-state-changed', handler)
+  },
 
   copyText: (text) => ipcRenderer.invoke('copy-text', text),
 

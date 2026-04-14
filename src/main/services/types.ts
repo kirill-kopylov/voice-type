@@ -1,3 +1,22 @@
+export interface DialogSegment {
+  speaker: string   // "Speaker 1", "Speaker 2" или пользовательское имя
+  text: string
+  start: number     // секунды от начала
+  end: number
+}
+
+export interface MeetingRecord {
+  id: string
+  title: string
+  audioFileName: string
+  durationMs: number
+  createdAt: string
+  segments: DialogSegment[]
+  speakerNames: Record<string, string>  // "Speaker 1" -> "Кирилл"
+  status: 'success' | 'error'
+  error?: string
+}
+
 export interface TranscriptionRecord {
   id: string
   text: string
@@ -24,6 +43,8 @@ export interface AppSettings {
   autoEnterTriggers: string
   stickyWindow: boolean
   stickyHotkey: string
+  meetingHotkey: string
+  captureSystemAudio: boolean
   autoStart: boolean
   theme: string
 }
@@ -31,6 +52,7 @@ export interface AppSettings {
 export interface StoreSchema {
   settings: AppSettings
   history: TranscriptionRecord[]
+  meetings: MeetingRecord[]
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -47,6 +69,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoEnterTriggers: 'enter,энтер,ентер,отправь,отправить,send,пуш,push',
   stickyWindow: false,
   stickyHotkey: 'CommandOrControl+Shift+L',
+  meetingHotkey: 'CommandOrControl+Shift+M',
+  captureSystemAudio: true,
   theme: 'sunset',
   autoStart: false
 }

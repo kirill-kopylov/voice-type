@@ -4,11 +4,12 @@ import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { History } from './pages/History'
 import { Settings } from './pages/Settings'
-import { TranscriptionRecord, AppSettings } from './types'
+import { TranscriptionRecord, AppSettings, MeetingRecord } from './types'
+import { Meetings } from './pages/Meetings'
 import { applyTheme, getThemeById } from './themes'
 import { generateNoiseTextures } from './noise'
 
-export type Page = 'dashboard' | 'history' | 'settings'
+export type Page = 'dashboard' | 'history' | 'meetings' | 'settings'
 
 export function App(): JSX.Element {
   const [page, setPage] = useState<Page>('dashboard')
@@ -22,6 +23,14 @@ export function App(): JSX.Element {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const recordingStartRef = useRef<number>(0)
+
+  // Meeting state
+  const [meetings, setMeetings] = useState<MeetingRecord[]>([])
+  const [isMeetingRecording, setIsMeetingRecording] = useState(false)
+  const meetingRecorderRef = useRef<MediaRecorder | null>(null)
+  const meetingChunksRef = useRef<Blob[]>([])
+  const meetingStartRef = useRef<number>(0)
+  const meetingStreamsRef = useRef<MediaStream[]>([])
 
   // Применяем тему
   useEffect(() => {
@@ -42,6 +51,7 @@ export function App(): JSX.Element {
   useEffect(() => {
     if (!window.api) return
     window.api.getHistory().then(setHistory)
+    window.api.getMeetings().then(setMeetings)
     window.api.getSettings().then((s) => {
       setSettings(s)
       if (s.theme) setThemeId(s.theme)
@@ -81,7 +91,17 @@ export function App(): JSX.Element {
       }
     })
 
+    const unsubMeeting = window.api.onMeetingStateChanged((recording) => {
+      setIsMeetingRecording(recording)
+      if (recording) {
+        startMeetingRecording()
+      } else {
+        stopMeetingRecording()
+      }
+    })
+
     return () => {
+      unsubMeeting()
       unsubRecording()
       unsubTranscription()
     }
@@ -117,9 +137,105 @@ export function App(): JSX.Element {
     recorder.stop()
   }
 
+  // ═══ MEETING RECORDING ═══
+  async function startMeetingRecording(): Promise<void> {
+    try {
+      const captureSystem = settings?.captureSystemAudio ?? true
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      meetingStreamsRef.current = [micStream]
+
+      let combinedStream: MediaStream = micStream
+
+      if (captureSystem) {
+        try {
+          // Захват системного звука через desktopCapturer (Electron)
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            audio: true,
+            video: true  // Требуется для getDisplayMedia, но будем использовать только audio
+          })
+
+          // Останавливаем видео-трек, оставляем только аудио
+          displayStream.getVideoTracks().forEach((t) => t.stop())
+
+          const systemAudio = displayStream.getAudioTracks()
+          if (systemAudio.length > 0) {
+            meetingStreamsRef.current.push(displayStream)
+
+            // Микшируем микрофон + системное аудио
+            const audioContext = new AudioContext()
+            const destination = audioContext.createMediaStreamDestination()
+
+            const micSource = audioContext.createMediaStreamSource(micStream)
+            const sysSource = audioContext.createMediaStreamSource(new MediaStream(systemAudio))
+
+            micSource.connect(destination)
+            sysSource.connect(destination)
+
+            combinedStream = destination.stream
+          }
+        } catch (err) {
+          console.warn('Системный звук не захвачен:', err)
+          showToast('Системный звук недоступен — пишу только микрофон', 'error')
+        }
+      }
+
+      const recorder = new MediaRecorder(combinedStream, { mimeType: 'audio/webm;codecs=opus' })
+      meetingChunksRef.current = []
+      meetingStartRef.current = Date.now()
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) meetingChunksRef.current.push(e.data)
+      }
+      recorder.start(1000)
+      meetingRecorderRef.current = recorder
+
+      showToast('Запись встречи началась', 'success')
+    } catch {
+      showToast('Не удалось начать запись встречи', 'error')
+    }
+  }
+
+  async function stopMeetingRecording(): Promise<void> {
+    const recorder = meetingRecorderRef.current
+    if (!recorder || recorder.state === 'inactive') return
+
+    showToast('Обработка встречи... это может занять минуту', 'success')
+
+    recorder.onstop = async () => {
+      const durationMs = Date.now() - meetingStartRef.current
+      const blob = new Blob(meetingChunksRef.current, { type: 'audio/webm' })
+      const arrayBuffer = await blob.arrayBuffer()
+
+      // Останавливаем все стримы
+      meetingStreamsRef.current.forEach((s) => s.getTracks().forEach((t) => t.stop()))
+      meetingStreamsRef.current = []
+
+      const record = await window.api.submitMeeting(arrayBuffer, durationMs)
+      setMeetings((prev) => [record, ...prev])
+
+      if (record.status === 'error') {
+        showToast(record.error || 'Ошибка диаризации', 'error')
+      } else {
+        showToast(`Встреча расшифрована: ${record.segments.length} реплик`, 'success')
+      }
+    }
+    recorder.stop()
+  }
+
   const handleDeleteItem = async (id: string): Promise<void> => {
     await window.api.deleteHistoryItem(id)
     setHistory((prev) => prev.filter((r) => r.id !== id))
+  }
+
+  const handleDeleteMeeting = async (id: string): Promise<void> => {
+    await window.api.deleteMeeting(id)
+    setMeetings((prev) => prev.filter((m) => m.id !== id))
+  }
+
+  const handleRenameSpeaker = async (id: string, oldName: string, newName: string): Promise<void> => {
+    await window.api.renameMeetingSpeaker(id, oldName, newName)
+    setMeetings((prev) => prev.map((m) =>
+      m.id === id ? { ...m, speakerNames: { ...m.speakerNames, [oldName]: newName } } : m
+    ))
   }
 
   const handleClearHistory = async (): Promise<void> => {
@@ -156,6 +272,15 @@ export function App(): JSX.Element {
           onDelete={handleDeleteItem}
           onClear={handleClearHistory}
           onRetry={handleRetry}
+          showToast={showToast}
+        />
+      )}
+      {page === 'meetings' && (
+        <Meetings
+          meetings={meetings}
+          isRecording={isMeetingRecording}
+          onDelete={handleDeleteMeeting}
+          onRenameSpeaker={handleRenameSpeaker}
           showToast={showToast}
         />
       )}

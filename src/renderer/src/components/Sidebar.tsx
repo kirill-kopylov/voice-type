@@ -1,4 +1,4 @@
-import { LayoutDashboard, Clock, Settings } from 'lucide-react'
+import { LayoutDashboard, Clock, Users, Settings } from 'lucide-react'
 import { Page } from '../App'
 
 interface SidebarProps {
@@ -10,6 +10,7 @@ interface SidebarProps {
 const NAV_ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', label: 'Дашборд', icon: LayoutDashboard },
   { id: 'history', label: 'История', icon: Clock },
+  { id: 'meetings', label: 'Встречи', icon: Users },
   { id: 'settings', label: 'Настройки', icon: Settings }
 ]
 
