@@ -237,7 +237,6 @@ async function runSummary(meetingId: string): Promise<MeetingRecord | null> {
   if (result.error || !result.summary) {
     store.updateMeeting(meetingId, { summaryStatus: 'error', summaryError: result.error })
   } else {
-    // Применяем угаданные имена там, где их ещё нет
     const newSpeakerNames = { ...meeting.speakerNames }
     if (result.summary.guessedNames) {
       for (const [raw, guessed] of Object.entries(result.summary.guessedNames)) {
@@ -246,11 +245,16 @@ async function runSummary(meetingId: string): Promise<MeetingRecord | null> {
         }
       }
     }
-    store.updateMeeting(meetingId, {
+    const patch: Partial<MeetingRecord> = {
       summary: result.summary,
       summaryStatus: 'done',
       speakerNames: newSpeakerNames
-    })
+    }
+    // Заменяем дефолтный заголовок-таймстамп на сгенерированный
+    if (result.title && (meeting.title.startsWith('Встреча ') || !meeting.title)) {
+      patch.title = result.title
+    }
+    store.updateMeeting(meetingId, patch)
   }
 
   const updated = store.getMeeting(meetingId)
@@ -463,6 +467,62 @@ function setupIpcHandlers(): void {
   ipcMain.handle('get-voice-profile-audio', (_event, fileName: string) => {
     const buf = loadProfileAudio(fileName)
     return buf ? buf.buffer : null
+  })
+
+  ipcMain.handle('retry-meeting', async (_event, id: string) => {
+    const meeting = store.getMeeting(id)
+    if (!meeting) return null
+
+    const audioBuffer = loadAudio(meeting.audioFileName)
+    if (!audioBuffer) return null
+
+    const settings = store.getSettings()
+    const apiKey = settings.openAiApiKey
+    if (!apiKey) {
+      store.updateMeeting(id, { status: 'error', error: 'OpenAI API ключ не задан' })
+      return store.getMeeting(id)
+    }
+
+    showOverlay('processing')
+
+    const profiles = store.getVoiceProfiles().slice(0, 4)
+    const knownSpeakers: KnownSpeaker[] = []
+    for (const p of profiles) {
+      const audio = loadProfileAudio(p.audioFileName)
+      if (audio) knownSpeakers.push({ name: p.name, audio })
+    }
+
+    const result = await transcribeDiarized(audioBuffer, apiKey, settings.language, knownSpeakers)
+
+    const initialSpeakerNames: Record<string, string> = {}
+    if (knownSpeakers.length > 0) {
+      for (const seg of result.segments) {
+        if (seg.speaker && !seg.speaker.startsWith('Speaker')) {
+          initialSpeakerNames[seg.speaker] = seg.speaker
+        }
+      }
+    }
+
+    store.updateMeeting(id, {
+      segments: result.segments,
+      speakerNames: { ...meeting.speakerNames, ...initialSpeakerNames },
+      summary: undefined,
+      summaryStatus: result.error ? undefined : 'pending',
+      summaryError: undefined,
+      status: result.error ? 'error' : 'success',
+      error: result.error
+    })
+
+    showOverlay('hidden')
+
+    const updated = store.getMeeting(id)
+    if (updated) mainWindow?.webContents.send('meeting-updated', updated)
+
+    if (!result.error && result.segments.length > 0) {
+      runSummary(id).catch((err) => console.error('[summary] retry:', err))
+    }
+
+    return updated ?? null
   })
 
   ipcMain.handle('get-meetings', () => store.getMeetings())

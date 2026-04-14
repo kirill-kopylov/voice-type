@@ -88,6 +88,7 @@ export interface VoiceTypeAPI {
   renameMeetingSpeaker: (id: string, oldName: string, newName: string) => Promise<void>
   getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
   generateMeetingSummary: (id: string) => Promise<MeetingRecord | null>
+  retryMeeting: (id: string) => Promise<MeetingRecord | null>
   getVoiceProfiles: () => Promise<VoiceProfile[]>
   createVoiceProfileFromMeeting: (meetingId: string, speaker: string, name: string) => Promise<{ profile?: VoiceProfile; error?: string }>
   deleteVoiceProfile: (id: string) => Promise<void>

@@ -13,6 +13,7 @@ export interface VoiceTypeAPI {
   renameMeetingSpeaker: (id: string, oldName: string, newName: string) => Promise<void>
   getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
   generateMeetingSummary: (id: string) => Promise<MeetingRecord | null>
+  retryMeeting: (id: string) => Promise<MeetingRecord | null>
   getVoiceProfiles: () => Promise<VoiceProfile[]>
   createVoiceProfileFromMeeting: (meetingId: string, speaker: string, name: string) => Promise<{ profile?: VoiceProfile; error?: string }>
   deleteVoiceProfile: (id: string) => Promise<void>
@@ -129,6 +130,7 @@ const api: VoiceTypeAPI = {
   renameMeetingSpeaker: (id, oldName, newName) => ipcRenderer.invoke('rename-meeting-speaker', id, oldName, newName),
   getMeetingAudio: (fileName) => ipcRenderer.invoke('get-meeting-audio', fileName),
   generateMeetingSummary: (id) => ipcRenderer.invoke('generate-meeting-summary', id),
+  retryMeeting: (id) => ipcRenderer.invoke('retry-meeting', id),
 
   getVoiceProfiles: () => ipcRenderer.invoke('get-voice-profiles'),
   createVoiceProfileFromMeeting: (meetingId, speaker, name) =>

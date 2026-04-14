@@ -292,6 +292,16 @@ export function App(): JSX.Element {
     // ответ придёт через onMeetingUpdated
   }
 
+  const handleRetryMeeting = async (meetingId: string): Promise<void> => {
+    showToast('Повторная транскрипция встречи...', 'success')
+    const updated = await window.api.retryMeeting(meetingId)
+    if (updated) {
+      setMeetings((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
+      if (updated.status === 'success') showToast('Встреча расшифрована', 'success')
+      else if (updated.error) showToast(updated.error, 'error')
+    }
+  }
+
   const handleClearHistory = async (): Promise<void> => {
     await window.api.clearHistory()
     setHistory([])
@@ -339,6 +349,7 @@ export function App(): JSX.Element {
           onSaveVoiceProfile={handleSaveVoiceProfile}
           onDeleteVoiceProfile={handleDeleteVoiceProfile}
           onGenerateSummary={handleGenerateSummary}
+          onRetryMeeting={handleRetryMeeting}
           showToast={showToast}
         />
       )}

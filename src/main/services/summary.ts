@@ -4,6 +4,7 @@ import { DialogSegment, MeetingSummary } from './types'
 const SUMMARY_MODEL = 'gpt-4o-mini'
 
 interface RawSummary {
+  title: string
   brief: string
   topics: string[]
   decisions: Array<{ text: string; assignee?: string; deadline?: string }>
@@ -11,20 +12,22 @@ interface RawSummary {
 }
 
 /**
- * Делает саммари встречи: краткое описание, темы, договорённости,
- * + пытается угадать имена спикеров из контекста (если они называли
- * друг друга по имени или представлялись).
+ * Анализирует транскрипт встречи. Не знает заранее, о чём была беседа,
+ * сам определяет характер: рабочий созвон, болтовня, интервью, обсуждение
+ * и т.д. — и подстраивает саммари под этот характер.
+ *
+ * Возвращает: короткий заголовок, краткое описание, темы, договорённости
+ * (если применимо), и гипотезу об именах спикеров на основе диалога.
  */
 export async function generateSummary(
   segments: DialogSegment[],
   apiKey: string,
   knownNames: Record<string, string>
-): Promise<{ summary?: MeetingSummary; error?: string }> {
+): Promise<{ summary?: MeetingSummary; title?: string; error?: string }> {
   if (segments.length === 0) {
     return { error: 'Нет реплик для анализа' }
   }
 
-  // Используем уже переименованных, остальных оставляем как есть
   const dialogText = segments
     .map((s) => `${knownNames[s.speaker] ?? s.speaker}: ${s.text}`)
     .join('\n')
@@ -32,27 +35,30 @@ export async function generateSummary(
   const uniqueSpeakers = Array.from(new Set(segments.map((s) => s.speaker)))
   const speakersListJson = uniqueSpeakers.map((s) => `"${s}"`).join(', ')
 
-  const systemPrompt = `Ты — помощник, который анализирует транскрипты встреч.
-Возвращай результат строго в JSON формате со следующей структурой:
+  const systemPrompt = `Ты анализируешь транскрипт разговора. Заранее ничего не известно о его характере — это может быть рабочий созвон, дружеская болтовня, интервью, обсуждение проекта, спор, обмен новостями или что-то ещё. Определи характер сам и адаптируй стиль саммари.
+
+Возвращай результат строго в JSON:
 
 {
-  "brief": "2-3 предложения о чём была встреча",
-  "topics": ["тема 1", "тема 2", "..."],
+  "title": "короткий заголовок 3-6 слов на языке транскрипта",
+  "brief": "1-3 предложения о чём шёл разговор и зачем",
+  "topics": ["тема 1", "тема 2", ...],
   "decisions": [
-    { "text": "что решили", "assignee": "кто отвечает или null", "deadline": "когда или null" }
+    { "text": "договорённость или решение", "assignee": "ответственный или null", "deadline": "срок или null" }
   ],
   "guessed_names": { ${speakersListJson}: "имя или null" }
 }
 
 Правила:
-- brief: чётко и по делу, без воды
-- topics: 3-7 ключевых тем разговора
-- decisions: только реальные договорённости и action items, без размышлений и обсуждений
-- guessed_names: для каждого спикера определи имя, ЕСЛИ оно явно прозвучало в диалоге (представился, к нему обратились). Если не уверен — ставь null. Не выдумывай.
+- title: суть встречи в нескольких словах. Не "Встреча от 14 апреля", а "Планирование выставки Пушкина" или "Болтовня про путешествия".
+- brief: чётко и по делу. Если разговор бессодержательный — так и пиши.
+- topics: 3-7 тем. Если разговор без чёткой структуры — основные сюжеты беседы.
+- decisions: только реальные договорённости и action items. Если встреча неформальная и решений не было — пустой массив. Не выдумывай.
+- guessed_names: ТОЛЬКО если в диалоге явно прозвучало имя (кто-то представился или к кому-то обратились по полному имени). Не угадывай по контексту, не используй инициалы или одиночные буквы. Возвращай null если не уверен.
 
 Все тексты — на языке транскрипта.`
 
-  const userPrompt = `Транскрипт встречи:\n\n${dialogText}`
+  const userPrompt = `Транскрипт:\n\n${dialogText}`
 
   try {
     console.log('[summary] Запрос к', SUMMARY_MODEL)
@@ -81,14 +87,20 @@ export async function generateSummary(
 
     const data = (await response.json()) as { choices: Array<{ message: { content: string } }> }
     const content = data.choices[0]?.message?.content ?? ''
-
     const parsed = JSON.parse(content) as RawSummary
 
+    // Фильтруем мусорные имена: одиночные буквы, "null", "unknown", пустые
     const guessedNames: Record<string, string> = {}
     for (const [k, v] of Object.entries(parsed.guessed_names ?? {})) {
-      if (v && typeof v === 'string' && v.toLowerCase() !== 'null' && v.toLowerCase() !== 'unknown') {
-        guessedNames[k] = v
-      }
+      if (!v || typeof v !== 'string') continue
+      const trimmed = v.trim()
+      const lower = trimmed.toLowerCase()
+      if (
+        trimmed.length < 2 ||                 // одиночные буквы
+        lower === 'null' || lower === 'unknown' ||
+        /^[a-zа-я]\.?$/i.test(trimmed)        // "А", "К."
+      ) continue
+      guessedNames[k] = trimmed
     }
 
     const summary: MeetingSummary = {
@@ -98,7 +110,9 @@ export async function generateSummary(
       guessedNames: Object.keys(guessedNames).length > 0 ? guessedNames : undefined
     }
 
-    return { summary }
+    const title = parsed.title?.trim() && parsed.title.length <= 80 ? parsed.title.trim() : undefined
+
+    return { summary, title }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[summary] Ошибка:', message)

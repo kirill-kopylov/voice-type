@@ -14,7 +14,8 @@ interface SpeakerSegment {
 }
 
 // API: known_speaker_references — каждый между 2 и 10 секунд.
-// Берём ~8с лучших сегментов.
+// На входе берём с запасом (silenceremove потом ужмёт), на выходе обрезаем до 8с.
+const MAX_INPUT_SEC = 25
 const MAX_DURATION_SEC = 8
 const MIN_DURATION_SEC = 2
 
@@ -34,22 +35,22 @@ export async function extractSpeakerSegments(
   }
   if (segments.length === 0) return null
 
-  // Отбираем сегменты до лимита по длительности
+  // Отбираем сегменты с запасом — silenceremove потом ужмёт.
+  // Сортируем по длине: длинные сегменты обычно содержательнее.
+  const sorted = [...segments]
+    .filter((s) => s.end - s.start >= 0.5)
+    .sort((a, b) => (b.end - b.start) - (a.end - a.start))
+
   let totalSec = 0
   const picked: SpeakerSegment[] = []
-  for (const seg of segments) {
+  for (const seg of sorted) {
     const dur = seg.end - seg.start
-    if (dur < 0.3) continue
-    if (totalSec + dur > MAX_DURATION_SEC) {
-      const remaining = MAX_DURATION_SEC - totalSec
-      if (remaining < 1) break
-      picked.push({ start: seg.start, end: seg.start + remaining })
-      totalSec = MAX_DURATION_SEC
-      break
-    }
     picked.push(seg)
     totalSec += dur
+    if (totalSec >= MAX_INPUT_SEC) break
   }
+  // Обратно по времени — удобнее ffmpeg'у склеивать
+  picked.sort((a, b) => a.start - b.start)
 
   if (totalSec < MIN_DURATION_SEC) {
     console.warn(`[extract-speaker] мало аудио: ${totalSec.toFixed(1)}с`)
@@ -65,12 +66,18 @@ export async function extractSpeakerSegments(
   try {
     writeFileSync(inputPath, webmBuffer)
 
-    // Формируем фильтр: trim каждого сегмента + concat
+    // Берём с запасом по времени — потом silenceremove выкинет паузы
     const trims = picked
       .map((s, i) => `[0:a]atrim=start=${s.start.toFixed(3)}:end=${s.end.toFixed(3)},asetpts=PTS-STARTPTS[a${i}]`)
       .join(';')
     const concatLabels = picked.map((_, i) => `[a${i}]`).join('')
-    const filter = `${trims};${concatLabels}concat=n=${picked.length}:v=0:a=1[out]`
+
+    // silenceremove: убираем тишину в начале, в конце и долгие паузы (>0.4с тише -35dB)
+    // loudnorm: нормализация громкости — модели проще распознать
+    const filter = `${trims};${concatLabels}concat=n=${picked.length}:v=0:a=1[joined];` +
+      `[joined]silenceremove=start_periods=1:start_duration=0.1:start_threshold=-40dB:` +
+      `stop_periods=-1:stop_duration=0.4:stop_threshold=-40dB,` +
+      `loudnorm=I=-16:LRA=11:TP=-1.5[out]`
 
     await runFfmpeg([
       '-y',
@@ -80,6 +87,8 @@ export async function extractSpeakerSegments(
       '-ar', '16000',
       '-ac', '1',
       '-c:a', 'pcm_s16le',
+      // ограничение по длительности на выходе — на случай если сегментов много
+      '-t', String(MAX_DURATION_SEC),
       outputPath
     ])
 

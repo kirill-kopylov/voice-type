@@ -12,12 +12,13 @@ interface Props {
   onSaveVoiceProfile: (meetingId: string, speaker: string, name: string) => void
   onDeleteVoiceProfile: (id: string) => void
   onGenerateSummary: (meetingId: string) => void
+  onRetryMeeting: (meetingId: string) => void
   showToast: (message: string, type: 'success' | 'error') => void
 }
 
 export function Meetings({
   meetings, voiceProfiles, isRecording,
-  onDelete, onRenameSpeaker, onSaveVoiceProfile, onDeleteVoiceProfile, onGenerateSummary, showToast
+  onDelete, onRenameSpeaker, onSaveVoiceProfile, onDeleteVoiceProfile, onGenerateSummary, onRetryMeeting, showToast
 }: Props): JSX.Element {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showProfiles, setShowProfiles] = useState(false)
@@ -78,6 +79,7 @@ export function Meetings({
               onRenameSpeaker={(oldName, newName) => onRenameSpeaker(m.id, oldName, newName)}
               onSaveVoiceProfile={(speaker, name) => onSaveVoiceProfile(m.id, speaker, name)}
               onGenerateSummary={() => onGenerateSummary(m.id)}
+              onRetry={() => onRetryMeeting(m.id)}
               showToast={showToast}
             />
           ))}
@@ -97,30 +99,87 @@ function VoiceProfilesPanel({ profiles, onDelete }: { profiles: VoiceProfile[]; 
   }
 
   return (
-    <div className="glass rounded-xl p-4 space-y-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-      <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Голосовые профили (используются в новых встречах)</p>
-      <div className="flex flex-wrap gap-2">
+    <div className="glass rounded-xl p-4 space-y-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+      <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Голосовые профили (первые 4 используются в новых встречах)</p>
+      <div className="space-y-2">
         {profiles.map((p, i) => (
-          <div
-            key={p.id}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs"
-            style={{
-              background: i < 4 ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
-              color: 'var(--text-1)'
-            }}
-          >
-            <span className="font-medium">{p.name}</span>
-            <span style={{ color: 'var(--text-4)' }}>{(p.durationMs / 1000).toFixed(1)}с · {p.segmentCount} реплик</span>
-            <button onClick={() => onDelete(p.id)} style={{ color: 'var(--text-4)' }}><X size={12} /></button>
-          </div>
+          <VoiceProfileRow key={p.id} profile={p} active={i < 4} onDelete={() => onDelete(p.id)} />
         ))}
       </div>
     </div>
   )
 }
 
+function VoiceProfileRow({ profile, active, onDelete }: { profile: VoiceProfile; active: boolean; onDelete: () => void }): JSX.Element {
+  const [playing, setPlaying] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const urlRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause()
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current)
+    }
+  }, [])
+
+  const toggle = async (): Promise<void> => {
+    if (playing) {
+      audioRef.current?.pause()
+      setPlaying(false)
+      return
+    }
+    if (audioRef.current && urlRef.current) {
+      audioRef.current.play()
+      setPlaying(true)
+      return
+    }
+    setLoading(true)
+    const buf = await window.api.getVoiceProfileAudio(profile.audioFileName)
+    setLoading(false)
+    if (!buf) return
+    const blob = new Blob([buf], { type: 'audio/wav' })
+    const url = URL.createObjectURL(blob)
+    urlRef.current = url
+    const audio = new Audio(url)
+    audio.onended = () => setPlaying(false)
+    audio.onpause = () => setPlaying(false)
+    audio.onplay = () => setPlaying(true)
+    audio.play()
+    audioRef.current = audio
+  }
+
+  return (
+    <div
+      className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs"
+      style={{
+        background: active ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
+        color: 'var(--text-1)'
+      }}
+    >
+      <button
+        onClick={toggle}
+        disabled={loading}
+        className="flex items-center justify-center w-7 h-7 rounded-full disabled:opacity-50"
+        style={{ background: 'var(--surface)', color: 'var(--accent)' }}
+        title="Прослушать сэмпл"
+      >
+        {playing ? <Pause size={12} /> : <Play size={12} />}
+      </button>
+      <span className="font-medium flex-1">{profile.name}</span>
+      <span style={{ color: 'var(--text-4)' }}>
+        {(profile.durationMs / 1000).toFixed(1)}с · {profile.segmentCount} реплик
+        {!active && ' · не активен'}
+      </span>
+      <button onClick={onDelete} title="Удалить" style={{ color: 'var(--text-4)' }}>
+        <X size={14} />
+      </button>
+    </div>
+  )
+}
+
 function MeetingCard({
-  meeting: m, expanded, onToggle, onDelete, onRenameSpeaker, onSaveVoiceProfile, onGenerateSummary, showToast
+  meeting: m, expanded, onToggle, onDelete, onRenameSpeaker, onSaveVoiceProfile, onGenerateSummary, onRetry, showToast
 }: {
   meeting: MeetingRecord
   expanded: boolean
@@ -129,6 +188,7 @@ function MeetingCard({
   onRenameSpeaker: (oldName: string, newName: string) => void
   onSaveVoiceProfile: (speaker: string, name: string) => void
   onGenerateSummary: () => void
+  onRetry: () => void
   showToast: (message: string, type: 'success' | 'error') => void
 }): JSX.Element {
   const speakerName = (raw: string): string => m.speakerNames[raw] ?? raw
@@ -166,6 +226,17 @@ function MeetingCard({
           {/* Панель действий */}
           <div className="flex items-center gap-2 flex-wrap">
             <AudioPlayer fileName={m.audioFileName} />
+            <button
+              onClick={onRetry}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
+              style={{
+                background: m.status === 'error' ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
+                color: m.status === 'error' ? 'var(--accent)' : 'var(--text-3)'
+              }}
+            >
+              <RotateCcw size={12} />
+              {m.status === 'error' ? 'Повторить транскрипцию' : 'Прогнать заново'}
+            </button>
             {m.status === 'success' && (
               <>
                 <button
