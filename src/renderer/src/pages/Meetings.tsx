@@ -254,6 +254,9 @@ function MeetingCard({
 }
 
 function SummaryBlock({ summary, speakerName }: { summary: NonNullable<MeetingRecord['summary']>; speakerName: (raw: string) => string }): JSX.Element {
+  const topics = summary.topics ?? []
+  const decisions = summary.decisions ?? []
+
   return (
     <div className="p-4 rounded-lg space-y-3" style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)' }}>
       <div className="flex items-center gap-2">
@@ -265,11 +268,11 @@ function SummaryBlock({ summary, speakerName }: { summary: NonNullable<MeetingRe
         <p className="text-sm leading-relaxed" style={{ color: 'var(--text-1)' }}>{summary.brief}</p>
       )}
 
-      {summary.topics.length > 0 && (
+      {topics.length > 0 && (
         <div>
           <p className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-3)' }}>Темы</p>
           <div className="flex flex-wrap gap-1.5">
-            {summary.topics.map((t, i) => (
+            {topics.map((t, i) => (
               <span key={i} className="px-2 py-0.5 rounded text-xs" style={{ background: 'var(--surface)', color: 'var(--text-2)' }}>
                 {t}
               </span>
@@ -278,16 +281,16 @@ function SummaryBlock({ summary, speakerName }: { summary: NonNullable<MeetingRe
         </div>
       )}
 
-      {summary.decisions.length > 0 && (
+      {decisions.length > 0 && (
         <div>
           <p className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-3)' }}>Договорённости</p>
           <ul className="space-y-1.5">
-            {summary.decisions.map((d, i) => (
+            {decisions.map((d, i) => (
               <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--text-2)' }}>
                 <span style={{ color: 'var(--accent)' }}>•</span>
                 <div>
-                  <span>{d.text}</span>
-                  {(d.assignee || d.deadline) && (
+                  <span>{d?.text ?? ''}</span>
+                  {(d?.assignee || d?.deadline) && (
                     <span className="text-xs ml-2" style={{ color: 'var(--text-4)' }}>
                       {d.assignee && `→ ${speakerName(d.assignee)}`}
                       {d.assignee && d.deadline && ' · '}
