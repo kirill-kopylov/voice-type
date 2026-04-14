@@ -89,7 +89,7 @@ export interface VoiceTypeAPI {
   getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
   generateMeetingSummary: (id: string) => Promise<MeetingRecord | null>
   getVoiceProfiles: () => Promise<VoiceProfile[]>
-  saveVoiceProfile: (name: string, wavData: ArrayBuffer, durationMs: number, segmentCount: number, sourceMeetingId?: string) => Promise<VoiceProfile>
+  createVoiceProfileFromMeeting: (meetingId: string, speaker: string, name: string) => Promise<{ profile?: VoiceProfile; error?: string }>
   deleteVoiceProfile: (id: string) => Promise<void>
   getVoiceProfileAudio: (fileName: string) => Promise<ArrayBuffer | null>
   onMeetingStateChanged: (callback: (isRecording: boolean) => void) => () => void

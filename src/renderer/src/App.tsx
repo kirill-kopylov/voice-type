@@ -7,7 +7,6 @@ import { Settings } from './pages/Settings'
 import { TranscriptionRecord, AppSettings, MeetingRecord, VoiceProfile } from './types'
 import { Meetings } from './pages/Meetings'
 import { SearchModal } from './components/SearchModal'
-import { extractSpeakerWav } from './utils/audio-wav'
 import { applyTheme, getThemeById } from './themes'
 import { generateNoiseTextures } from './noise'
 
@@ -268,35 +267,14 @@ export function App(): JSX.Element {
 
   const handleSaveVoiceProfile = async (meetingId: string, speaker: string, name: string): Promise<void> => {
     try {
-      const meeting = meetings.find((m) => m.id === meetingId)
-      if (!meeting) return
-
-      const segments = meeting.segments
-        .filter((s) => s.speaker === speaker)
-        .map((s) => ({ start: s.start, end: s.end }))
-
-      if (segments.length === 0) {
-        showToast('Нет сегментов этого спикера', 'error')
+      showToast('Извлекаю голос...', 'success')
+      const result = await window.api.createVoiceProfileFromMeeting(meetingId, speaker, name)
+      if (result.error || !result.profile) {
+        showToast(result.error || 'Не получилось создать профиль', 'error')
         return
       }
-
-      showToast('Извлекаю аудио для профиля...', 'success')
-      const audioBuf = await window.api.getMeetingAudio(meeting.audioFileName)
-      if (!audioBuf) {
-        showToast('Аудио файл встречи не найден', 'error')
-        return
-      }
-
-      const wav = await extractSpeakerWav(audioBuf, segments)
-      if (!wav) {
-        showToast('Не хватило аудио для профиля (нужно 3+ секунд речи)', 'error')
-        return
-      }
-
-      const totalDur = segments.reduce((sum, s) => sum + (s.end - s.start), 0) * 1000
-      const profile = await window.api.saveVoiceProfile(name, wav, Math.round(totalDur), segments.length, meetingId)
-      setVoiceProfiles((prev) => [profile, ...prev])
-      showToast(`Голос "${profile.name}" сохранён`, 'success')
+      setVoiceProfiles((prev) => [result.profile!, ...prev])
+      showToast(`Голос "${result.profile.name}" сохранён`, 'success')
     } catch (err) {
       console.error('Ошибка создания профиля:', err)
       showToast('Ошибка создания профиля голоса', 'error')

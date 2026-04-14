@@ -15,6 +15,7 @@ import { randomUUID } from 'crypto'
 import { store } from './services/store'
 import { transcribeAudio, testConnection, transcribeDiarized, KnownSpeaker } from './services/transcription'
 import { generateSummary } from './services/summary'
+import { extractSpeakerSegments } from './services/extract-speaker'
 import type { MeetingRecord, VoiceProfile } from './services/types'
 import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
@@ -417,16 +418,38 @@ function setupIpcHandlers(): void {
   // ═══ VOICE PROFILES ═══
   ipcMain.handle('get-voice-profiles', () => store.getVoiceProfiles())
 
-  ipcMain.handle('save-voice-profile', (_event, name: string, wavData: ArrayBuffer, durationMs: number, segmentCount: number, sourceMeetingId?: string) => {
+  // Создание профиля голоса прямо из встречи —
+  // вся тяжёлая работа (декодирование/нарезка) в main process через ffmpeg
+  ipcMain.handle('create-voice-profile-from-meeting', async (_event, meetingId: string, speaker: string, name: string) => {
+    const meeting = store.getMeeting(meetingId)
+    if (!meeting) return { error: 'Встреча не найдена' }
+
+    const audioBuffer = loadAudio(meeting.audioFileName)
+    if (!audioBuffer) return { error: 'Аудиофайл встречи не найден' }
+
+    const segments = meeting.segments
+      .filter((s) => s.speaker === speaker)
+      .map((s) => ({ start: s.start, end: s.end }))
+
+    if (segments.length === 0) return { error: 'Нет реплик этого спикера' }
+
+    const wav = await extractSpeakerSegments(audioBuffer, segments)
+    if (!wav) return { error: 'Не получилось извлечь аудио (нужно 3+ секунд речи)' }
+
     const id = randomUUID()
-    const audioFileName = saveProfileAudio(id, Buffer.from(wavData))
+    const audioFileName = saveProfileAudio(id, wav)
+    const totalDur = segments.reduce((sum, s) => sum + (s.end - s.start), 0) * 1000
+
     const profile: VoiceProfile = {
       id, name: name.trim() || 'Без имени',
-      audioFileName, durationMs, segmentCount, sourceMeetingId,
+      audioFileName,
+      durationMs: Math.round(totalDur),
+      segmentCount: segments.length,
+      sourceMeetingId: meetingId,
       createdAt: new Date().toISOString()
     }
     store.addVoiceProfile(profile)
-    return profile
+    return { profile }
   })
 
   ipcMain.handle('delete-voice-profile', (_event, id: string) => {

@@ -191,13 +191,16 @@ export async function transcribeDiarized(
     parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\n${language}\r\n`))
   }
 
-  // Известные спикеры — до 4 профилей
+  // Известные спикеры — до 4 профилей.
+  // OpenAI ждёт два JSON-массива:
+  //  known_speaker_names = ["Имя1", ...]
+  //  known_speaker_references = ["data:audio/wav;base64,...", ...]
   const limited = knownSpeakers.slice(0, 4)
-  for (const speaker of limited) {
-    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="known_speaker_names[]"\r\n\r\n${speaker.name}\r\n`))
-    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="known_speaker_references[]"; filename="${speaker.name}.wav"\r\nContent-Type: audio/wav\r\n\r\n`))
-    parts.push(speaker.audio)
-    parts.push(Buffer.from('\r\n'))
+  if (limited.length > 0) {
+    const names = JSON.stringify(limited.map((s) => s.name))
+    const refs = JSON.stringify(limited.map((s) => `data:audio/wav;base64,${s.audio.toString('base64')}`))
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="known_speaker_names"\r\n\r\n${names}\r\n`))
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="known_speaker_references"\r\n\r\n${refs}\r\n`))
   }
 
   parts.push(Buffer.from(`--${boundary}--\r\n`))

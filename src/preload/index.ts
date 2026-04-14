@@ -14,7 +14,7 @@ export interface VoiceTypeAPI {
   getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
   generateMeetingSummary: (id: string) => Promise<MeetingRecord | null>
   getVoiceProfiles: () => Promise<VoiceProfile[]>
-  saveVoiceProfile: (name: string, wavData: ArrayBuffer, durationMs: number, segmentCount: number, sourceMeetingId?: string) => Promise<VoiceProfile>
+  createVoiceProfileFromMeeting: (meetingId: string, speaker: string, name: string) => Promise<{ profile?: VoiceProfile; error?: string }>
   deleteVoiceProfile: (id: string) => Promise<void>
   getVoiceProfileAudio: (fileName: string) => Promise<ArrayBuffer | null>
   onMeetingStateChanged: (callback: (isRecording: boolean) => void) => () => void
@@ -131,8 +131,8 @@ const api: VoiceTypeAPI = {
   generateMeetingSummary: (id) => ipcRenderer.invoke('generate-meeting-summary', id),
 
   getVoiceProfiles: () => ipcRenderer.invoke('get-voice-profiles'),
-  saveVoiceProfile: (name, wavData, durationMs, segmentCount, sourceMeetingId) =>
-    ipcRenderer.invoke('save-voice-profile', name, wavData, durationMs, segmentCount, sourceMeetingId),
+  createVoiceProfileFromMeeting: (meetingId, speaker, name) =>
+    ipcRenderer.invoke('create-voice-profile-from-meeting', meetingId, speaker, name),
   deleteVoiceProfile: (id) => ipcRenderer.invoke('delete-voice-profile', id),
   getVoiceProfileAudio: (fileName) => ipcRenderer.invoke('get-voice-profile-audio', fileName),
 
