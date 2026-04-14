@@ -17,7 +17,7 @@ import type { MeetingRecord } from './services/types'
 import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
 import { saveAudio, loadAudio, deleteAudio } from './services/audio-storage'
-import { createTray, setTrayRecording, updateTrayMenu } from './services/tray'
+import { createTray, setTrayRecording, updateTrayMenu, TrayCallbacks } from './services/tray'
 import { createCircleIcon } from './services/icon'
 import { OVERLAY_HTML } from './overlay.html'
 
@@ -29,7 +29,13 @@ let currentStickyHotkey: string | null = null
 let currentMeetingHotkey: string | null = null
 let isMeetingRecording = false
 let currentOverlayTheme: Record<string, string | number> | null = null
-let trayCallbacks: { toggle: () => void; quit: () => void } | null = null
+let trayCallbacks: TrayCallbacks | null = null
+
+function refreshTrayMenu(): void {
+  if (mainWindow && trayCallbacks) {
+    updateTrayMenu(mainWindow, trayCallbacks, { isMeetingRecording })
+  }
+}
 
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
@@ -189,6 +195,8 @@ function toggleMeetingRecording(): void {
   } else {
     showOverlay('processing')
   }
+
+  refreshTrayMenu()
 }
 
 function toggleRecording(): void {
@@ -245,7 +253,7 @@ function setupIpcHandlers(): void {
     }
 
     store.addHistory(record)
-    if (mainWindow && trayCallbacks) updateTrayMenu(mainWindow, trayCallbacks.toggle, trayCallbacks.quit)
+    refreshTrayMenu()
 
     if (!result.error && settings.autoPaste && result.text.trim()) {
       let finalText = result.text.trim()
@@ -396,7 +404,7 @@ function setupIpcHandlers(): void {
 
     store.deleteHistory(id)
     store.addHistory(updated)
-    if (mainWindow && trayCallbacks) updateTrayMenu(mainWindow, trayCallbacks.toggle, trayCallbacks.quit)
+    refreshTrayMenu()
 
     if (!result.error && settings.autoPaste && result.text.trim()) {
       pasteText(result.text, settings.keepInClipboard)
@@ -465,10 +473,11 @@ app.whenReady().then(() => {
 
   if (mainWindow) {
     trayCallbacks = {
-      toggle: () => toggleRecording(),
+      toggleRecording: () => toggleRecording(),
+      toggleMeeting: () => toggleMeetingRecording(),
       quit: () => { app.isQuitting = true; app.quit() }
     }
-    createTray(mainWindow, trayCallbacks.toggle, trayCallbacks.quit)
+    createTray(mainWindow, trayCallbacks)
   }
 })
 

@@ -6,18 +6,20 @@ let tray: Tray | null = null
 let normalIcon: Electron.NativeImage
 let recordingIcon: Electron.NativeImage
 
-export function createTray(
-  mainWindow: BrowserWindow,
-  onToggleRecording: () => void,
-  onQuit: () => void
-): Tray {
+export interface TrayCallbacks {
+  toggleRecording: () => void
+  toggleMeeting: () => void
+  quit: () => void
+}
+
+export function createTray(mainWindow: BrowserWindow, cb: TrayCallbacks): Tray {
   normalIcon = nativeImage.createFromBuffer(createCircleIcon(232, 114, 90))
   recordingIcon = nativeImage.createFromBuffer(createCircleIcon(251, 191, 36))
 
   tray = new Tray(normalIcon)
   tray.setToolTip('VoiceType — голосовой ввод')
 
-  updateTrayMenu(mainWindow, onToggleRecording, onQuit)
+  updateTrayMenu(mainWindow, cb, { isMeetingRecording: false })
 
   tray.on('double-click', () => {
     mainWindow.show()
@@ -29,8 +31,8 @@ export function createTray(
 
 export function updateTrayMenu(
   mainWindow: BrowserWindow,
-  onToggleRecording: () => void,
-  onQuit: () => void
+  cb: TrayCallbacks,
+  state: { isMeetingRecording: boolean }
 ): void {
   if (!tray) return
 
@@ -38,6 +40,9 @@ export function updateTrayMenu(
   const lastSuccess = history.find((r) => r.status === 'success')
   const lastText = lastSuccess?.text ?? ''
   const truncated = lastText.length > 40 ? lastText.slice(0, 40) + '…' : lastText
+
+  const meetings = store.getMeetings()
+  const lastMeeting = meetings.find((m) => m.status === 'success')
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -47,22 +52,36 @@ export function updateTrayMenu(
         mainWindow.focus()
       }
     },
+    { type: 'separator' },
     {
-      label: 'Запись',
-      click: onToggleRecording
+      label: 'Запись диктовки',
+      click: cb.toggleRecording
+    },
+    {
+      label: state.isMeetingRecording ? '⏺ Остановить запись встречи' : 'Записать встречу',
+      click: cb.toggleMeeting
     },
     { type: 'separator' },
     {
-      label: truncated ? `Копировать: "${truncated}"` : 'Нет записей',
+      label: truncated ? `Копировать последнее: "${truncated}"` : 'Нет записей',
       enabled: !!lastText,
+      click: () => clipboard.writeText(lastText)
+    },
+    {
+      label: lastMeeting ? `Копировать последнюю встречу (${lastMeeting.segments.length} реплик)` : 'Нет встреч',
+      enabled: !!lastMeeting,
       click: () => {
-        clipboard.writeText(lastText)
+        if (!lastMeeting) return
+        const text = lastMeeting.segments
+          .map((s) => `${lastMeeting.speakerNames[s.speaker] ?? s.speaker}: ${s.text}`)
+          .join('\n\n')
+        clipboard.writeText(text)
       }
     },
     { type: 'separator' },
     {
       label: 'Выход',
-      click: onQuit
+      click: cb.quit
     }
   ])
 
