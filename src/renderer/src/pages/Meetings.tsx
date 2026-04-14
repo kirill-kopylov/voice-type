@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy } from 'lucide-react'
 import { MeetingRecord, DialogSegment } from '../types'
 import { formatDateTime, formatDuration } from '../utils/format'
 
@@ -100,6 +100,27 @@ function MeetingCard({
 
       {expanded && (
         <div className="px-4 py-4 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
+          {/* Панель действий — всегда сверху */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <AudioPlayer fileName={m.audioFileName} />
+            {m.status === 'success' && (
+              <button
+                onClick={handleCopyDialog}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
+                style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
+              >
+                <Copy size={12} /> Скопировать диалог
+              </button>
+            )}
+            <button
+              onClick={onDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ml-auto hover:bg-red-500/15"
+              style={{ color: 'var(--text-4)' }}
+            >
+              <Trash2 size={12} /> Удалить
+            </button>
+          </div>
+
           {m.status === 'success' && (
             <>
               {/* Спикеры с редактированием */}
@@ -122,27 +143,10 @@ function MeetingCard({
                   <DialogLine key={i} segment={seg} speakerName={speakerName(seg.speaker)} />
                 ))}
               </div>
-
-              <div className="flex gap-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
-                <button
-                  onClick={handleCopyDialog}
-                  className="px-3 py-1.5 text-xs rounded-lg transition-colors"
-                  style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
-                >
-                  Скопировать диалог
-                </button>
-                <button
-                  onClick={onDelete}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ml-auto hover:bg-red-500/15"
-                  style={{ color: 'var(--text-4)' }}
-                >
-                  <Trash2 size={12} /> Удалить
-                </button>
-              </div>
             </>
           )}
 
-          {m.status === 'error' && (
+          {m.status === 'error' && false && (
             <button
               onClick={onDelete}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors hover:bg-red-500/15"
@@ -192,6 +196,61 @@ function SpeakerTag({ raw, displayName, onRename }: { raw: string; displayName: 
     >
       <span>{displayName}</span>
       <Edit2 size={10} style={{ color: 'var(--text-4)' }} />
+    </button>
+  )
+}
+
+function AudioPlayer({ fileName }: { fileName: string }): JSX.Element {
+  const [playing, setPlaying] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const urlRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) audioRef.current.pause()
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current)
+    }
+  }, [])
+
+  const toggle = async (): Promise<void> => {
+    if (playing) {
+      audioRef.current?.pause()
+      setPlaying(false)
+      return
+    }
+
+    if (audioRef.current && urlRef.current) {
+      audioRef.current.play()
+      setPlaying(true)
+      return
+    }
+
+    setLoading(true)
+    const buf = await window.api.getMeetingAudio(fileName)
+    setLoading(false)
+    if (!buf) return
+
+    const blob = new Blob([buf], { type: 'audio/webm' })
+    const url = URL.createObjectURL(blob)
+    urlRef.current = url
+    const audio = new Audio(url)
+    audio.onended = () => setPlaying(false)
+    audio.onpause = () => setPlaying(false)
+    audio.onplay = () => setPlaying(true)
+    audio.play()
+    audioRef.current = audio
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      disabled={loading}
+      className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50"
+      style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
+    >
+      {playing ? <Pause size={12} /> : <Play size={12} />}
+      {loading ? 'Загрузка...' : playing ? 'Пауза' : 'Прослушать'}
     </button>
   )
 }

@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  desktopCapturer,
   globalShortcut,
   ipcMain,
   clipboard,
@@ -464,6 +465,17 @@ app.whenReady().then(() => {
   // Разрешаем доступ к микрофону для overlay
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(true))
   session.defaultSession.setPermissionCheckHandler(() => true)
+
+  // Захват системного звука для встреч — даём первый screen с loopback audio
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+      // На Windows audio: 'loopback' даёт системный звук
+      callback({ video: sources[0], audio: 'loopback' })
+    }).catch((err) => {
+      console.error('[displayMedia] Ошибка:', err)
+      callback({})
+    })
+  })
 
   createMainWindow()
   createOverlayWindow()
