@@ -5,6 +5,19 @@ export interface DialogSegment {
   end: number
 }
 
+export interface MeetingDecision {
+  text: string
+  assignee?: string
+  deadline?: string
+}
+
+export interface MeetingSummary {
+  brief: string
+  topics: string[]
+  decisions: MeetingDecision[]
+  guessedNames?: Record<string, string>
+}
+
 export interface MeetingRecord {
   id: string
   title: string
@@ -13,8 +26,21 @@ export interface MeetingRecord {
   createdAt: string
   segments: DialogSegment[]
   speakerNames: Record<string, string>
+  summary?: MeetingSummary
+  summaryStatus?: 'pending' | 'done' | 'error'
+  summaryError?: string
   status: 'success' | 'error'
   error?: string
+}
+
+export interface VoiceProfile {
+  id: string
+  name: string
+  audioFileName: string
+  durationMs: number
+  segmentCount: number
+  sourceMeetingId?: string
+  createdAt: string
 }
 
 export interface TranscriptionRecord {
@@ -61,7 +87,13 @@ export interface VoiceTypeAPI {
   deleteMeeting: (id: string) => Promise<void>
   renameMeetingSpeaker: (id: string, oldName: string, newName: string) => Promise<void>
   getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
+  generateMeetingSummary: (id: string) => Promise<MeetingRecord | null>
+  getVoiceProfiles: () => Promise<VoiceProfile[]>
+  saveVoiceProfile: (name: string, wavData: ArrayBuffer, durationMs: number, segmentCount: number, sourceMeetingId?: string) => Promise<VoiceProfile>
+  deleteVoiceProfile: (id: string) => Promise<void>
+  getVoiceProfileAudio: (fileName: string) => Promise<ArrayBuffer | null>
   onMeetingStateChanged: (callback: (isRecording: boolean) => void) => () => void
+  onMeetingUpdated: (callback: (record: MeetingRecord) => void) => () => void
   copyText: (text: string) => Promise<void>
   getAudio: (fileName: string) => Promise<ArrayBuffer | null>
   getSettings: () => Promise<AppSettings>

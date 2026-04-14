@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
-import { StoreSchema, DEFAULT_SETTINGS, TranscriptionRecord, MeetingRecord } from './types'
+import { StoreSchema, DEFAULT_SETTINGS, TranscriptionRecord, MeetingRecord, VoiceProfile } from './types'
 
 const STORE_FILE = 'store.json'
 
@@ -18,7 +18,8 @@ class AppStore {
     const defaults: StoreSchema = {
       settings: { ...DEFAULT_SETTINGS },
       history: [],
-      meetings: []
+      meetings: [],
+      voiceProfiles: []
     }
 
     try {
@@ -27,7 +28,8 @@ class AppStore {
       return {
         settings: { ...defaults.settings, ...parsed.settings },
         history: parsed.history ?? [],
-        meetings: parsed.meetings ?? []
+        meetings: parsed.meetings ?? [],
+        voiceProfiles: parsed.voiceProfiles ?? []
       }
     } catch {
       return defaults
@@ -95,6 +97,25 @@ class AppStore {
 
   getMeeting(id: string): MeetingRecord | undefined {
     return this.data.meetings.find((m) => m.id === id)
+  }
+
+  // Voice profiles
+  getVoiceProfiles(): VoiceProfile[] {
+    return [...this.data.voiceProfiles]
+  }
+
+  addVoiceProfile(profile: VoiceProfile): void {
+    this.data.voiceProfiles.unshift(profile)
+    this.save()
+  }
+
+  deleteVoiceProfile(id: string): void {
+    this.data.voiceProfiles = this.data.voiceProfiles.filter((p) => p.id !== id)
+    this.save()
+  }
+
+  getVoiceProfile(id: string): VoiceProfile | undefined {
+    return this.data.voiceProfiles.find((p) => p.id === id)
   }
 }
 

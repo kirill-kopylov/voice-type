@@ -12,7 +12,13 @@ export interface VoiceTypeAPI {
   deleteMeeting: (id: string) => Promise<void>
   renameMeetingSpeaker: (id: string, oldName: string, newName: string) => Promise<void>
   getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
+  generateMeetingSummary: (id: string) => Promise<MeetingRecord | null>
+  getVoiceProfiles: () => Promise<VoiceProfile[]>
+  saveVoiceProfile: (name: string, wavData: ArrayBuffer, durationMs: number, segmentCount: number, sourceMeetingId?: string) => Promise<VoiceProfile>
+  deleteVoiceProfile: (id: string) => Promise<void>
+  getVoiceProfileAudio: (fileName: string) => Promise<ArrayBuffer | null>
   onMeetingStateChanged: (callback: (isRecording: boolean) => void) => () => void
+  onMeetingUpdated: (callback: (record: MeetingRecord) => void) => () => void
   copyText: (text: string) => Promise<void>
   getAudio: (fileName: string) => Promise<ArrayBuffer | null>
   getSettings: () => Promise<AppSettings>
@@ -45,6 +51,19 @@ interface DialogSegment {
   end: number
 }
 
+interface MeetingDecision {
+  text: string
+  assignee?: string
+  deadline?: string
+}
+
+interface MeetingSummary {
+  brief: string
+  topics: string[]
+  decisions: MeetingDecision[]
+  guessedNames?: Record<string, string>
+}
+
 interface MeetingRecord {
   id: string
   title: string
@@ -53,8 +72,21 @@ interface MeetingRecord {
   createdAt: string
   segments: DialogSegment[]
   speakerNames: Record<string, string>
+  summary?: MeetingSummary
+  summaryStatus?: 'pending' | 'done' | 'error'
+  summaryError?: string
   status: 'success' | 'error'
   error?: string
+}
+
+interface VoiceProfile {
+  id: string
+  name: string
+  audioFileName: string
+  durationMs: number
+  segmentCount: number
+  sourceMeetingId?: string
+  createdAt: string
 }
 
 interface AppSettings {
@@ -96,6 +128,13 @@ const api: VoiceTypeAPI = {
   deleteMeeting: (id) => ipcRenderer.invoke('delete-meeting', id),
   renameMeetingSpeaker: (id, oldName, newName) => ipcRenderer.invoke('rename-meeting-speaker', id, oldName, newName),
   getMeetingAudio: (fileName) => ipcRenderer.invoke('get-meeting-audio', fileName),
+  generateMeetingSummary: (id) => ipcRenderer.invoke('generate-meeting-summary', id),
+
+  getVoiceProfiles: () => ipcRenderer.invoke('get-voice-profiles'),
+  saveVoiceProfile: (name, wavData, durationMs, segmentCount, sourceMeetingId) =>
+    ipcRenderer.invoke('save-voice-profile', name, wavData, durationMs, segmentCount, sourceMeetingId),
+  deleteVoiceProfile: (id) => ipcRenderer.invoke('delete-voice-profile', id),
+  getVoiceProfileAudio: (fileName) => ipcRenderer.invoke('get-voice-profile-audio', fileName),
 
   onMeetingStateChanged: (callback) => {
     const handler = (_event: Electron.IpcRendererEvent, isRecording: boolean): void => {
@@ -103,6 +142,14 @@ const api: VoiceTypeAPI = {
     }
     ipcRenderer.on('meeting-state-changed', handler)
     return () => ipcRenderer.removeListener('meeting-state-changed', handler)
+  },
+
+  onMeetingUpdated: (callback) => {
+    const handler = (_event: Electron.IpcRendererEvent, record: MeetingRecord): void => {
+      callback(record)
+    }
+    ipcRenderer.on('meeting-updated', handler)
+    return () => ipcRenderer.removeListener('meeting-updated', handler)
   },
 
   copyText: (text) => ipcRenderer.invoke('copy-text', text),

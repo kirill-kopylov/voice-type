@@ -5,6 +5,19 @@ export interface DialogSegment {
   end: number
 }
 
+export interface MeetingDecision {
+  text: string
+  assignee?: string
+  deadline?: string
+}
+
+export interface MeetingSummary {
+  brief: string                              // 2-3 предложения
+  topics: string[]
+  decisions: MeetingDecision[]
+  guessedNames?: Record<string, string>      // raw speaker -> guessed name
+}
+
 export interface MeetingRecord {
   id: string
   title: string
@@ -12,9 +25,22 @@ export interface MeetingRecord {
   durationMs: number
   createdAt: string
   segments: DialogSegment[]
-  speakerNames: Record<string, string>  // "Speaker 1" -> "Кирилл"
+  speakerNames: Record<string, string>       // "Speaker 1" -> "Кирилл"
+  summary?: MeetingSummary
+  summaryStatus?: 'pending' | 'done' | 'error'
+  summaryError?: string
   status: 'success' | 'error'
   error?: string
+}
+
+export interface VoiceProfile {
+  id: string
+  name: string                               // "Кирилл"
+  audioFileName: string                      // wav в voice-profiles/
+  durationMs: number
+  segmentCount: number                       // сколько кусков склеено
+  sourceMeetingId?: string
+  createdAt: string
 }
 
 export interface TranscriptionRecord {
@@ -53,6 +79,7 @@ export interface StoreSchema {
   settings: AppSettings
   history: TranscriptionRecord[]
   meetings: MeetingRecord[]
+  voiceProfiles: VoiceProfile[]
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

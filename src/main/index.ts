@@ -13,11 +13,12 @@ import path from 'path'
 import { writeFileSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { store } from './services/store'
-import { transcribeAudio, testConnection, transcribeDiarized } from './services/transcription'
-import type { MeetingRecord } from './services/types'
+import { transcribeAudio, testConnection, transcribeDiarized, KnownSpeaker } from './services/transcription'
+import { generateSummary } from './services/summary'
+import type { MeetingRecord, VoiceProfile } from './services/types'
 import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
-import { saveAudio, loadAudio, deleteAudio } from './services/audio-storage'
+import { saveAudio, loadAudio, deleteAudio, saveProfileAudio, loadProfileAudio, deleteProfileAudio } from './services/audio-storage'
 import { createTray, setTrayRecording, updateTrayMenu, TrayCallbacks } from './services/tray'
 import { createCircleIcon } from './services/icon'
 import { OVERLAY_HTML } from './overlay.html'
@@ -215,6 +216,47 @@ function toggleRecording(): void {
   }
 }
 
+async function runSummary(meetingId: string): Promise<MeetingRecord | null> {
+  const meeting = store.getMeeting(meetingId)
+  if (!meeting || meeting.segments.length === 0) return null
+
+  const settings = store.getSettings()
+  const apiKey = settings.openAiApiKey
+  if (!apiKey) {
+    store.updateMeeting(meetingId, { summaryStatus: 'error', summaryError: 'OpenAI ключ не задан' })
+    const updated = store.getMeeting(meetingId)
+    if (updated) mainWindow?.webContents.send('meeting-updated', updated)
+    return updated ?? null
+  }
+
+  store.updateMeeting(meetingId, { summaryStatus: 'pending', summaryError: undefined })
+
+  const result = await generateSummary(meeting.segments, apiKey, meeting.speakerNames)
+
+  if (result.error || !result.summary) {
+    store.updateMeeting(meetingId, { summaryStatus: 'error', summaryError: result.error })
+  } else {
+    // Применяем угаданные имена там, где их ещё нет
+    const newSpeakerNames = { ...meeting.speakerNames }
+    if (result.summary.guessedNames) {
+      for (const [raw, guessed] of Object.entries(result.summary.guessedNames)) {
+        if (!newSpeakerNames[raw] || newSpeakerNames[raw].startsWith('Speaker')) {
+          newSpeakerNames[raw] = guessed
+        }
+      }
+    }
+    store.updateMeeting(meetingId, {
+      summary: result.summary,
+      summaryStatus: 'done',
+      speakerNames: newSpeakerNames
+    })
+  }
+
+  const updated = store.getMeeting(meetingId)
+  if (updated) mainWindow?.webContents.send('meeting-updated', updated)
+  return updated ?? null
+}
+
 function applyAutoStart(): void {
   // В dev-режиме не трогаем автозапуск — иначе electron.exe попадёт в реестр
   if (process.env.ELECTRON_RENDERER_URL) return
@@ -320,7 +362,28 @@ function setupIpcHandlers(): void {
       return record
     }
 
-    const result = await transcribeDiarized(audioBuffer, apiKey, settings.language)
+    // Подгружаем голосовые профили — до 4
+    const profiles = store.getVoiceProfiles().slice(0, 4)
+    const knownSpeakers: KnownSpeaker[] = []
+    for (const p of profiles) {
+      const audio = loadProfileAudio(p.audioFileName)
+      if (audio) knownSpeakers.push({ name: p.name, audio })
+    }
+    if (knownSpeakers.length > 0) {
+      console.log(`[meeting] Использую ${knownSpeakers.length} голосовых профилей`)
+    }
+
+    const result = await transcribeDiarized(audioBuffer, apiKey, settings.language, knownSpeakers)
+
+    // Если профили использованы — speaker уже содержит имя, копируем в speakerNames
+    const initialSpeakerNames: Record<string, string> = {}
+    if (knownSpeakers.length > 0) {
+      for (const seg of result.segments) {
+        if (seg.speaker && !seg.speaker.startsWith('Speaker')) {
+          initialSpeakerNames[seg.speaker] = seg.speaker
+        }
+      }
+    }
 
     const record: MeetingRecord = {
       id,
@@ -328,7 +391,8 @@ function setupIpcHandlers(): void {
       audioFileName, durationMs,
       createdAt: new Date().toISOString(),
       segments: result.segments,
-      speakerNames: {},
+      speakerNames: initialSpeakerNames,
+      summaryStatus: result.error ? undefined : 'pending',
       status: result.error ? 'error' : 'success',
       error: result.error
     }
@@ -336,7 +400,46 @@ function setupIpcHandlers(): void {
     store.addMeeting(record)
     showOverlay('hidden')
     mainWindow?.webContents.send('meeting-complete', record)
+
+    // Авто-саммари в фоне, не блокируем ответ
+    if (!result.error && result.segments.length > 0) {
+      runSummary(record.id).catch((err) => console.error('[summary] background:', err))
+    }
+
     return record
+  })
+
+  // Воспроизведение саммари по требованию (или повторно)
+  ipcMain.handle('generate-meeting-summary', async (_event, id: string) => {
+    return runSummary(id)
+  })
+
+  // ═══ VOICE PROFILES ═══
+  ipcMain.handle('get-voice-profiles', () => store.getVoiceProfiles())
+
+  ipcMain.handle('save-voice-profile', (_event, name: string, wavData: ArrayBuffer, durationMs: number, segmentCount: number, sourceMeetingId?: string) => {
+    const id = randomUUID()
+    const audioFileName = saveProfileAudio(id, Buffer.from(wavData))
+    const profile: VoiceProfile = {
+      id, name: name.trim() || 'Без имени',
+      audioFileName, durationMs, segmentCount, sourceMeetingId,
+      createdAt: new Date().toISOString()
+    }
+    store.addVoiceProfile(profile)
+    return profile
+  })
+
+  ipcMain.handle('delete-voice-profile', (_event, id: string) => {
+    const p = store.getVoiceProfile(id)
+    if (p) {
+      deleteProfileAudio(p.audioFileName)
+      store.deleteVoiceProfile(id)
+    }
+  })
+
+  ipcMain.handle('get-voice-profile-audio', (_event, fileName: string) => {
+    const buf = loadProfileAudio(fileName)
+    return buf ? buf.buffer : null
   })
 
   ipcMain.handle('get-meetings', () => store.getMeetings())

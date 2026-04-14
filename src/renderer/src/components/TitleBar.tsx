@@ -107,6 +107,11 @@ export function TitleBar({ isRecording, isProcessing, currentTheme, onThemeChang
             document.body
           )}
         </div>
+
+        <div className="titlebar-no-drag ml-2 flex items-center gap-1 px-2 py-1 rounded-md" style={{ color: 'var(--text-4)', background: 'var(--accent-bg)' }}>
+          <span className="text-[10px]">Поиск</span>
+          <kbd className="text-[9px] px-1 rounded" style={{ background: 'var(--surface)' }}>Ctrl+K</kbd>
+        </div>
       </div>
 
       <div className="titlebar-no-drag flex items-center gap-0.5">

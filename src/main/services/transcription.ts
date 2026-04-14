@@ -166,11 +166,17 @@ export async function transcribeAudio(
   }
 }
 
+export interface KnownSpeaker {
+  name: string
+  audio: Buffer  // WAV
+}
+
 // Диаризация через gpt-4o-transcribe-diarize
 export async function transcribeDiarized(
   audioBuffer: Buffer,
   apiKey: string,
-  language: string
+  language: string,
+  knownSpeakers: KnownSpeaker[] = []
 ): Promise<{ segments: DialogSegment[]; error?: string }> {
   const boundary = `----VoiceType${randomUUID().replace(/-/g, '')}`
 
@@ -184,6 +190,16 @@ export async function transcribeDiarized(
   if (language) {
     parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\n${language}\r\n`))
   }
+
+  // Известные спикеры — до 4 профилей
+  const limited = knownSpeakers.slice(0, 4)
+  for (const speaker of limited) {
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="known_speaker_names[]"\r\n\r\n${speaker.name}\r\n`))
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="known_speaker_references[]"; filename="${speaker.name}.wav"\r\nContent-Type: audio/wav\r\n\r\n`))
+    parts.push(speaker.audio)
+    parts.push(Buffer.from('\r\n'))
+  }
+
   parts.push(Buffer.from(`--${boundary}--\r\n`))
 
   const body = Buffer.concat(parts)

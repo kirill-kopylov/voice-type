@@ -4,8 +4,10 @@ import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { History } from './pages/History'
 import { Settings } from './pages/Settings'
-import { TranscriptionRecord, AppSettings, MeetingRecord } from './types'
+import { TranscriptionRecord, AppSettings, MeetingRecord, VoiceProfile } from './types'
 import { Meetings } from './pages/Meetings'
+import { SearchModal } from './components/SearchModal'
+import { extractSpeakerWav } from './utils/audio-wav'
 import { applyTheme, getThemeById } from './themes'
 import { generateNoiseTextures } from './noise'
 
@@ -32,6 +34,10 @@ export function App(): JSX.Element {
   const meetingStartRef = useRef<number>(0)
   const meetingStreamsRef = useRef<MediaStream[]>([])
 
+  // Voice profiles + search
+  const [voiceProfiles, setVoiceProfiles] = useState<VoiceProfile[]>([])
+  const [searchOpen, setSearchOpen] = useState(false)
+
   // Применяем тему
   useEffect(() => {
     const theme = getThemeById(themeId)
@@ -52,10 +58,24 @@ export function App(): JSX.Element {
     if (!window.api) return
     window.api.getHistory().then(setHistory)
     window.api.getMeetings().then(setMeetings)
+    window.api.getVoiceProfiles().then(setVoiceProfiles)
     window.api.getSettings().then((s) => {
       setSettings(s)
       if (s.theme) setThemeId(s.theme)
     })
+  }, [])
+
+  // Ctrl+K — глобальный поиск
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+      if (e.key === 'Escape') setSearchOpen(false)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
   }, [])
 
   useEffect(() => {
@@ -100,7 +120,15 @@ export function App(): JSX.Element {
       }
     })
 
+    const unsubMeetingUpdated = window.api.onMeetingUpdated((updated) => {
+      setMeetings((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
+      if (updated.summaryStatus === 'done') {
+        showToast('Саммари готово', 'success')
+      }
+    })
+
     return () => {
+      unsubMeetingUpdated()
       unsubMeeting()
       unsubRecording()
       unsubTranscription()
@@ -238,6 +266,49 @@ export function App(): JSX.Element {
     ))
   }
 
+  const handleSaveVoiceProfile = async (meetingId: string, speaker: string, name: string): Promise<void> => {
+    const meeting = meetings.find((m) => m.id === meetingId)
+    if (!meeting) return
+
+    const segments = meeting.segments
+      .filter((s) => s.speaker === speaker)
+      .map((s) => ({ start: s.start, end: s.end }))
+
+    if (segments.length === 0) {
+      showToast('Нет сегментов этого спикера', 'error')
+      return
+    }
+
+    showToast('Извлекаю аудио для профиля...', 'success')
+    const audioBuf = await window.api.getMeetingAudio(meeting.audioFileName)
+    if (!audioBuf) {
+      showToast('Аудио файл встречи не найден', 'error')
+      return
+    }
+
+    const wav = await extractSpeakerWav(audioBuf, segments)
+    if (!wav) {
+      showToast('Не хватило аудио для профиля (нужно 3+ секунд речи)', 'error')
+      return
+    }
+
+    const totalDur = segments.reduce((sum, s) => sum + (s.end - s.start), 0) * 1000
+    const profile = await window.api.saveVoiceProfile(name, wav, Math.round(totalDur), segments.length, meetingId)
+    setVoiceProfiles((prev) => [profile, ...prev])
+    showToast(`Голос "${profile.name}" сохранён`, 'success')
+  }
+
+  const handleDeleteVoiceProfile = async (id: string): Promise<void> => {
+    await window.api.deleteVoiceProfile(id)
+    setVoiceProfiles((prev) => prev.filter((p) => p.id !== id))
+  }
+
+  const handleGenerateSummary = async (meetingId: string): Promise<void> => {
+    showToast('Делаю саммари...', 'success')
+    await window.api.generateMeetingSummary(meetingId)
+    // ответ придёт через onMeetingUpdated
+  }
+
   const handleClearHistory = async (): Promise<void> => {
     await window.api.clearHistory()
     setHistory([])
@@ -278,9 +349,13 @@ export function App(): JSX.Element {
       {page === 'meetings' && (
         <Meetings
           meetings={meetings}
+          voiceProfiles={voiceProfiles}
           isRecording={isMeetingRecording}
           onDelete={handleDeleteMeeting}
           onRenameSpeaker={handleRenameSpeaker}
+          onSaveVoiceProfile={handleSaveVoiceProfile}
+          onDeleteVoiceProfile={handleDeleteVoiceProfile}
+          onGenerateSummary={handleGenerateSummary}
           showToast={showToast}
         />
       )}
@@ -295,6 +370,18 @@ export function App(): JSX.Element {
         >
           {toast.message}
         </div>
+      )}
+
+      {searchOpen && (
+        <SearchModal
+          history={history}
+          meetings={meetings}
+          onClose={() => setSearchOpen(false)}
+          onNavigate={(target) => {
+            setPage(target.page)
+            setSearchOpen(false)
+          }}
+        />
       )}
     </Layout>
   )
