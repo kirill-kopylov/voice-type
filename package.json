@@ -9,6 +9,8 @@
     "preview": "electron-vite preview",
     "pack": "electron-vite build && electron-builder --dir",
     "dist": "electron-vite build && electron-builder",
+    "install-app": "start \"\" \"release\\VoiceType-Setup.exe\"",
+    "release": "npm run dist && npm run install-app",
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {

@@ -42,6 +42,8 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
   const [showKey1, setShowKey1] = useState(false)
   const [showKey2, setShowKey2] = useState(false)
   const [showKey3, setShowKey3] = useState(false)
+  const [showTgToken, setShowTgToken] = useState(false)
+  const [allowedIdsDraft, setAllowedIdsDraft] = useState(settings.telegramAllowedUserIds.join(', '))
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null)
 
@@ -140,6 +142,55 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
           <Toggle label="Захватывать системный звук (голос коллеги)" checked={settings.captureSystemAudio} onChange={() => onUpdate({ captureSystemAudio: !settings.captureSystemAudio })} />
         </div>
       </Section>
+
+      <Section title="Telegram-бот">
+        <div className="space-y-4">
+          <Toggle
+            label="Слежение за ботом"
+            checked={settings.telegramEnabled}
+            onChange={() => onUpdate({ telegramEnabled: !settings.telegramEnabled })}
+          />
+          <p className="text-[10px] -mt-2" style={{ color: 'var(--text-4)' }}>
+            Бот слушает входящие. Текст вставляется как есть, голосовое — транскрибируется и вставляется. В клавиатуре бота — кнопка «Отправить» (Enter).
+          </p>
+
+          <div style={{ opacity: settings.telegramEnabled ? 1 : 0.45 }}>
+            <label className="block text-xs mb-1.5" style={{ color: 'var(--text-3)' }}>Bot token</label>
+            <TokenInput
+              value={settings.telegramBotToken}
+              show={showTgToken}
+              toggle={() => setShowTgToken(!showTgToken)}
+              onChange={(v) => onUpdate({ telegramBotToken: v.trim() })}
+            />
+          </div>
+
+          <div style={{ opacity: settings.telegramEnabled ? 1 : 0.45 }}>
+            <label className="block text-xs mb-1.5" style={{ color: 'var(--text-3)' }}>Разрешённые user ID (через запятую)</label>
+            <input
+              type="text"
+              value={allowedIdsDraft}
+              onChange={(e) => setAllowedIdsDraft(e.target.value)}
+              onBlur={() => {
+                const parsed = allowedIdsDraft
+                  .split(/[,\s]+/)
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .map((s) => Number(s))
+                  .filter((n) => Number.isFinite(n) && n > 0)
+                onUpdate({ telegramAllowedUserIds: parsed })
+                // Нормализуем поле — выкидываем мусор и пробелы
+                setAllowedIdsDraft(parsed.join(', '))
+              }}
+              className={inputClass}
+              style={inputStyle}
+              placeholder="236170977, 123456789"
+            />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>
+              Узнать свой ID: напиши боту @userinfobot. Бот реагирует только на эти ID — все остальные игнорируются.
+            </p>
+          </div>
+        </div>
+      </Section>
     </div>
   )
 }
@@ -166,6 +217,24 @@ function KeyInput({ label, value, show, toggle, onChange, ph, active }: { label:
           className={`${inputClass} pr-10 font-mono`} style={inputStyle} />
         <button onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-4)' }}>{show ? <EyeOff size={15} /> : <Eye size={15} />}</button>
       </div>
+    </div>
+  )
+}
+
+function TokenInput({ value, show, toggle, onChange }: { value: string; show: boolean; toggle: () => void; onChange: (v: string) => void }): JSX.Element {
+  return (
+    <div className="relative">
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="123456:ABC..."
+        className={`${inputClass} pr-10 font-mono`}
+        style={inputStyle}
+      />
+      <button onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-4)' }}>
+        {show ? <EyeOff size={15} /> : <Eye size={15} />}
+      </button>
     </div>
   )
 }

@@ -31,7 +31,8 @@ export function installDevMock(): void {
     autoEnter: true, autoEnterTriggers: 'enter',
     stickyWindow: false, stickyHotkey: '',
     meetingHotkey: '', captureSystemAudio: true,
-    autoStart: false, theme: 'sunset'
+    autoStart: false, theme: 'sunset',
+    telegramEnabled: false, telegramBotToken: '', telegramAllowedUserIds: []
   }
 
   // Валидный WAV с тишиной на 15 секунд — decodeAudioData разберёт

@@ -12,17 +12,26 @@ interface TranscriptionResult {
   error?: string
 }
 
+// Формат аудио для multipart-запроса. Whisper API ориентируется по расширению файла.
+export interface AudioFormat {
+  filename: string
+  mimeType: string
+}
+
+const DEFAULT_AUDIO_FORMAT: AudioFormat = { filename: 'recording.webm', mimeType: 'audio/webm' }
+
 // OpenAI — multipart/form-data на /audio/transcriptions
 async function transcribeOpenAI(
   audioBuffer: Buffer,
   apiKey: string,
   model: string,
-  language: string
+  language: string,
+  format: AudioFormat
 ): Promise<TranscriptionResult> {
   const boundary = `----VoiceType${randomUUID().replace(/-/g, '')}`
 
   const parts: Buffer[] = []
-  parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="recording.webm"\r\nContent-Type: audio/webm\r\n\r\n`))
+  parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${format.filename}"\r\nContent-Type: ${format.mimeType}\r\n\r\n`))
   parts.push(audioBuffer)
   parts.push(Buffer.from('\r\n'))
   parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\n${model || 'whisper-1'}\r\n`))
@@ -54,11 +63,12 @@ async function transcribeGroq(
   audioBuffer: Buffer,
   apiKey: string,
   model: string,
-  language: string
+  language: string,
+  format: AudioFormat
 ): Promise<TranscriptionResult> {
   const boundary = `----VoiceType${randomUUID().replace(/-/g, '')}`
   const parts: Buffer[] = []
-  parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="recording.webm"\r\nContent-Type: audio/webm\r\n\r\n`))
+  parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${format.filename}"\r\nContent-Type: ${format.mimeType}\r\n\r\n`))
   parts.push(audioBuffer)
   parts.push(Buffer.from('\r\n'))
   parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\n${model || 'whisper-large-v3-turbo'}\r\n`))
@@ -90,11 +100,14 @@ async function transcribeOpenRouter(
   audioBuffer: Buffer,
   apiKey: string,
   model: string,
-  language: string
+  language: string,
+  format: AudioFormat
 ): Promise<TranscriptionResult> {
   const base64Audio = audioBuffer.toString('base64')
 
   const langHint = language === 'ru' ? 'Russian' : language === 'en' ? 'English' : language
+  // OpenRouter принимает 'webm' или 'wav' — для ogg/opus отправляем как webm-совместимый поток
+  const orFormat = format.filename.endsWith('.wav') ? 'wav' : 'webm'
   const requestBody = {
     model: model || 'openai/whisper-1',
     messages: [
@@ -109,7 +122,7 @@ async function transcribeOpenRouter(
             type: 'input_audio',
             input_audio: {
               data: base64Audio,
-              format: 'webm'
+              format: orFormat
             }
           }
         ]
@@ -146,7 +159,8 @@ function getApiKey(settings: AppSettings): string {
 
 export async function transcribeAudio(
   audioBuffer: Buffer,
-  settings: AppSettings
+  settings: AppSettings,
+  format: AudioFormat = DEFAULT_AUDIO_FORMAT
 ): Promise<TranscriptionResult> {
   const apiKey = getApiKey(settings)
 
@@ -154,16 +168,16 @@ export async function transcribeAudio(
     return { text: '', error: `API ключ для ${settings.provider} не задан` }
   }
 
-  console.log(`[transcribe] ${audioBuffer.length} байт, ${settings.provider}, модель: ${settings.model}`)
+  console.log(`[transcribe] ${audioBuffer.length} байт, ${settings.provider}, модель: ${settings.model}, формат: ${format.filename}`)
 
   try {
     if (settings.provider === 'openrouter') {
-      return await transcribeOpenRouter(audioBuffer, apiKey, settings.model, settings.language)
+      return await transcribeOpenRouter(audioBuffer, apiKey, settings.model, settings.language, format)
     }
     if (settings.provider === 'groq') {
-      return await transcribeGroq(audioBuffer, apiKey, settings.model, settings.language)
+      return await transcribeGroq(audioBuffer, apiKey, settings.model, settings.language, format)
     }
-    return await transcribeOpenAI(audioBuffer, apiKey, settings.model, settings.language)
+    return await transcribeOpenAI(audioBuffer, apiKey, settings.model, settings.language, format)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error(`[transcribe] Ошибка:`, message)

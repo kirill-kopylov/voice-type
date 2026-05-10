@@ -23,6 +23,7 @@ import { saveAudio, loadAudio, deleteAudio, saveProfileAudio, loadProfileAudio, 
 import { createTray, setTrayRecording, updateTrayMenu, TrayCallbacks } from './services/tray'
 import { createCircleIcon } from './services/icon'
 import { OVERLAY_HTML } from './overlay.html'
+import { telegramBot } from './services/telegram-bot'
 
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
@@ -268,6 +269,15 @@ function applyAutoStart(): void {
 
   const settings = store.getSettings()
   app.setLoginItemSettings({ openAtLogin: settings.autoStart })
+}
+
+function applyTelegramBot(): void {
+  const settings = store.getSettings()
+  if (settings.telegramEnabled && settings.telegramBotToken && settings.telegramAllowedUserIds.length > 0) {
+    telegramBot.start(settings.telegramBotToken, settings.telegramAllowedUserIds)
+  } else {
+    telegramBot.stop()
+  }
 }
 
 function setupIpcHandlers(): void {
@@ -626,6 +636,9 @@ function setupIpcHandlers(): void {
     const updated = store.updateSettings(partial)
     if ('hotkey' in partial || 'stickyWindow' in partial || 'stickyHotkey' in partial || 'meetingHotkey' in partial) registerHotkey()
     if ('autoStart' in partial) applyAutoStart()
+    if ('telegramEnabled' in partial || 'telegramBotToken' in partial || 'telegramAllowedUserIds' in partial) {
+      applyTelegramBot()
+    }
     return updated
   })
 
@@ -668,6 +681,7 @@ app.whenReady().then(() => {
   setupIpcHandlers()
   registerHotkey()
   applyAutoStart()
+  applyTelegramBot()
 
   if (mainWindow) {
     trayCallbacks = {
@@ -679,7 +693,7 @@ app.whenReady().then(() => {
   }
 })
 
-app.on('before-quit', () => { app.isQuitting = true })
+app.on('before-quit', () => { app.isQuitting = true; telegramBot.stop() })
 app.on('will-quit', () => { globalShortcut.unregisterAll() })
 app.on('window-all-closed', () => {})
 

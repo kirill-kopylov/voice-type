@@ -73,6 +73,9 @@ export interface AppSettings {
   captureSystemAudio: boolean
   autoStart: boolean
   theme: string
+  telegramEnabled: boolean
+  telegramBotToken: string
+  telegramAllowedUserIds: number[]
 }
 
 export interface StoreSchema {
@@ -99,5 +102,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   meetingHotkey: 'CommandOrControl+Shift+M',
   captureSystemAudio: true,
   theme: 'sunset',
-  autoStart: false
+  autoStart: false,
+  telegramEnabled: false,
+  telegramBotToken: '',
+  telegramAllowedUserIds: []
 }

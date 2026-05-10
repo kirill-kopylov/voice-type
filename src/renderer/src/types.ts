@@ -73,6 +73,9 @@ export interface AppSettings {
   captureSystemAudio: boolean
   autoStart: boolean
   theme: string
+  telegramEnabled: boolean
+  telegramBotToken: string
+  telegramAllowedUserIds: number[]
 }
 
 export interface VoiceTypeAPI {

@@ -108,6 +108,9 @@ interface AppSettings {
   captureSystemAudio: boolean
   autoStart: boolean
   theme: string
+  telegramEnabled: boolean
+  telegramBotToken: string
+  telegramAllowedUserIds: number[]
 }
 
 const api: VoiceTypeAPI = {
