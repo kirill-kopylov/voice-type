@@ -64,14 +64,14 @@ export function App(): JSX.Element {
     })
   }, [])
 
-  // Ctrl+K — глобальный поиск
+  // Ctrl+K — глобальный поиск (e.code не зависит от раскладки клавиатуры)
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') {
         e.preventDefault()
         setSearchOpen(true)
       }
-      if (e.key === 'Escape') setSearchOpen(false)
+      if (e.code === 'Escape') setSearchOpen(false)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -321,7 +321,7 @@ export function App(): JSX.Element {
   }
 
   return (
-    <Layout page={page} onPageChange={setPage} isRecording={isRecording} isProcessing={isProcessing} hotkey={settings?.hotkey ?? ''} currentTheme={themeId} onThemeChange={handleThemeChange} titlebarConfig={getThemeById(themeId).titlebar} decor={getThemeById(themeId).decor}>
+    <Layout page={page} onPageChange={setPage} isRecording={isRecording} isProcessing={isProcessing} hotkey={settings?.hotkey ?? ''} currentTheme={themeId} onThemeChange={handleThemeChange} titlebarConfig={getThemeById(themeId).titlebar} decor={getThemeById(themeId).decor} onOpenSearch={() => setSearchOpen(true)}>
       {page === 'dashboard' && (
         <Dashboard
           isRecording={isRecording}

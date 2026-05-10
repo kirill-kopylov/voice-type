@@ -16,12 +16,13 @@ interface LayoutProps {
   onThemeChange: (id: string) => void
   titlebarConfig: ThemeTitlebar
   decor?: 'moon'
+  onOpenSearch: () => void
 }
 
-export function Layout({ children, page, onPageChange, isRecording, isProcessing, hotkey, currentTheme, onThemeChange, titlebarConfig, decor }: LayoutProps): JSX.Element {
+export function Layout({ children, page, onPageChange, isRecording, isProcessing, hotkey, currentTheme, onThemeChange, titlebarConfig, decor, onOpenSearch }: LayoutProps): JSX.Element {
   return (
     <div className="h-screen flex flex-col relative">
-      <TitleBar isRecording={isRecording} isProcessing={isProcessing} currentTheme={currentTheme} onThemeChange={onThemeChange} titlebarConfig={titlebarConfig} />
+      <TitleBar isRecording={isRecording} isProcessing={isProcessing} currentTheme={currentTheme} onThemeChange={onThemeChange} titlebarConfig={titlebarConfig} onOpenSearch={onOpenSearch} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar page={page} onPageChange={onPageChange} hotkey={hotkey} />
         <main className="flex-1 overflow-y-auto p-8 relative">

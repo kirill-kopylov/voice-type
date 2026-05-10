@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Fuse from 'fuse.js'
 import { Search, X, Clock, Users, FileText } from 'lucide-react'
 import { TranscriptionRecord, MeetingRecord, Page } from '../types'
+import { Modal } from './Modal'
 
 interface SearchHit {
   type: 'transcription' | 'meeting' | 'segment' | 'summary'
@@ -85,18 +86,12 @@ export function SearchModal({ history, meetings, onClose, onNavigate }: SearchMo
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-start justify-center pt-24"
-      style={{ background: 'rgba(0,0,0,0.55)' }}
-      onClick={onClose}
-    >
+    <Modal onClose={onClose} align="top" topOffset={96}>
       <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl mx-4 rounded-2xl overflow-hidden glass"
+        className="w-[640px] max-w-[90vw] rounded-2xl overflow-hidden"
         style={{
           background: 'var(--surface-strong)',
           border: '1px solid var(--border)',
-          backdropFilter: 'blur(16px)',
           boxShadow: '0 16px 48px rgba(0,0,0,0.4)'
         }}
       >
@@ -153,7 +148,7 @@ export function SearchModal({ history, meetings, onClose, onNavigate }: SearchMo
           ))}
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 

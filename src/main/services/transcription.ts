@@ -1,6 +1,11 @@
 import { AppSettings, DialogSegment } from './types'
 import { randomUUID } from 'crypto'
 import { net } from 'electron'
+import { chunkWebmBySilence } from './chunk-audio'
+import { extractSpeakerSegments } from './extract-speaker'
+
+// Лимит модели gpt-4o-transcribe-diarize — 1400с
+const DIARIZE_MAX_SEC = 1380
 
 interface TranscriptionResult {
   text: string
@@ -171,8 +176,79 @@ export interface KnownSpeaker {
   audio: Buffer  // WAV
 }
 
-// Диаризация через gpt-4o-transcribe-diarize
+// Диаризация через gpt-4o-transcribe-diarize.
+// При превышении лимита модели режет на куски по ближайшей тишине и склеивает результат.
 export async function transcribeDiarized(
+  audioBuffer: Buffer,
+  apiKey: string,
+  language: string,
+  knownSpeakers: KnownSpeaker[] = []
+): Promise<{ segments: DialogSegment[]; error?: string }> {
+  try {
+    const chunks = await chunkWebmBySilence(audioBuffer, DIARIZE_MAX_SEC)
+    if (chunks.length === 1) {
+      return diarizeOnce(chunks[0].buffer, apiKey, language, knownSpeakers)
+    }
+
+    console.log(`[diarize] Файл разбит на ${chunks.length} кусков`)
+
+    // Прогрессивное обучение: после каждого куска извлекаем сэмплы голосов
+    // неизвестных спикеров и передаём как known_speaker_references в следующий.
+    // Так "Speaker 1" из первого куска и второго — это тот же человек по голосу.
+    const knownPool: KnownSpeaker[] = [...knownSpeakers]
+    let syntheticCounter = 1
+    const all: DialogSegment[] = []
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i]
+      console.log(`[diarize] Кусок ${i + 1}/${chunks.length}: ${chunk.startSec.toFixed(1)}-${chunk.endSec.toFixed(1)}с, известных голосов: ${knownPool.length}`)
+      const res = await diarizeOnce(chunk.buffer, apiKey, language, knownPool.slice(0, 4))
+      if (res.error) return { segments: [], error: `Кусок ${i + 1}: ${res.error}` }
+
+      // Группируем сегменты по спикеру в пределах куска
+      const bySpeaker = new Map<string, DialogSegment[]>()
+      for (const seg of res.segments) {
+        const arr = bySpeaker.get(seg.speaker) ?? []
+        arr.push(seg)
+        bySpeaker.set(seg.speaker, arr)
+      }
+
+      for (const [label, segs] of bySpeaker) {
+        let finalName = label
+        const isGeneric = /^Speaker\s/i.test(label)
+
+        // Если спикер не распознан и в пуле есть место — извлекаем сэмпл и заводим синтетический профиль
+        if (isGeneric && knownPool.length < 4) {
+          const sample = await extractSpeakerSegments(
+            chunk.buffer,
+            segs.map((s) => ({ start: s.start, end: s.end }))
+          )
+          if (sample) {
+            finalName = `Говорящий ${syntheticCounter++}`
+            knownPool.push({ name: finalName, audio: sample })
+            console.log(`[diarize] Новый голос: "${finalName}" (сэмпл из куска ${i + 1})`)
+          }
+        }
+
+        for (const seg of segs) {
+          all.push({
+            speaker: finalName,
+            text: seg.text,
+            start: seg.start + chunk.startSec,
+            end: seg.end + chunk.startSec
+          })
+        }
+      }
+    }
+    return { segments: all }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[diarize] Ошибка чанкинга:', message)
+    return { segments: [], error: `Ошибка разбиения аудио: ${message}` }
+  }
+}
+
+async function diarizeOnce(
   audioBuffer: Buffer,
   apiKey: string,
   language: string,

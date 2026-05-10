@@ -9,9 +9,10 @@ interface TitleBarProps {
   currentTheme: string
   onThemeChange: (id: string) => void
   titlebarConfig: ThemeTitlebar
+  onOpenSearch: () => void
 }
 
-export function TitleBar({ isRecording, isProcessing, currentTheme, onThemeChange, titlebarConfig }: TitleBarProps): JSX.Element {
+export function TitleBar({ isRecording, isProcessing, currentTheme, onThemeChange, titlebarConfig, onOpenSearch }: TitleBarProps): JSX.Element {
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -108,10 +109,17 @@ export function TitleBar({ isRecording, isProcessing, currentTheme, onThemeChang
           )}
         </div>
 
-        <div className="titlebar-no-drag ml-2 flex items-center gap-1 px-2 py-1 rounded-md" style={{ color: 'var(--text-4)', background: 'var(--accent-bg)' }}>
+        <button
+          onClick={onOpenSearch}
+          className="titlebar-no-drag ml-2 flex items-center gap-1 px-2 py-1 rounded-md transition-colors cursor-pointer"
+          style={{ color: 'var(--text-4)', background: 'var(--accent-bg)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-bg-hover)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent-bg)' }}
+          title="Глобальный поиск"
+        >
           <span className="text-[10px]">Поиск</span>
           <kbd className="text-[9px] px-1 rounded" style={{ background: 'var(--surface)' }}>Ctrl+K</kbd>
-        </div>
+        </button>
       </div>
 
       <div className="titlebar-no-drag flex items-center gap-0.5">
