@@ -52,6 +52,15 @@ interface TelegramResponse<T> {
   description?: string
 }
 
+// Колбэк фиксации транскрипции в истории. Внедряется из main-процесса —
+// бот не имеет прямого доступа к окну и трею, поэтому запись идёт через него.
+export type TranscriptionRecorder = (
+  audioBuffer: Buffer,
+  result: { text: string; error?: string },
+  durationMs: number,
+  audioExt?: string
+) => void
+
 class TelegramBotService {
   private token = ''
   private allowedUserIds: number[] = []
@@ -59,6 +68,11 @@ class TelegramBotService {
   private pollAbort: AbortController | null = null
   private running = false
   private stopRequested = false
+  private recorder: TranscriptionRecorder | null = null
+
+  setRecorder(recorder: TranscriptionRecorder): void {
+    this.recorder = recorder
+  }
 
   start(token: string, allowedUserIds: number[]): void {
     if (this.running && this.token === token && this.sameWhitelist(allowedUserIds)) {
@@ -181,6 +195,11 @@ class TelegramBotService {
       // Telegram отдаёт voice как OGG/Opus, audio может быть mp3/m4a/ogg
       const format = this.detectAudioFormat(voice)
       const result = await transcribeAudio(buffer, settings, format)
+
+      // Фиксируем в истории тем же путём, что и запись по горячей клавише —
+      // включая ошибочные результаты (как в обычном потоке), чтобы их можно было повторить
+      const audioExt = format.filename.split('.').pop() ?? 'ogg'
+      this.recorder?.(buffer, result, Math.round((voice.duration ?? 0) * 1000), audioExt)
 
       if (result.error || !result.text.trim()) {
         await this.sendKeyboard(chatId, `❌ ${result.error ?? 'Пустой результат'}`).catch(() => undefined)

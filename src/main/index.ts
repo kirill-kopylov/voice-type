@@ -16,7 +16,7 @@ import { store } from './services/store'
 import { transcribeAudio, testConnection, transcribeDiarized, KnownSpeaker } from './services/transcription'
 import { generateSummary } from './services/summary'
 import { extractSpeakerSegments } from './services/extract-speaker'
-import type { MeetingRecord, VoiceProfile } from './services/types'
+import type { MeetingRecord, VoiceProfile, TranscriptionRecord } from './services/types'
 import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
 import { saveAudio, loadAudio, deleteAudio, saveProfileAudio, loadProfileAudio, deleteProfileAudio } from './services/audio-storage'
@@ -280,6 +280,36 @@ function applyTelegramBot(): void {
   }
 }
 
+// Единый путь записи транскрипции в историю: сохранить аудио, добавить запись,
+// обновить трей и уведомить интерфейс. Используется и горячей клавишей, и Telegram-ботом.
+function recordTranscription(
+  audioBuffer: Buffer,
+  result: { text: string; error?: string },
+  durationMs: number,
+  audioExt = 'webm'
+): TranscriptionRecord {
+  const settings = store.getSettings()
+  const id = randomUUID()
+  const audioFileName = saveAudio(id, audioBuffer, audioExt)
+
+  const record: TranscriptionRecord = {
+    id,
+    text: result.text,
+    audioFileName,
+    durationMs,
+    createdAt: new Date().toISOString(),
+    provider: settings.provider as TranscriptionRecord['provider'],
+    model: settings.model,
+    status: result.error ? 'error' : 'success',
+    error: result.error
+  }
+
+  store.addHistory(record)
+  refreshTrayMenu()
+  mainWindow?.webContents.send('transcription-complete', record)
+  return record
+}
+
 function setupIpcHandlers(): void {
   // Тема overlay — из renderer
   ipcMain.on('set-overlay-theme', (_event, config: Record<string, string | number>) => {
@@ -292,26 +322,10 @@ function setupIpcHandlers(): void {
   ipcMain.handle('submit-audio', async (_event, audioData: ArrayBuffer, durationMs: number) => {
     console.log(`[ipc] submit-audio: ${audioData.byteLength} байт, ${durationMs}мс`)
     const settings = store.getSettings()
-    const id = randomUUID()
     const audioBuffer = Buffer.from(audioData)
 
-    const audioFileName = saveAudio(id, audioBuffer)
     const result = await transcribeAudio(audioBuffer, settings)
-
-    const record = {
-      id,
-      text: result.text,
-      audioFileName,
-      durationMs,
-      createdAt: new Date().toISOString(),
-      provider: settings.provider,
-      model: settings.model,
-      status: result.error ? 'error' as const : 'success' as const,
-      error: result.error
-    }
-
-    store.addHistory(record)
-    refreshTrayMenu()
+    const record = recordTranscription(audioBuffer, result, durationMs)
 
     if (!result.error && settings.autoPaste && result.text.trim()) {
       let finalText = result.text.trim()
@@ -351,7 +365,6 @@ function setupIpcHandlers(): void {
     }
 
     showOverlay('hidden')
-    mainWindow?.webContents.send('transcription-complete', record)
     return record
   })
 
@@ -681,6 +694,8 @@ app.whenReady().then(() => {
   setupIpcHandlers()
   registerHotkey()
   applyAutoStart()
+  // Голосовые из Telegram фиксируются в истории тем же путём, что и запись по горячей клавише
+  telegramBot.setRecorder(recordTranscription)
   applyTelegramBot()
 
   if (mainWindow) {

@@ -39,8 +39,8 @@ export function deleteProfileAudio(fileName: string): void {
   }
 }
 
-export function saveAudio(id: string, buffer: Buffer): string {
-  const fileName = `${id}.webm`
+export function saveAudio(id: string, buffer: Buffer, ext = 'webm'): string {
+  const fileName = `${id}.${ext}`
   const filePath = path.join(getAudioDir(), fileName)
   fs.writeFileSync(filePath, buffer)
   return fileName

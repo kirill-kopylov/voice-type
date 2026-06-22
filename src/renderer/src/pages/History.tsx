@@ -30,7 +30,7 @@ export function History({ history, onDelete, onClear, onRetry, showToast }: Hist
     const buf = await window.api.getAudio(record.audioFileName)
     if (!buf) { showToast('Аудио не найдено', 'error'); return }
     if (audioRef.current) audioRef.current.pause()
-    const blob = new Blob([buf], { type: 'audio/webm' })
+    const blob = new Blob([buf], { type: audioMimeFor(record.audioFileName) })
     const url = URL.createObjectURL(blob)
     const audio = new Audio(url)
     audio.onended = () => { setPlayingId(null); URL.revokeObjectURL(url) }
@@ -109,6 +109,19 @@ export function History({ history, onDelete, onClear, onRetry, showToast }: Hist
       )}
     </div>
   )
+}
+
+// Аудио из Telegram приходит в ogg/mp3/m4a/wav, запись по хоткею — в webm.
+// Тип берём по расширению файла, чтобы плеер декодировал корректно.
+function audioMimeFor(fileName: string): string {
+  const ext = fileName.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'ogg': return 'audio/ogg'
+    case 'mp3': return 'audio/mpeg'
+    case 'm4a': return 'audio/mp4'
+    case 'wav': return 'audio/wav'
+    default: return 'audio/webm'
+  }
 }
 
 function Btn({ onClick, icon: Icon, accent, children }: { onClick: () => void; icon: typeof Play; accent?: boolean; children: React.ReactNode }): JSX.Element {
