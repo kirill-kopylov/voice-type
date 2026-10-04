@@ -206,6 +206,9 @@ async function groupVoices(
   return validateGroups(parsed.groups ?? [], candidates, new Set(references.map((v) => v.name)))
 }
 
+/** Модель часто отвечает меткой как в подписи к аудио («Voice 0:1»), а не голым ключом. */
+const voiceKeyFromLabel = (label: string) => label.trim().replace(/^voice\s+/i, '').replace(/\s*\(part \d+\)$/i, '')
+
 /** Ответу модели не доверяем: голоса одного куска не могут быть одним человеком, имя профиля — одно, пропавшие голоса остаются отдельными. */
 function validateGroups(
   raw: Array<{ voices?: string[]; reference?: string | null }>,
@@ -221,7 +224,8 @@ function validateGroups(
     const reference = item.reference && referenceNames.has(item.reference) && !usedReferences.has(item.reference) ? item.reference : null
     const partsInGroup = new Set<number>()
     const keys: string[] = []
-    for (const key of item.voices ?? []) {
+    for (const label of item.voices ?? []) {
+      const key = voiceKeyFromLabel(label)
       const part = partOf.get(key)
       if (part === undefined || placed.has(key)) continue
       placed.add(key)
