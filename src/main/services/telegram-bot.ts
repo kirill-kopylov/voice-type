@@ -1,8 +1,6 @@
 import { net } from 'electron'
-import { store } from './store'
-import { transcribeAudio } from './transcription'
-import { pasteText, simulateEnter } from './paste'
-import { pasteToStickyWindow, getStickyHwnd } from './sticky-window'
+import { simulateEnter } from './paste'
+import { detectAudioFormat, handleRemoteVoice, insertTextIntoActiveWindow, textPreview } from './remote-input'
 
 // Текст кнопки в reply-клавиатуре. Получив такое сообщение, бот эмулирует Enter в активном окне.
 const SEND_BUTTON_LABEL = 'Отправить'
@@ -39,6 +37,8 @@ interface TelegramMessage {
 interface TelegramUpdate {
   update_id: number
   message?: TelegramMessage
+  // Посты в канале-ретрансляторе: так диктует телефон (там пишет второй бот, а не пользователь)
+  channel_post?: TelegramMessage
 }
 
 interface TelegramFile {
@@ -52,30 +52,17 @@ interface TelegramResponse<T> {
   description?: string
 }
 
-// Колбэк фиксации транскрипции в истории. Внедряется из main-процесса —
-// бот не имеет прямого доступа к окну и трею, поэтому запись идёт через него.
-export type TranscriptionRecorder = (
-  audioBuffer: Buffer,
-  result: { text: string; error?: string },
-  durationMs: number,
-  audioExt?: string
-) => void
-
 class TelegramBotService {
   private token = ''
   private allowedUserIds: number[] = []
+  private relayChannelId = 0
   private offset = 0
   private pollAbort: AbortController | null = null
   private running = false
   private stopRequested = false
-  private recorder: TranscriptionRecorder | null = null
 
-  setRecorder(recorder: TranscriptionRecorder): void {
-    this.recorder = recorder
-  }
-
-  start(token: string, allowedUserIds: number[]): void {
-    if (this.running && this.token === token && this.sameWhitelist(allowedUserIds)) {
+  start(token: string, allowedUserIds: number[], relayChannelId: number): void {
+    if (this.running && this.token === token && this.relayChannelId === relayChannelId && this.sameWhitelist(allowedUserIds)) {
       // Ничего не изменилось — не дёргаем ботa
       return
     }
@@ -85,6 +72,7 @@ class TelegramBotService {
 
     this.token = token
     this.allowedUserIds = [...allowedUserIds]
+    this.relayChannelId = relayChannelId
     this.offset = 0
     this.stopRequested = false
     this.running = true
@@ -126,6 +114,7 @@ class TelegramBotService {
               console.error('[telegram] Ошибка обработки сообщения:', err)
             )
           }
+          if (upd.channel_post) this.handleRelayPost(upd.channel_post)
         }
       } catch (err) {
         if (this.stopRequested) break
@@ -139,7 +128,7 @@ class TelegramBotService {
 
   private async getUpdates(): Promise<TelegramUpdate[]> {
     this.pollAbort = new AbortController()
-    const url = `https://api.telegram.org/bot${this.token}/getUpdates?timeout=${LONG_POLL_TIMEOUT_SEC}&offset=${this.offset}&allowed_updates=${encodeURIComponent('["message"]')}`
+    const url = `https://api.telegram.org/bot${this.token}/getUpdates?timeout=${LONG_POLL_TIMEOUT_SEC}&offset=${this.offset}&allowed_updates=${encodeURIComponent('["message","channel_post"]')}`
 
     const res = await net.fetch(url, { signal: this.pollAbort.signal })
     if (!res.ok) {
@@ -150,6 +139,15 @@ class TelegramBotService {
       throw new Error(data.description ?? 'Telegram API вернул ok=false')
     }
     return data.result ?? []
+  }
+
+  // Текст из приложения на телефоне: вставляем как есть, «Отправить» — Enter.
+  // Доверяем только заранее заданному каналу: писать туда могут лишь его админы (боты).
+  private handleRelayPost(post: TelegramMessage): void {
+    if (!this.relayChannelId || post.chat.id !== this.relayChannelId || !post.text) return
+
+    if (post.text === SEND_BUTTON_LABEL) simulateEnter()
+    else insertTextIntoActiveWindow(post.text)
   }
 
   private async handleMessage(message: TelegramMessage): Promise<void> {
@@ -169,7 +167,7 @@ class TelegramBotService {
     }
 
     if (message.text) {
-      this.insertTextIntoActiveWindow(message.text)
+      insertTextIntoActiveWindow(message.text)
       await this.sendKeyboard(chatId, `✓ Вставлено (${message.text.length} симв.)`).catch(() => undefined)
       return
     }
@@ -191,38 +189,21 @@ class TelegramBotService {
         return
       }
 
-      const settings = store.getSettings()
       // Telegram отдаёт voice как OGG/Opus, audio может быть mp3/m4a/ogg
-      const format = this.detectAudioFormat(voice)
-      const result = await transcribeAudio(buffer, settings, format)
+      const format = detectAudioFormat(voice.mime_type)
+      const outcome = await handleRemoteVoice(buffer, format, Math.round((voice.duration ?? 0) * 1000))
 
-      // Фиксируем в истории тем же путём, что и запись по горячей клавише —
-      // включая ошибочные результаты (как в обычном потоке), чтобы их можно было повторить
-      const audioExt = format.filename.split('.').pop() ?? 'ogg'
-      this.recorder?.(buffer, result, Math.round((voice.duration ?? 0) * 1000), audioExt)
-
-      if (result.error || !result.text.trim()) {
-        await this.sendKeyboard(chatId, `❌ ${result.error ?? 'Пустой результат'}`).catch(() => undefined)
+      if (!outcome.ok) {
+        await this.sendKeyboard(chatId, `❌ ${outcome.error}`).catch(() => undefined)
         return
       }
 
-      this.insertTextIntoActiveWindow(result.text.trim())
-      // Превью первых 200 символов — пользователю удобно видеть, что распозналось
-      const preview = result.text.length > 200 ? result.text.slice(0, 200) + '…' : result.text
-      await this.sendKeyboard(chatId, `✓ Вставлено:\n${preview}`).catch(() => undefined)
+      await this.sendKeyboard(chatId, `✓ Вставлено:\n${textPreview(outcome.text)}`).catch(() => undefined)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error('[telegram] Ошибка обработки голоса:', message)
       await this.sendKeyboard(chatId, `❌ Ошибка: ${message}`).catch(() => undefined)
     }
-  }
-
-  private detectAudioFormat(voice: TelegramVoice | TelegramAudio): { filename: string; mimeType: string } {
-    const mime = voice.mime_type ?? 'audio/ogg'
-    if (mime.includes('mp3') || mime.includes('mpeg')) return { filename: 'voice.mp3', mimeType: 'audio/mpeg' }
-    if (mime.includes('mp4') || mime.includes('m4a')) return { filename: 'voice.m4a', mimeType: 'audio/mp4' }
-    if (mime.includes('wav')) return { filename: 'voice.wav', mimeType: 'audio/wav' }
-    return { filename: 'voice.ogg', mimeType: 'audio/ogg' }
   }
 
   private async downloadFile(fileId: string): Promise<Buffer | null> {
@@ -238,15 +219,6 @@ class TelegramBotService {
     if (!fileRes.ok) return null
     const arrayBuffer = await fileRes.arrayBuffer()
     return Buffer.from(arrayBuffer)
-  }
-
-  private insertTextIntoActiveWindow(text: string): void {
-    const settings = store.getSettings()
-    if (settings.stickyWindow && getStickyHwnd()) {
-      pasteToStickyWindow(text, settings.keepInClipboard)
-    } else {
-      pasteText(text, settings.keepInClipboard)
-    }
   }
 
   private async sendKeyboard(chatId: number, text: string): Promise<void> {

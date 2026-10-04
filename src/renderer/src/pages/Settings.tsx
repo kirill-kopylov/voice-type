@@ -23,10 +23,10 @@ const GROQ_MODELS = [
 ]
 
 const OPENROUTER_MODELS = [
-  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', sub: '$0.15/M tok — быстрая, мультимодальная' },
-  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', sub: '$2.50/M tok — лучшее качество' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', sub: '$2.50/M tok — высокая точность' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', sub: '$0.15/M tok — быстрая и дешёвая' },
+  { id: 'openai/gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe', sub: '$0.003/мин — быстрая и дешёвая' },
+  { id: 'openai/gpt-4o-transcribe', name: 'GPT-4o Transcribe', sub: '$0.006/мин — высокая точность' },
+  { id: 'mistralai/voxtral-mini-transcribe', name: 'Voxtral Mini Transcribe', sub: '$0.002/мин — самая быстрая, заточена под голосовые' },
+  { id: 'qwen/qwen3-asr-flash-2026-02-10', name: 'Qwen3 ASR Flash', sub: '$0.002/мин — устойчива к шуму' },
 ]
 
 const LANGUAGES = [
@@ -44,6 +44,9 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
   const [showKey3, setShowKey3] = useState(false)
   const [showTgToken, setShowTgToken] = useState(false)
   const [allowedIdsDraft, setAllowedIdsDraft] = useState(settings.telegramAllowedUserIds.join(', '))
+  const [relayChannelDraft, setRelayChannelDraft] = useState(settings.telegramRelayChannelId ? String(settings.telegramRelayChannelId) : '')
+  const [showVkToken, setShowVkToken] = useState(false)
+  const [vkIdsDraft, setVkIdsDraft] = useState(settings.vkAllowedUserIds.join(', '))
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null)
 
@@ -137,7 +140,7 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
           <div>
             <label className="block text-xs mb-1.5" style={{ color: 'var(--text-4)' }}>Хоткей встречи</label>
             <HotkeyInput value={settings.meetingHotkey} onChange={(v) => onUpdate({ meetingHotkey: v })} />
-            <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Старт/стоп записи встречи. Нужен OpenAI ключ — диаризация через gpt-4o-transcribe-diarize.</p>
+            <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Старт/стоп записи встречи. Нужен OpenRouter ключ — диаризация через MAI-Transcribe 2, имена по образцам голоса — через Gemini 3.5 Flash.</p>
           </div>
           <Toggle label="Захватывать системный звук (голос коллеги)" checked={settings.captureSystemAudio} onChange={() => onUpdate({ captureSystemAudio: !settings.captureSystemAudio })} />
         </div>
@@ -189,6 +192,80 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
               Узнать свой ID: напиши боту @userinfobot. Бот реагирует только на эти ID — все остальные игнорируются.
             </p>
           </div>
+
+          <div style={{ opacity: settings.telegramEnabled ? 1 : 0.45 }}>
+            <label className="block text-xs mb-1.5" style={{ color: 'var(--text-3)' }}>Канал для телефона (ID)</label>
+            <input
+              type="text"
+              value={relayChannelDraft}
+              onChange={(e) => setRelayChannelDraft(e.target.value)}
+              onBlur={() => {
+                const parsed = Number(relayChannelDraft.trim())
+                const channelId = Number.isFinite(parsed) ? parsed : 0
+                onUpdate({ telegramRelayChannelId: channelId })
+                setRelayChannelDraft(channelId ? String(channelId) : '')
+              }}
+              className={inputClass}
+              style={inputStyle}
+              placeholder="-1004312492843"
+            />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>
+              Приложение VoiceType на телефоне публикует текст диктовки в этот канал. Этот бот и бот телефона должны быть админами канала. Пусто — выключено.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="VK-бот (сообщество)">
+        <div className="space-y-4">
+          <Toggle
+            label="Слежение за сообществом"
+            checked={settings.vkEnabled}
+            onChange={() => onUpdate({ vkEnabled: !settings.vkEnabled })}
+          />
+          <p className="text-[10px] -mt-2" style={{ color: 'var(--text-4)' }}>
+            Напиши в личку своего сообщества: текст вставляется как есть, голосовое — транскрибируется и вставляется. В клавиатуре — кнопка «Отправить» (Enter).
+          </p>
+
+          <div style={{ opacity: settings.vkEnabled ? 1 : 0.45 }}>
+            <label className="block text-xs mb-1.5" style={{ color: 'var(--text-3)' }}>Ключ доступа сообщества</label>
+            <TokenInput
+              value={settings.vkCommunityToken}
+              show={showVkToken}
+              toggle={() => setShowVkToken(!showVkToken)}
+              onChange={(v) => onUpdate({ vkCommunityToken: v.trim() })}
+              placeholder="vk1.a...."
+            />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>
+              Управление сообществом → Работа с API → Ключи доступа. Нужны права «управление» и «сообщения». Long Poll API должен быть включён (событие «Входящее сообщение»).
+            </p>
+          </div>
+
+          <div style={{ opacity: settings.vkEnabled ? 1 : 0.45 }}>
+            <label className="block text-xs mb-1.5" style={{ color: 'var(--text-3)' }}>Разрешённые user ID (через запятую)</label>
+            <input
+              type="text"
+              value={vkIdsDraft}
+              onChange={(e) => setVkIdsDraft(e.target.value)}
+              onBlur={() => {
+                const parsed = vkIdsDraft
+                  .split(/[,\s]+/)
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .map((s) => Number(s))
+                  .filter((n) => Number.isFinite(n) && n > 0)
+                onUpdate({ vkAllowedUserIds: parsed })
+                // Нормализуем поле — выкидываем мусор и пробелы
+                setVkIdsDraft(parsed.join(', '))
+              }}
+              className={inputClass}
+              style={inputStyle}
+              placeholder="65676077"
+            />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>
+              Числовой ID страницы ВК (vk.com/id...). Бот реагирует только на эти ID — все остальные игнорируются.
+            </p>
+          </div>
         </div>
       </Section>
     </div>
@@ -221,14 +298,14 @@ function KeyInput({ label, value, show, toggle, onChange, ph, active }: { label:
   )
 }
 
-function TokenInput({ value, show, toggle, onChange }: { value: string; show: boolean; toggle: () => void; onChange: (v: string) => void }): JSX.Element {
+function TokenInput({ value, show, toggle, onChange, placeholder = '123456:ABC...' }: { value: string; show: boolean; toggle: () => void; onChange: (v: string) => void; placeholder?: string }): JSX.Element {
   return (
     <div className="relative">
       <input
         type={show ? 'text' : 'password'}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="123456:ABC..."
+        placeholder={placeholder}
         className={`${inputClass} pr-10 font-mono`}
         style={inputStyle}
       />

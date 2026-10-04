@@ -18,7 +18,7 @@ interface SilenceRange {
   end: number
 }
 
-// Лимит модели gpt-4o-transcribe-diarize — 1400с. Берём с запасом.
+// Дефолтный потолок куска — вызывающий код передаёт свой лимит под конкретную модель.
 const MAX_CHUNK_SEC = 1380
 // Минимальный размер куска — чтобы не плодить крошечные.
 const MIN_CHUNK_SEC = 120
@@ -27,7 +27,7 @@ const SILENCE_THRESHOLD_DB = -35
 const SILENCE_MIN_DURATION = 0.4
 
 /**
- * Режет webm на куски длиной ≤ maxChunkSec, стараясь резать по ближайшей тишине.
+ * Режет webm на куски длиной ≤ maxChunkSec (mp3, моно 16 кГц), стараясь резать по ближайшей тишине.
  * Если тишина не найдена в допустимом окне — режет жёстко.
  */
 export async function chunkWebmBySilence(
@@ -46,17 +46,14 @@ export async function chunkWebmBySilence(
     const { duration, silences } = await analyzeAudio(inputPath)
     console.log(`[chunk] Длительность ${duration.toFixed(1)}с, тишин найдено: ${silences.length}`)
 
-    if (duration <= maxChunkSec) {
-      return [{ buffer: webmBuffer, startSec: 0, endSec: duration }]
-    }
-
+    // Даже одиночный кусок перекодируем: на выходе всегда mp3, который принимают STT-модели
     const splitPoints = computeSplitPoints(duration, silences, maxChunkSec)
     console.log(`[chunk] Точки реза: ${splitPoints.map((n) => n.toFixed(1)).join(', ')}`)
 
     const chunks: AudioChunk[] = []
     let cursor = 0
     for (const point of [...splitPoints, duration]) {
-      const chunkPath = join(tmpDir, `chunk-${randomUUID()}.webm`)
+      const chunkPath = join(tmpDir, `chunk-${randomUUID()}.mp3`)
       try {
         await extractChunk(inputPath, chunkPath, cursor, point)
         chunks.push({ buffer: readFileSync(chunkPath), startSec: cursor, endSec: point })
@@ -136,17 +133,17 @@ function computeSplitPoints(duration: number, silences: SilenceRange[], maxChunk
 }
 
 async function extractChunk(input: string, output: string, startSec: number, endSec: number): Promise<void> {
-  // Re-encode в opus — надёжнее, чем -c copy для webm из MediaRecorder
-  // (keyframe alignment, timestamps).
+  // Re-encode надёжнее, чем -c copy для webm из MediaRecorder (keyframe alignment, timestamps).
+  // mp3, а не opus: ogg/opus из webm встреч провайдер STT отвергает с 400, тот же звук в mp3/wav проходит.
   await runFfmpegCapture([
     '-y', '-hide_banner',
     '-ss', startSec.toFixed(3),
     '-to', endSec.toFixed(3),
     '-i', input,
     '-vn',
-    '-c:a', 'libopus',
-    '-b:a', '64k',
-    '-ar', '48000',
+    '-c:a', 'libmp3lame',
+    '-b:a', '48k',
+    '-ar', '16000',
     '-ac', '1',
     output
   ])

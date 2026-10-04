@@ -9,6 +9,7 @@ let recordingIcon: Electron.NativeImage
 export interface TrayCallbacks {
   toggleRecording: () => void
   toggleMeeting: () => void
+  toggleFloatingButton: () => void
   quit: () => void
 }
 
@@ -60,6 +61,12 @@ export function updateTrayMenu(
     {
       label: state.isMeetingRecording ? '⏺ Остановить запись встречи' : 'Записать встречу',
       click: cb.toggleMeeting
+    },
+    {
+      label: 'Кнопка микрофона на экране',
+      type: 'checkbox',
+      checked: store.getSettings().floatingButton,
+      click: cb.toggleFloatingButton
     },
     { type: 'separator' },
     {

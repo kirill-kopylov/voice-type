@@ -13,7 +13,8 @@ import path from 'path'
 import { writeFileSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { store } from './services/store'
-import { transcribeAudio, testConnection, transcribeDiarized, KnownSpeaker } from './services/transcription'
+import { transcribeAudio, testConnection } from './services/transcription'
+import { transcribeDiarized, KnownSpeaker } from './services/diarization'
 import { generateSummary } from './services/summary'
 import { extractSpeakerSegments } from './services/extract-speaker'
 import type { MeetingRecord, VoiceProfile, TranscriptionRecord } from './services/types'
@@ -21,9 +22,12 @@ import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
 import { saveAudio, loadAudio, deleteAudio, saveProfileAudio, loadProfileAudio, deleteProfileAudio } from './services/audio-storage'
 import { createTray, setTrayRecording, updateTrayMenu, TrayCallbacks } from './services/tray'
+import { createFloatingButton, setFloatingButtonState, setFloatingButtonVisible } from './services/floating-button'
 import { createCircleIcon } from './services/icon'
 import { OVERLAY_HTML } from './overlay.html'
 import { telegramBot } from './services/telegram-bot'
+import { vkBot } from './services/vk-bot'
+import { setTranscriptionRecorder } from './services/remote-input'
 
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
@@ -108,7 +112,14 @@ function createOverlayWindow(): void {
   overlayWindow.hide()
 }
 
+function setFloatingButtonEnabled(enabled: boolean): void {
+  store.updateSettings({ floatingButton: enabled })
+  setFloatingButtonVisible(enabled)
+  refreshTrayMenu()
+}
+
 function showOverlay(state: 'recording' | 'processing' | 'hidden'): void {
+  setFloatingButtonState(state === 'hidden' ? 'idle' : state)
   if (!overlayWindow || overlayWindow.isDestroyed()) return
 
   if (state === 'hidden') {
@@ -223,9 +234,9 @@ async function runSummary(meetingId: string): Promise<MeetingRecord | null> {
   if (!meeting || meeting.segments.length === 0) return null
 
   const settings = store.getSettings()
-  const apiKey = settings.openAiApiKey
+  const apiKey = settings.openRouterApiKey
   if (!apiKey) {
-    store.updateMeeting(meetingId, { summaryStatus: 'error', summaryError: 'OpenAI ключ не задан' })
+    store.updateMeeting(meetingId, { summaryStatus: 'error', summaryError: 'OpenRouter ключ не задан' })
     const updated = store.getMeeting(meetingId)
     if (updated) mainWindow?.webContents.send('meeting-updated', updated)
     return updated ?? null
@@ -274,14 +285,23 @@ function applyAutoStart(): void {
 function applyTelegramBot(): void {
   const settings = store.getSettings()
   if (settings.telegramEnabled && settings.telegramBotToken && settings.telegramAllowedUserIds.length > 0) {
-    telegramBot.start(settings.telegramBotToken, settings.telegramAllowedUserIds)
+    telegramBot.start(settings.telegramBotToken, settings.telegramAllowedUserIds, settings.telegramRelayChannelId)
   } else {
     telegramBot.stop()
   }
 }
 
+function applyVkBot(): void {
+  const settings = store.getSettings()
+  if (settings.vkEnabled && settings.vkCommunityToken && settings.vkAllowedUserIds.length > 0) {
+    vkBot.start(settings.vkCommunityToken, settings.vkAllowedUserIds)
+  } else {
+    vkBot.stop()
+  }
+}
+
 // Единый путь записи транскрипции в историю: сохранить аудио, добавить запись,
-// обновить трей и уведомить интерфейс. Используется и горячей клавишей, и Telegram-ботом.
+// обновить трей и уведомить интерфейс. Используется горячей клавишей и ботами (Telegram/VK).
 function recordTranscription(
   audioBuffer: Buffer,
   result: { text: string; error?: string },
@@ -376,14 +396,14 @@ function setupIpcHandlers(): void {
     const audioBuffer = Buffer.from(audioData)
     const audioFileName = saveAudio(id, audioBuffer)
 
-    const apiKey = settings.openAiApiKey
+    const apiKey = settings.openRouterApiKey
     if (!apiKey) {
       const record: MeetingRecord = {
         id, title: `Встреча ${new Date().toLocaleString('ru-RU')}`,
         audioFileName, durationMs,
         createdAt: new Date().toISOString(),
         segments: [], speakerNames: {},
-        status: 'error', error: 'OpenAI API ключ не задан (диаризация только через OpenAI)'
+        status: 'error', error: 'OpenRouter API ключ не задан (нужен для диаризации встреч)'
       }
       store.addMeeting(record)
       showOverlay('hidden')
@@ -500,9 +520,9 @@ function setupIpcHandlers(): void {
     if (!audioBuffer) return null
 
     const settings = store.getSettings()
-    const apiKey = settings.openAiApiKey
+    const apiKey = settings.openRouterApiKey
     if (!apiKey) {
-      store.updateMeeting(id, { status: 'error', error: 'OpenAI API ключ не задан' })
+      store.updateMeeting(id, { status: 'error', error: 'OpenRouter API ключ не задан' })
       return store.getMeeting(id)
     }
 
@@ -649,8 +669,11 @@ function setupIpcHandlers(): void {
     const updated = store.updateSettings(partial)
     if ('hotkey' in partial || 'stickyWindow' in partial || 'stickyHotkey' in partial || 'meetingHotkey' in partial) registerHotkey()
     if ('autoStart' in partial) applyAutoStart()
-    if ('telegramEnabled' in partial || 'telegramBotToken' in partial || 'telegramAllowedUserIds' in partial) {
+    if ('telegramEnabled' in partial || 'telegramBotToken' in partial || 'telegramAllowedUserIds' in partial || 'telegramRelayChannelId' in partial) {
       applyTelegramBot()
+    }
+    if ('vkEnabled' in partial || 'vkCommunityToken' in partial || 'vkAllowedUserIds' in partial) {
+      applyVkBot()
     }
     return updated
   })
@@ -668,8 +691,11 @@ function setupIpcHandlers(): void {
   ipcMain.handle('window-close', () => mainWindow?.hide())
 }
 
-declare module 'electron' {
-  interface App { isQuitting: boolean }
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Electron {
+    interface App { isQuitting: boolean }
+  }
 }
 app.isQuitting = false
 
@@ -691,24 +717,31 @@ app.whenReady().then(() => {
 
   createMainWindow()
   createOverlayWindow()
+  createFloatingButton({
+    toggleRecording: () => toggleRecording(),
+    hide: () => setFloatingButtonEnabled(false)
+  })
+  setFloatingButtonVisible(store.getSettings().floatingButton)
   setupIpcHandlers()
   registerHotkey()
   applyAutoStart()
-  // Голосовые из Telegram фиксируются в истории тем же путём, что и запись по горячей клавише
-  telegramBot.setRecorder(recordTranscription)
+  // Голосовые из Telegram/VK фиксируются в истории тем же путём, что и запись по горячей клавише
+  setTranscriptionRecorder(recordTranscription)
   applyTelegramBot()
+  applyVkBot()
 
   if (mainWindow) {
     trayCallbacks = {
       toggleRecording: () => toggleRecording(),
       toggleMeeting: () => toggleMeetingRecording(),
+      toggleFloatingButton: () => setFloatingButtonEnabled(!store.getSettings().floatingButton),
       quit: () => { app.isQuitting = true; app.quit() }
     }
     createTray(mainWindow, trayCallbacks)
   }
 })
 
-app.on('before-quit', () => { app.isQuitting = true; telegramBot.stop() })
+app.on('before-quit', () => { app.isQuitting = true; telegramBot.stop(); vkBot.stop() })
 app.on('will-quit', () => { globalShortcut.unregisterAll() })
 app.on('window-all-closed', () => {})
 

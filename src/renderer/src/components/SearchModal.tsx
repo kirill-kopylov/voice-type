@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Fuse from 'fuse.js'
 import { Search, X, Clock, Users, FileText } from 'lucide-react'
-import { TranscriptionRecord, MeetingRecord, Page } from '../types'
+import { TranscriptionRecord, MeetingRecord } from '../types'
+import { Page } from '../App'
 import { Modal } from './Modal'
 
 interface SearchHit {

@@ -32,7 +32,9 @@ export function installDevMock(): void {
     stickyWindow: false, stickyHotkey: '',
     meetingHotkey: '', captureSystemAudio: true,
     autoStart: false, theme: 'sunset',
-    telegramEnabled: false, telegramBotToken: '', telegramAllowedUserIds: []
+    telegramEnabled: false, telegramBotToken: '', telegramAllowedUserIds: [], telegramRelayChannelId: 0,
+    vkEnabled: false, vkCommunityToken: '', vkAllowedUserIds: [],
+    floatingButton: true, floatingButtonPosition: null
   }
 
   // Валидный WAV с тишиной на 15 секунд — decodeAudioData разберёт
@@ -47,11 +49,14 @@ export function installDevMock(): void {
     getSettings: async () => mockSettings,
     getVoiceProfiles: async () => [],
     getMeetingAudio: async () => fakeAudio,
-    saveVoiceProfile: async (name, _wav, dur, count, sourceId) => ({
-      id: 'p-' + Date.now(),
-      name, audioFileName: 'x.wav', durationMs: dur, segmentCount: count,
-      sourceMeetingId: sourceId, createdAt: new Date().toISOString()
+    createVoiceProfileFromMeeting: async (meetingId, _speaker, name) => ({
+      profile: {
+        id: 'p-' + Date.now(),
+        name, audioFileName: 'x.wav', durationMs: 3000, segmentCount: 1,
+        sourceMeetingId: meetingId, createdAt: new Date().toISOString()
+      }
     }),
+    retryMeeting: async () => null,
     deleteVoiceProfile: noop,
     getVoiceProfileAudio: async () => null,
     copyText: noop,

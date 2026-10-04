@@ -86,7 +86,7 @@ export function History({ history, onDelete, onClear, onRetry, showToast }: Hist
                 <div className="px-4 py-3 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
                   {record.status === 'success' && <p className="text-sm whitespace-pre-wrap leading-relaxed select-text" style={{ color: 'var(--text-2)' }}>{record.text}</p>}
                   <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-4)' }}>
-                    <span className="px-2 py-0.5 rounded" style={{ background: 'var(--accent-bg)' }}>{record.provider === 'openai' ? 'OpenAI' : 'OpenRouter'}</span>
+                    <span className="px-2 py-0.5 rounded" style={{ background: 'var(--accent-bg)' }}>{{ openai: 'OpenAI', openrouter: 'OpenRouter', groq: 'Groq' }[record.provider]}</span>
                     <span>{record.model}</span>
                   </div>
                   <div className="flex items-center gap-2">

@@ -111,6 +111,11 @@ interface AppSettings {
   telegramEnabled: boolean
   telegramBotToken: string
   telegramAllowedUserIds: number[]
+  vkEnabled: boolean
+  vkCommunityToken: string
+  vkAllowedUserIds: number[]
+  floatingButton: boolean
+  floatingButtonPosition: { x: number; y: number } | null
 }
 
 const api: VoiceTypeAPI = {

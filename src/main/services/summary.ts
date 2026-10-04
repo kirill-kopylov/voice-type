@@ -1,7 +1,9 @@
 import { net } from 'electron'
 import { DialogSegment, MeetingSummary } from './types'
+import { extractJsonObject } from './extract-json'
 
-const SUMMARY_MODEL = 'gpt-4o-mini'
+const SUMMARY_MODEL = 'google/gemini-3.1-flash-lite'
+const OPENROUTER_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 interface RawSummary {
   title: string
@@ -21,7 +23,7 @@ interface RawSummary {
  */
 export async function generateSummary(
   segments: DialogSegment[],
-  apiKey: string,
+  apiKey: string,  // OpenRouter
   knownNames: Record<string, string>
 ): Promise<{ summary?: MeetingSummary; title?: string; error?: string }> {
   if (segments.length === 0) {
@@ -62,7 +64,7 @@ export async function generateSummary(
 
   try {
     console.log('[summary] Запрос к', SUMMARY_MODEL)
-    const response = await net.fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await net.fetch(OPENROUTER_CHAT_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -87,7 +89,11 @@ export async function generateSummary(
 
     const data = (await response.json()) as { choices: Array<{ message: { content: string } }> }
     const content = data.choices[0]?.message?.content ?? ''
-    const parsed = JSON.parse(content) as RawSummary
+    const json = extractJsonObject(content)
+    if (!json) {
+      return { error: 'Модель вернула невалидный JSON' }
+    }
+    const parsed = JSON.parse(json) as RawSummary
 
     // Фильтруем мусорные имена: одиночные буквы, "null", "unknown", пустые
     const guessedNames: Record<string, string> = {}

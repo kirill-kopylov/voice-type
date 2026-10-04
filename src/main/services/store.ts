@@ -5,6 +5,20 @@ import { StoreSchema, DEFAULT_SETTINGS, TranscriptionRecord, MeetingRecord, Voic
 
 const STORE_FILE = 'store.json'
 
+// Диктовка через OpenRouter раньше шла chat-моделями через /chat/completions.
+// Теперь используется STT-эндпоинт — chat-модели в настройках сбрасываем на дефолт.
+const OBSOLETE_OPENROUTER_MODELS = new Set([
+  'google/gemini-2.5-flash', 'google/gemini-2.5-pro',
+  'openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/whisper-1'
+])
+
+function migrateSettings(settings: StoreSchema['settings']): StoreSchema['settings'] {
+  if (settings.provider === 'openrouter' && OBSOLETE_OPENROUTER_MODELS.has(settings.model)) {
+    return { ...settings, model: DEFAULT_SETTINGS.model }
+  }
+  return settings
+}
+
 class AppStore {
   private filePath: string
   private data: StoreSchema
@@ -26,7 +40,7 @@ class AppStore {
       const raw = fs.readFileSync(this.filePath, 'utf-8')
       const parsed = JSON.parse(raw) as Partial<StoreSchema>
       return {
-        settings: { ...defaults.settings, ...parsed.settings },
+        settings: migrateSettings({ ...defaults.settings, ...parsed.settings }),
         history: parsed.history ?? [],
         meetings: parsed.meetings ?? [],
         voiceProfiles: parsed.voiceProfiles ?? []

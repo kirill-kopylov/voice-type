@@ -1,3 +1,5 @@
+export type Provider = 'openai' | 'openrouter' | 'groq'
+
 export interface DialogSegment {
   speaker: string
   text: string
@@ -49,14 +51,14 @@ export interface TranscriptionRecord {
   audioFileName: string
   durationMs: number
   createdAt: string
-  provider: 'openai' | 'openrouter'
+  provider: Provider
   model: string
   status: 'success' | 'error'
   error?: string
 }
 
 export interface AppSettings {
-  provider: 'openai' | 'openrouter' | 'groq'
+  provider: Provider
   openAiApiKey: string
   openRouterApiKey: string
   groqApiKey: string
@@ -76,6 +78,12 @@ export interface AppSettings {
   telegramEnabled: boolean
   telegramBotToken: string
   telegramAllowedUserIds: number[]
+  telegramRelayChannelId: number
+  vkEnabled: boolean
+  vkCommunityToken: string
+  vkAllowedUserIds: number[]
+  floatingButton: boolean
+  floatingButtonPosition: { x: number; y: number } | null
 }
 
 export interface VoiceTypeAPI {

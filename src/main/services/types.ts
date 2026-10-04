@@ -1,3 +1,5 @@
+export type Provider = 'openai' | 'openrouter' | 'groq'
+
 export interface DialogSegment {
   speaker: string   // "Speaker 1", "Speaker 2" или пользовательское имя
   text: string
@@ -49,14 +51,19 @@ export interface TranscriptionRecord {
   audioFileName: string
   durationMs: number
   createdAt: string
-  provider: 'openai' | 'openrouter'
+  provider: Provider
   model: string
   status: 'success' | 'error'
   error?: string
 }
 
+export interface ScreenPoint {
+  x: number
+  y: number
+}
+
 export interface AppSettings {
-  provider: 'openai' | 'openrouter' | 'groq'
+  provider: Provider
   openAiApiKey: string
   openRouterApiKey: string
   groqApiKey: string
@@ -76,6 +83,13 @@ export interface AppSettings {
   telegramEnabled: boolean
   telegramBotToken: string
   telegramAllowedUserIds: number[]
+  // id канала, куда пишет приложение на телефоне (в формате Bot API, -100…); 0 — выключено
+  telegramRelayChannelId: number
+  vkEnabled: boolean
+  vkCommunityToken: string
+  vkAllowedUserIds: number[]
+  floatingButton: boolean
+  floatingButtonPosition: ScreenPoint | null
 }
 
 export interface StoreSchema {
@@ -86,11 +100,11 @@ export interface StoreSchema {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  provider: 'openai',
+  provider: 'openrouter',
   openAiApiKey: '',
   openRouterApiKey: '',
   groqApiKey: '',
-  model: 'whisper-1',
+  model: 'openai/gpt-4o-mini-transcribe',
   language: 'ru',
   hotkey: 'CommandOrControl+Shift+H',
   autoPaste: true,
@@ -105,5 +119,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoStart: false,
   telegramEnabled: false,
   telegramBotToken: '',
-  telegramAllowedUserIds: []
+  telegramAllowedUserIds: [],
+  telegramRelayChannelId: 0,
+  vkEnabled: false,
+  vkCommunityToken: '',
+  vkAllowedUserIds: [],
+  floatingButton: true,
+  floatingButtonPosition: null
 }
