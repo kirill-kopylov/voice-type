@@ -78,7 +78,7 @@ export function createDrawingOverlay({ displayIds, hotkey, onShapeDrawn }: Overl
 
   const toolbar = createTransparentWindow(
     { x: 0, y: 0, ...DRAW_TOOLBAR_SIZE },
-    { focusable: true, skipTaskbar: true }
+    { focusable: true, skipTaskbar: true, movable: true }
   )
   // Панель не должна попадать в видео
   toolbar.setContentProtection(true)

@@ -1,7 +1,7 @@
 // Панель инструментов рисования. Окно скрыто от записи экрана, так что в видео её нет.
 import { DRAW_COLORS, DRAW_TOOLS, DRAW_WIDTHS } from './draw-style'
 
-export const DRAW_TOOLBAR_SIZE = { width: 760, height: 56 }
+export const DRAW_TOOLBAR_SIZE = { width: 840, height: 56 }
 
 const TOOL_ICONS: Record<string, string> = {
   arrow: '<path d="M5 19L19 5M10 5h9v9"/>',
@@ -24,8 +24,10 @@ export const DRAW_TOOLBAR_HTML = `<!DOCTYPE html>
   html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; user-select: none; font-family: Segoe UI, sans-serif; }
   #bar { box-sizing: border-box; height: 100%; display: flex; align-items: center; gap: 4px; padding: 0 10px; border-radius: 14px;
          background: rgba(24,24,28,0.94); border: 1px solid rgba(255,255,255,0.14); color: #e8e8ec; -webkit-app-region: drag; }
-  #bar > * { -webkit-app-region: no-drag; }
-  #bar > .grip { -webkit-app-region: drag; color: rgba(255,255,255,0.35); font-size: 14px; padding: 0 4px; cursor: move; }
+  #bar button, #bar .group { -webkit-app-region: no-drag; }
+  .group { display: flex; align-items: center; gap: 2px; }
+  .grip { -webkit-app-region: drag; align-self: stretch; display: flex; align-items: center; color: rgba(255,255,255,0.35);
+          font-size: 14px; padding: 0 6px; cursor: move; }
   button { display: flex; align-items: center; justify-content: center; border: 0; border-radius: 9px; background: transparent;
            color: inherit; cursor: pointer; }
   button.icon { width: 34px; height: 34px; }
@@ -41,10 +43,10 @@ export const DRAW_TOOLBAR_HTML = `<!DOCTYPE html>
   #done:hover { background: #4ade80; }
 </style></head><body>
   <div id="bar">
-    <span class="grip">⋮⋮</span>
-    <span id="tools"></span><div class="sep"></div>
-    <span id="colors"></span><div class="sep"></div>
-    <span id="widths"></span><div class="sep"></div>
+    <div class="grip">⋮⋮</div>
+    <div class="group" id="tools"></div><div class="sep"></div>
+    <div class="group" id="colors"></div><div class="sep"></div>
+    <div class="group" id="widths"></div><div class="sep"></div>
     <button class="icon" id="fade" title="Рисунки исчезают сами через 5 секунд"><svg>${ACTION_ICONS.fade}</svg></button>
     <button class="icon" id="undo" title="Отменить последний рисунок (Ctrl+Z)"><svg>${ACTION_ICONS.undo}</svg></button>
     <button class="icon" id="clear" title="Стереть всё"><svg>${ACTION_ICONS.clear}</svg></button>
