@@ -1,12 +1,8 @@
-import { spawn } from 'child_process'
 import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { randomUUID } from 'crypto'
-import ffmpegStaticPath from 'ffmpeg-static'
-
-// В production asar упакован, ffmpeg распакован в .unpacked
-const ffmpegPath = ffmpegStaticPath?.replace('app.asar', 'app.asar.unpacked') ?? null
+import { runFfmpeg } from './ffmpeg'
 
 interface SpeakerSegment {
   start: number
@@ -29,10 +25,6 @@ export async function extractSpeakerSegments(
   webmBuffer: Buffer,
   segments: SpeakerSegment[]
 ): Promise<Buffer | null> {
-  if (!ffmpegPath) {
-    console.error('[extract-speaker] ffmpeg-static не найден')
-    return null
-  }
   if (segments.length === 0) return null
 
   // Отбираем сегменты с запасом — silenceremove потом ужмёт.
@@ -101,17 +93,4 @@ export async function extractSpeakerSegments(
     try { unlinkSync(inputPath) } catch {}
     try { unlinkSync(outputPath) } catch {}
   }
-}
-
-function runFfmpeg(args: string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(ffmpegPath as string, args)
-    let stderr = ''
-    proc.stderr.on('data', (chunk) => { stderr += chunk.toString() })
-    proc.on('error', reject)
-    proc.on('close', (code) => {
-      if (code === 0) resolve()
-      else reject(new Error(`ffmpeg exited ${code}: ${stderr.slice(-500)}`))
-    })
-  })
 }
