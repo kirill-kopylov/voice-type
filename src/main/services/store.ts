@@ -1,7 +1,11 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
-import { StoreSchema, DEFAULT_SETTINGS, TranscriptionRecord, MeetingRecord, VoiceProfile } from './types'
+import { randomUUID } from 'crypto'
+import type {
+  StoreSchema, TranscriptionRecord, MeetingRecord, MeetingNote, VoiceProfile
+} from '../../shared/types'
+import { DEFAULT_SETTINGS } from './default-settings'
 
 const STORE_FILE = 'store.json'
 
@@ -111,6 +115,32 @@ class AppStore {
 
   getMeeting(id: string): MeetingRecord | undefined {
     return this.data.meetings.find((m) => m.id === id)
+  }
+
+  // Заметки к встрече: возвращают обновлённую встречу или undefined, если встречи/заметки нет
+  addMeetingNote(meetingId: string, input: Pick<MeetingNote, 'text' | 'source' | 'author'>): MeetingRecord | undefined {
+    const meeting = this.getMeeting(meetingId)
+    if (!meeting) return undefined
+    const note: MeetingNote = { id: randomUUID(), createdAt: new Date().toISOString(), ...input }
+    this.updateMeeting(meetingId, { notes: [...(meeting.notes ?? []), note] })
+    return this.getMeeting(meetingId)
+  }
+
+  updateMeetingNote(meetingId: string, noteId: string, text: string): MeetingRecord | undefined {
+    const meeting = this.getMeeting(meetingId)
+    if (!meeting?.notes?.some((n) => n.id === noteId)) return undefined
+    const updatedAt = new Date().toISOString()
+    this.updateMeeting(meetingId, {
+      notes: meeting.notes.map((n) => (n.id === noteId ? { ...n, text, updatedAt } : n))
+    })
+    return this.getMeeting(meetingId)
+  }
+
+  deleteMeetingNote(meetingId: string, noteId: string): MeetingRecord | undefined {
+    const meeting = this.getMeeting(meetingId)
+    if (!meeting?.notes?.some((n) => n.id === noteId)) return undefined
+    this.updateMeeting(meetingId, { notes: meeting.notes.filter((n) => n.id !== noteId) })
+    return this.getMeeting(meetingId)
   }
 
   // Voice profiles

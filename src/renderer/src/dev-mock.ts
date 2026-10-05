@@ -2,7 +2,7 @@
  * Фиктивный window.api для запуска в обычном браузере (не Electron)
  * — только для отладки. В Electron сборке этот модуль не загружается.
  */
-import type { VoiceTypeAPI } from './types'
+import type { VoiceTypeAPI } from '@shared/types'
 
 export function installDevMock(): void {
   if (window.api) return
@@ -34,7 +34,8 @@ export function installDevMock(): void {
     autoStart: false, theme: 'sunset',
     telegramEnabled: false, telegramBotToken: '', telegramAllowedUserIds: [], telegramRelayChannelId: 0,
     vkEnabled: false, vkCommunityToken: '', vkAllowedUserIds: [],
-    floatingButton: true, floatingButtonPosition: null
+    floatingButton: true, floatingButtonPosition: null,
+    mcpEnabled: false, mcpPort: 47321, mcpToken: ''
   }
 
   // Валидный WAV с тишиной на 15 секунд — decodeAudioData разберёт
@@ -61,6 +62,14 @@ export function installDevMock(): void {
     getVoiceProfileAudio: async () => null,
     copyText: noop,
     renameMeetingSpeaker: noop,
+    addMeetingNote: async (_id, text) => ({
+      ...mockMeeting,
+      notes: [{ id: 'n-' + Date.now(), text, source: 'user' as const, author: 'Я', createdAt: new Date().toISOString() }]
+    }),
+    updateMeetingNote: async () => null,
+    deleteMeetingNote: async () => ({ ...mockMeeting, notes: [] }),
+    getMcpStatus: async () => ({ running: false, url: '' }),
+    onMeetingNotesChanged: unsub,
     deleteMeeting: noop,
     updateSettings: async (p) => ({ ...mockSettings, ...p } as typeof mockSettings),
     generateMeetingSummary: async () => null,

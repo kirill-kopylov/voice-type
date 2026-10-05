@@ -4,7 +4,7 @@ import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { History } from './pages/History'
 import { Settings } from './pages/Settings'
-import { TranscriptionRecord, AppSettings, MeetingRecord, VoiceProfile } from './types'
+import type { TranscriptionRecord, AppSettings, MeetingRecord, MeetingNote, VoiceProfile } from '@shared/types'
 import { Meetings } from './pages/Meetings'
 import { SearchModal } from './components/SearchModal'
 import { applyTheme, getThemeById } from './themes'
@@ -126,7 +126,12 @@ export function App(): JSX.Element {
       }
     })
 
+    const unsubNotes = window.api.onMeetingNotesChanged((meetingId, notes) => {
+      setMeetings((prev) => prev.map((m) => (m.id === meetingId ? { ...m, notes } : m)))
+    })
+
     return () => {
+      unsubNotes()
       unsubMeetingUpdated()
       unsubMeeting()
       unsubRecording()
@@ -265,6 +270,24 @@ export function App(): JSX.Element {
     ))
   }
 
+  const applyNotes = (meetingId: string, updated: MeetingRecord | null): void => {
+    if (!updated) return
+    const notes: MeetingNote[] = updated.notes ?? []
+    setMeetings((prev) => prev.map((m) => (m.id === meetingId ? { ...m, notes } : m)))
+  }
+
+  const handleAddNote = async (meetingId: string, text: string): Promise<void> => {
+    applyNotes(meetingId, await window.api.addMeetingNote(meetingId, text))
+  }
+
+  const handleUpdateNote = async (meetingId: string, noteId: string, text: string): Promise<void> => {
+    applyNotes(meetingId, await window.api.updateMeetingNote(meetingId, noteId, text))
+  }
+
+  const handleDeleteNote = async (meetingId: string, noteId: string): Promise<void> => {
+    applyNotes(meetingId, await window.api.deleteMeetingNote(meetingId, noteId))
+  }
+
   const handleSaveVoiceProfile = async (meetingId: string, speaker: string, name: string): Promise<void> => {
     try {
       showToast('Извлекаю голос...', 'success')
@@ -346,6 +369,9 @@ export function App(): JSX.Element {
           isRecording={isMeetingRecording}
           onDelete={handleDeleteMeeting}
           onRenameSpeaker={handleRenameSpeaker}
+          onAddNote={handleAddNote}
+          onUpdateNote={handleUpdateNote}
+          onDeleteNote={handleDeleteNote}
           onSaveVoiceProfile={handleSaveVoiceProfile}
           onDeleteVoiceProfile={handleDeleteVoiceProfile}
           onGenerateSummary={handleGenerateSummary}

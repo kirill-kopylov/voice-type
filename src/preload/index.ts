@@ -1,122 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-
-export interface VoiceTypeAPI {
-  submitAudio: (audioData: ArrayBuffer, durationMs: number) => Promise<TranscriptionRecord>
-  getHistory: () => Promise<TranscriptionRecord[]>
-  deleteHistoryItem: (id: string) => Promise<void>
-  clearHistory: () => Promise<void>
-  rePaste: (id: string) => Promise<void>
-  retryTranscription: (id: string) => Promise<TranscriptionRecord>
-  submitMeeting: (audioData: ArrayBuffer, durationMs: number) => Promise<MeetingRecord>
-  getMeetings: () => Promise<MeetingRecord[]>
-  deleteMeeting: (id: string) => Promise<void>
-  renameMeetingSpeaker: (id: string, oldName: string, newName: string) => Promise<void>
-  getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
-  generateMeetingSummary: (id: string) => Promise<MeetingRecord | null>
-  retryMeeting: (id: string) => Promise<MeetingRecord | null>
-  getVoiceProfiles: () => Promise<VoiceProfile[]>
-  createVoiceProfileFromMeeting: (meetingId: string, speaker: string, name: string) => Promise<{ profile?: VoiceProfile; error?: string }>
-  deleteVoiceProfile: (id: string) => Promise<void>
-  getVoiceProfileAudio: (fileName: string) => Promise<ArrayBuffer | null>
-  onMeetingStateChanged: (callback: (isRecording: boolean) => void) => () => void
-  onMeetingUpdated: (callback: (record: MeetingRecord) => void) => () => void
-  copyText: (text: string) => Promise<void>
-  getAudio: (fileName: string) => Promise<ArrayBuffer | null>
-  getSettings: () => Promise<AppSettings>
-  updateSettings: (partial: Partial<AppSettings>) => Promise<AppSettings>
-  testConnection: () => Promise<{ ok: boolean; error?: string }>
-  windowMinimize: () => Promise<void>
-  windowMaximize: () => Promise<void>
-  windowClose: () => Promise<void>
-  setOverlayTheme: (config: Record<string, string | number>) => void
-  onRecordingStateChanged: (callback: (isRecording: boolean) => void) => () => void
-  onTranscriptionComplete: (callback: (record: TranscriptionRecord) => void) => () => void
-}
-
-interface TranscriptionRecord {
-  id: string
-  text: string
-  audioFileName: string
-  durationMs: number
-  createdAt: string
-  provider: 'openai' | 'openrouter'
-  model: string
-  status: 'success' | 'error'
-  error?: string
-}
-
-interface DialogSegment {
-  speaker: string
-  text: string
-  start: number
-  end: number
-}
-
-interface MeetingDecision {
-  text: string
-  assignee?: string
-  deadline?: string
-}
-
-interface MeetingSummary {
-  brief: string
-  topics: string[]
-  decisions: MeetingDecision[]
-  guessedNames?: Record<string, string>
-}
-
-interface MeetingRecord {
-  id: string
-  title: string
-  audioFileName: string
-  durationMs: number
-  createdAt: string
-  segments: DialogSegment[]
-  speakerNames: Record<string, string>
-  summary?: MeetingSummary
-  summaryStatus?: 'pending' | 'done' | 'error'
-  summaryError?: string
-  status: 'success' | 'error'
-  error?: string
-}
-
-interface VoiceProfile {
-  id: string
-  name: string
-  audioFileName: string
-  durationMs: number
-  segmentCount: number
-  sourceMeetingId?: string
-  createdAt: string
-}
-
-interface AppSettings {
-  provider: 'openai' | 'openrouter' | 'groq'
-  openAiApiKey: string
-  openRouterApiKey: string
-  groqApiKey: string
-  model: string
-  language: string
-  hotkey: string
-  autoPaste: boolean
-  keepInClipboard: boolean
-  autoEnter: boolean
-  autoEnterTriggers: string
-  stickyWindow: boolean
-  stickyHotkey: string
-  meetingHotkey: string
-  captureSystemAudio: boolean
-  autoStart: boolean
-  theme: string
-  telegramEnabled: boolean
-  telegramBotToken: string
-  telegramAllowedUserIds: number[]
-  vkEnabled: boolean
-  vkCommunityToken: string
-  vkAllowedUserIds: number[]
-  floatingButton: boolean
-  floatingButtonPosition: { x: number; y: number } | null
-}
+import type { MeetingNote, MeetingRecord, TranscriptionRecord, VoiceTypeAPI } from '../shared/types'
 
 const api: VoiceTypeAPI = {
   submitAudio: (audioData, durationMs) =>
@@ -136,6 +19,9 @@ const api: VoiceTypeAPI = {
   getMeetings: () => ipcRenderer.invoke('get-meetings'),
   deleteMeeting: (id) => ipcRenderer.invoke('delete-meeting', id),
   renameMeetingSpeaker: (id, oldName, newName) => ipcRenderer.invoke('rename-meeting-speaker', id, oldName, newName),
+  addMeetingNote: (meetingId, text) => ipcRenderer.invoke('add-meeting-note', meetingId, text),
+  updateMeetingNote: (meetingId, noteId, text) => ipcRenderer.invoke('update-meeting-note', meetingId, noteId, text),
+  deleteMeetingNote: (meetingId, noteId) => ipcRenderer.invoke('delete-meeting-note', meetingId, noteId),
   getMeetingAudio: (fileName) => ipcRenderer.invoke('get-meeting-audio', fileName),
   generateMeetingSummary: (id) => ipcRenderer.invoke('generate-meeting-summary', id),
   retryMeeting: (id) => ipcRenderer.invoke('retry-meeting', id),
@@ -162,6 +48,14 @@ const api: VoiceTypeAPI = {
     return () => ipcRenderer.removeListener('meeting-updated', handler)
   },
 
+  onMeetingNotesChanged: (callback) => {
+    const handler = (_event: Electron.IpcRendererEvent, meetingId: string, notes: MeetingNote[]): void => {
+      callback(meetingId, notes)
+    }
+    ipcRenderer.on('meeting-notes-changed', handler)
+    return () => ipcRenderer.removeListener('meeting-notes-changed', handler)
+  },
+
   copyText: (text) => ipcRenderer.invoke('copy-text', text),
 
   getAudio: (fileName) => ipcRenderer.invoke('get-audio', fileName),
@@ -169,6 +63,8 @@ const api: VoiceTypeAPI = {
   getSettings: () => ipcRenderer.invoke('get-settings'),
 
   updateSettings: (partial) => ipcRenderer.invoke('update-settings', partial),
+
+  getMcpStatus: () => ipcRenderer.invoke('get-mcp-status'),
 
   testConnection: () => ipcRenderer.invoke('test-connection'),
 

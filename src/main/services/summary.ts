@@ -1,5 +1,5 @@
 import { net } from 'electron'
-import { DialogSegment, MeetingSummary } from './types'
+import type { DialogSegment, MeetingSummary } from '../../shared/types'
 import { extractJsonObject } from './extract-json'
 
 const SUMMARY_MODEL = 'google/gemini-3.1-flash-lite'

@@ -1,4 +1,4 @@
-import { AppSettings, Provider } from './types'
+import type { AppSettings, Provider } from '../../shared/types'
 import { randomUUID } from 'crypto'
 import { net } from 'electron'
 

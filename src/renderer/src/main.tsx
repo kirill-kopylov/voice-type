@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client'
 import { App } from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { installDevMock } from './dev-mock'
-import './types'
 import './index.css'
 
 if (!navigator.userAgent.includes('Electron')) {

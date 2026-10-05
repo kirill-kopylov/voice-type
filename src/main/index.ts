@@ -11,13 +11,13 @@ import {
 } from 'electron'
 import path from 'path'
 import { writeFileSync } from 'fs'
-import { randomUUID } from 'crypto'
+import { randomBytes, randomUUID } from 'crypto'
 import { store } from './services/store'
 import { transcribeAudio, testConnection } from './services/transcription'
 import { transcribeDiarized, KnownSpeaker } from './services/diarization'
 import { generateSummary } from './services/summary'
 import { extractSpeakerSegments } from './services/extract-speaker'
-import type { MeetingRecord, VoiceProfile, TranscriptionRecord } from './services/types'
+import type { AppSettings, MeetingRecord, VoiceProfile, TranscriptionRecord, McpStatus } from '../shared/types'
 import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
 import { saveAudio, loadAudio, deleteAudio, saveProfileAudio, loadProfileAudio, deleteProfileAudio } from './services/audio-storage'
@@ -28,6 +28,7 @@ import { OVERLAY_HTML } from './overlay.html'
 import { telegramBot } from './services/telegram-bot'
 import { vkBot } from './services/vk-bot'
 import { setTranscriptionRecorder } from './services/remote-input'
+import { McpHttpServer } from './mcp/server'
 
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
@@ -38,6 +39,11 @@ let currentMeetingHotkey: string | null = null
 let isMeetingRecording = false
 let currentOverlayTheme: Record<string, string | number> | null = null
 let trayCallbacks: TrayCallbacks | null = null
+
+// Агенты добавляют заметки через MCP — окну приложения нужно подхватить изменения
+const mcpServer = new McpHttpServer({
+  onNotesChanged: (meetingId, notes) => mainWindow?.webContents.send('meeting-notes-changed', meetingId, notes)
+})
 
 function refreshTrayMenu(): void {
   if (mainWindow && trayCallbacks) {
@@ -298,6 +304,18 @@ function applyVkBot(): void {
   } else {
     vkBot.stop()
   }
+}
+
+async function applyMcpServer(): Promise<McpStatus> {
+  const settings = store.getSettings()
+  if (!settings.mcpEnabled) {
+    await mcpServer.stop()
+    return mcpServer.getStatus()
+  }
+  // Токен появляется при первом включении; пустой токен в настройках — запрос выпустить новый
+  const token = settings.mcpToken || randomBytes(24).toString('hex')
+  if (token !== settings.mcpToken) store.updateSettings({ mcpToken: token })
+  return mcpServer.start(settings.mcpPort, token)
 }
 
 // Единый путь записи транскрипции в историю: сохранить аудио, добавить запись,
@@ -585,6 +603,16 @@ function setupIpcHandlers(): void {
     store.updateMeeting(id, { speakerNames })
   })
 
+  // Заметки к встрече: пользователь добавляет свои, агенты — через MCP (там же notify)
+  ipcMain.handle('add-meeting-note', (_event, meetingId: string, text: string) =>
+    store.addMeetingNote(meetingId, { text: text.trim(), source: 'user', author: 'Я' }) ?? null)
+
+  ipcMain.handle('update-meeting-note', (_event, meetingId: string, noteId: string, text: string) =>
+    store.updateMeetingNote(meetingId, noteId, text.trim()) ?? null)
+
+  ipcMain.handle('delete-meeting-note', (_event, meetingId: string, noteId: string) =>
+    store.deleteMeetingNote(meetingId, noteId) ?? null)
+
   ipcMain.handle('get-meeting-audio', (_event, fileName: string) => {
     const buffer = loadAudio(fileName)
     return buffer ? buffer.buffer : null
@@ -665,8 +693,8 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('get-settings', () => store.getSettings())
 
-  ipcMain.handle('update-settings', (_event, partial: Record<string, unknown>) => {
-    const updated = store.updateSettings(partial)
+  ipcMain.handle('update-settings', async (_event, partial: Partial<AppSettings>) => {
+    store.updateSettings(partial)
     if ('hotkey' in partial || 'stickyWindow' in partial || 'stickyHotkey' in partial || 'meetingHotkey' in partial) registerHotkey()
     if ('autoStart' in partial) applyAutoStart()
     if ('telegramEnabled' in partial || 'telegramBotToken' in partial || 'telegramAllowedUserIds' in partial || 'telegramRelayChannelId' in partial) {
@@ -675,8 +703,14 @@ function setupIpcHandlers(): void {
     if ('vkEnabled' in partial || 'vkCommunityToken' in partial || 'vkAllowedUserIds' in partial) {
       applyVkBot()
     }
-    return updated
+    if ('mcpEnabled' in partial || 'mcpPort' in partial || 'mcpToken' in partial) {
+      await applyMcpServer()
+    }
+    // Читаем заново: applyMcpServer мог выпустить токен
+    return store.getSettings()
   })
+
+  ipcMain.handle('get-mcp-status', () => mcpServer.getStatus())
 
   ipcMain.handle('test-connection', async () => {
     const settings = store.getSettings()
@@ -729,6 +763,7 @@ app.whenReady().then(() => {
   setTranscriptionRecorder(recordTranscription)
   applyTelegramBot()
   applyVkBot()
+  applyMcpServer().catch((error) => console.error('[mcp] старт:', error))
 
   if (mainWindow) {
     trayCallbacks = {
@@ -741,7 +776,7 @@ app.whenReady().then(() => {
   }
 })
 
-app.on('before-quit', () => { app.isQuitting = true; telegramBot.stop(); vkBot.stop() })
+app.on('before-quit', () => { app.isQuitting = true; telegramBot.stop(); vkBot.stop(); void mcpServer.stop() })
 app.on('will-quit', () => { globalShortcut.unregisterAll() })
 app.on('window-all-closed', () => {})
 

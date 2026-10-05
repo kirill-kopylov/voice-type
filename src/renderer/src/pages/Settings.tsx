@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-react'
-import { AppSettings } from '../types'
+import { useEffect, useState } from 'react'
+import { Eye, EyeOff, CheckCircle, XCircle, Loader2, Copy, RefreshCw } from 'lucide-react'
+import type { AppSettings, McpStatus } from '@shared/types'
 import { Select } from '../components/Select'
 import { HotkeyInput } from '../components/HotkeyInput'
 
@@ -268,6 +268,119 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
           </div>
         </div>
       </Section>
+
+      <McpSection settings={settings} onUpdate={onUpdate} showToast={showToast} />
+    </div>
+  )
+}
+
+const MCP_MIN_PORT = 1024
+const MCP_MAX_PORT = 65535
+
+function McpSection({ settings, onUpdate, showToast }: SettingsProps): JSX.Element {
+  const [status, setStatus] = useState<McpStatus>({ running: false, url: '' })
+  const [portDraft, setPortDraft] = useState(String(settings.mcpPort))
+  const [showToken, setShowToken] = useState(false)
+
+  // Сервер перезапускается при смене любой из этих настроек — перечитываем его состояние
+  useEffect(() => {
+    window.api.getMcpStatus().then(setStatus)
+  }, [settings.mcpEnabled, settings.mcpPort, settings.mcpToken])
+
+  const commitPort = (): void => {
+    const port = Math.trunc(Number(portDraft))
+    const valid = Number.isFinite(port) && port >= MCP_MIN_PORT && port <= MCP_MAX_PORT
+    if (valid && port !== settings.mcpPort) onUpdate({ mcpPort: port })
+    setPortDraft(String(valid ? port : settings.mcpPort))
+  }
+
+  const copy = (text: string, what: string): void => {
+    window.api.copyText(text)
+    showToast(`${what} скопировано`, 'success')
+  }
+
+  const url = status.url || `http://127.0.0.1:${settings.mcpPort}/mcp`
+  const claudeCommand = (token: string): string =>
+    `claude mcp add --transport http voice-type ${url} --header "Authorization: Bearer ${token}"`
+  const jsonConfig = (token: string): string => JSON.stringify(
+    { mcpServers: { 'voice-type': { type: 'http', url, headers: { Authorization: `Bearer ${token}` } } } },
+    null, 2
+  )
+  const masked = '••••••••'
+
+  return (
+    <Section title="MCP-сервер для нейроагентов">
+      <div className="space-y-4">
+        <Toggle label="Включить MCP-сервер" checked={settings.mcpEnabled} onChange={() => onUpdate({ mcpEnabled: !settings.mcpEnabled })} />
+        <p className="text-[10px] -mt-2" style={{ color: 'var(--text-4)' }}>
+          Агенты (Claude Code, Cursor и др.) ищут по диктовкам и встречам, читают саммари по датам и оставляют заметки к встречам.
+          Сервер слушает только этот компьютер и требует токен.
+        </p>
+
+        {settings.mcpEnabled && (
+          <>
+            <div className="flex items-center gap-2 text-xs" style={{ color: status.running ? 'var(--text-2)' : '#fca5a5' }}>
+              {status.running ? <CheckCircle size={14} className="text-green-300" /> : <XCircle size={14} className="text-red-300" />}
+              {status.running ? `Работает: ${status.url}` : status.error ?? 'Не запущен'}
+            </div>
+
+            <div>
+              <label className="block text-xs mb-1.5" style={{ color: 'var(--text-3)' }}>Порт</label>
+              <input
+                type="text"
+                value={portDraft}
+                onChange={(e) => setPortDraft(e.target.value)}
+                onBlur={commitPort}
+                className={inputClass}
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs mb-1.5" style={{ color: 'var(--text-3)' }}>Токен</label>
+              <TokenInput value={settings.mcpToken} show={showToken} toggle={() => setShowToken(!showToken)} onChange={() => undefined} placeholder="" />
+              <div className="flex gap-2 mt-2">
+                <SmallButton icon={<Copy size={12} />} label="Копировать токен" onClick={() => copy(settings.mcpToken, 'Токен')} />
+                <SmallButton icon={<RefreshCw size={12} />} label="Выпустить новый" onClick={() => onUpdate({ mcpToken: '' })} />
+              </div>
+              <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>После выпуска нового токена подключённых агентов нужно настроить заново.</p>
+            </div>
+
+            <ConfigSnippet
+              title="Claude Code (одна команда)"
+              shown={claudeCommand(showToken ? settings.mcpToken : masked)}
+              onCopy={() => copy(claudeCommand(settings.mcpToken), 'Команда')}
+            />
+            <ConfigSnippet
+              title="Другие клиенты (JSON-конфиг)"
+              shown={jsonConfig(showToken ? settings.mcpToken : masked)}
+              onCopy={() => copy(jsonConfig(settings.mcpToken), 'Конфиг')}
+            />
+          </>
+        )}
+      </div>
+    </Section>
+  )
+}
+
+function SmallButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }): JSX.Element {
+  return (
+    <button onClick={onClick} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
+      style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}>
+      {icon} {label}
+    </button>
+  )
+}
+
+function ConfigSnippet({ title, shown, onCopy }: { title: string; shown: string; onCopy: () => void }): JSX.Element {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs" style={{ color: 'var(--text-3)' }}>{title}</span>
+        <SmallButton icon={<Copy size={12} />} label="Копировать" onClick={onCopy} />
+      </div>
+      <pre className="text-[11px] p-3 rounded-xl overflow-x-auto whitespace-pre-wrap break-all select-text font-mono"
+        style={{ background: 'var(--surface)', color: 'var(--text-2)', border: '1px solid var(--border)' }}>{shown}</pre>
     </div>
   )
 }

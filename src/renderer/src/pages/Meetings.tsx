@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw } from 'lucide-react'
-import { MeetingRecord, DialogSegment, VoiceProfile } from '../types'
+import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw, StickyNote, Bot, Plus } from 'lucide-react'
+import type { MeetingRecord, MeetingNote, DialogSegment, VoiceProfile } from '@shared/types'
 import { formatDateTime, formatDuration } from '../utils/format'
 
 interface Props {
@@ -9,6 +9,9 @@ interface Props {
   isRecording: boolean
   onDelete: (id: string) => void
   onRenameSpeaker: (id: string, oldName: string, newName: string) => void
+  onAddNote: (meetingId: string, text: string) => void
+  onUpdateNote: (meetingId: string, noteId: string, text: string) => void
+  onDeleteNote: (meetingId: string, noteId: string) => void
   onSaveVoiceProfile: (meetingId: string, speaker: string, name: string) => void
   onDeleteVoiceProfile: (id: string) => void
   onGenerateSummary: (meetingId: string) => void
@@ -18,7 +21,8 @@ interface Props {
 
 export function Meetings({
   meetings, voiceProfiles, isRecording,
-  onDelete, onRenameSpeaker, onSaveVoiceProfile, onDeleteVoiceProfile, onGenerateSummary, onRetryMeeting, showToast
+  onDelete, onRenameSpeaker, onAddNote, onUpdateNote, onDeleteNote,
+  onSaveVoiceProfile, onDeleteVoiceProfile, onGenerateSummary, onRetryMeeting, showToast
 }: Props): JSX.Element {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showProfiles, setShowProfiles] = useState(false)
@@ -77,6 +81,9 @@ export function Meetings({
               onToggle={() => setExpandedId(expandedId === m.id ? null : m.id)}
               onDelete={() => onDelete(m.id)}
               onRenameSpeaker={(oldName, newName) => onRenameSpeaker(m.id, oldName, newName)}
+              onAddNote={(text) => onAddNote(m.id, text)}
+              onUpdateNote={(noteId, text) => onUpdateNote(m.id, noteId, text)}
+              onDeleteNote={(noteId) => onDeleteNote(m.id, noteId)}
               onSaveVoiceProfile={(speaker, name) => onSaveVoiceProfile(m.id, speaker, name)}
               onGenerateSummary={() => onGenerateSummary(m.id)}
               onRetry={() => onRetryMeeting(m.id)}
@@ -179,13 +186,17 @@ function VoiceProfileRow({ profile, active, onDelete }: { profile: VoiceProfile;
 }
 
 function MeetingCard({
-  meeting: m, expanded, onToggle, onDelete, onRenameSpeaker, onSaveVoiceProfile, onGenerateSummary, onRetry, showToast
+  meeting: m, expanded, onToggle, onDelete, onRenameSpeaker, onAddNote, onUpdateNote, onDeleteNote,
+  onSaveVoiceProfile, onGenerateSummary, onRetry, showToast
 }: {
   meeting: MeetingRecord
   expanded: boolean
   onToggle: () => void
   onDelete: () => void
   onRenameSpeaker: (oldName: string, newName: string) => void
+  onAddNote: (text: string) => void
+  onUpdateNote: (noteId: string, text: string) => void
+  onDeleteNote: (noteId: string) => void
   onSaveVoiceProfile: (speaker: string, name: string) => void
   onGenerateSummary: () => void
   onRetry: () => void
@@ -213,6 +224,7 @@ function MeetingCard({
           ) : (
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-4)' }}>
               {m.segments.length} реплик · {uniqueSpeakers.length} {uniqueSpeakers.length === 1 ? 'спикер' : 'спикеров'}
+              {(m.notes?.length ?? 0) > 0 && ` · заметок: ${m.notes?.length}`}
               {m.summaryStatus === 'pending' && ' · саммари готовится...'}
             </p>
           )}
@@ -289,6 +301,8 @@ function MeetingCard({
             </div>
           )}
           {m.summary && <SummaryBlock summary={m.summary} speakerName={speakerName} />}
+
+          <NotesBlock notes={m.notes ?? []} onAdd={onAddNote} onUpdate={onUpdateNote} onDelete={onDeleteNote} />
 
           {m.status === 'success' && (
             <>
@@ -373,6 +387,101 @@ function SummaryBlock({ summary, speakerName }: { summary: NonNullable<MeetingRe
             ))}
           </ul>
         </div>
+      )}
+    </div>
+  )
+}
+
+function NotesBlock({ notes, onAdd, onUpdate, onDelete }: {
+  notes: MeetingNote[]
+  onAdd: (text: string) => void
+  onUpdate: (noteId: string, text: string) => void
+  onDelete: (noteId: string) => void
+}): JSX.Element {
+  const [draft, setDraft] = useState('')
+
+  const submit = (): void => {
+    if (!draft.trim()) return
+    onAdd(draft.trim())
+    setDraft('')
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <StickyNote size={13} style={{ color: 'var(--text-3)' }} />
+        <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Заметки</span>
+      </div>
+
+      {notes.map((note) => (
+        <NoteItem key={note.id} note={note} onUpdate={(text) => onUpdate(note.id, text)} onDelete={() => onDelete(note.id)} />
+      ))}
+
+      <div className="flex items-end gap-2">
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit()
+          }}
+          placeholder="Что сделано, какие задачи созданы, ссылки… (Ctrl+Enter — добавить)"
+          rows={2}
+          className="flex-1 text-xs rounded-lg px-3 py-2 resize-y focus:outline-none select-text"
+          style={{ background: 'var(--accent-bg)', color: 'var(--text-1)', border: '1px solid var(--border)' }}
+        />
+        <button
+          onClick={submit}
+          disabled={!draft.trim()}
+          className="flex items-center gap-1 px-3 py-2 text-xs rounded-lg disabled:opacity-40"
+          style={{ background: 'var(--accent-bg-hover)', color: 'var(--accent)' }}
+        >
+          <Plus size={12} /> Добавить
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function NoteItem({ note, onUpdate, onDelete }: {
+  note: MeetingNote
+  onUpdate: (text: string) => void
+  onDelete: () => void
+}): JSX.Element {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(note.text)
+
+  const save = (): void => {
+    if (value.trim() && value.trim() !== note.text) onUpdate(value.trim())
+    setEditing(false)
+  }
+
+  return (
+    <div className="rounded-lg px-3 py-2 space-y-1" style={{ background: 'var(--accent-bg)' }}>
+      <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-4)' }}>
+        {note.source === 'agent' ? <Bot size={11} style={{ color: 'var(--accent)' }} /> : <StickyNote size={11} />}
+        <span style={{ color: note.source === 'agent' ? 'var(--accent)' : 'var(--text-3)' }}>{note.author}</span>
+        <span>{formatDateTime(note.createdAt)}{note.updatedAt && ' · изменено'}</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          {!editing && <button onClick={() => { setValue(note.text); setEditing(true) }} title="Изменить"><Edit2 size={11} /></button>}
+          <button onClick={onDelete} title="Удалить"><Trash2 size={11} /></button>
+        </div>
+      </div>
+
+      {editing ? (
+        <div className="flex items-end gap-2">
+          <textarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            rows={3}
+            autoFocus
+            className="flex-1 text-sm rounded px-2 py-1 resize-y focus:outline-none select-text"
+            style={{ background: 'var(--surface)', color: 'var(--text-1)' }}
+          />
+          <button onClick={save} style={{ color: 'var(--accent)' }}><Check size={14} /></button>
+          <button onClick={() => setEditing(false)} style={{ color: 'var(--text-4)' }}><X size={14} /></button>
+        </div>
+      ) : (
+        <p className="text-sm leading-relaxed whitespace-pre-wrap select-text" style={{ color: 'var(--text-1)' }}>{note.text}</p>
       )}
     </div>
   )

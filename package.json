@@ -7,6 +7,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
+    "test": "vitest run",
     "pack": "electron-vite build && electron-builder --dir",
     "dist": "electron-vite build && electron-builder",
     "install-app": "start \"\" \"release\\VoiceType-Setup.exe\"",
@@ -51,10 +52,13 @@
     "react-router-dom": "^6.22.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
-    "vite": "^5.0.12"
+    "vite": "^5.0.12",
+    "vitest": "^2.1.9"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
     "ffmpeg-static": "^5.3.0",
-    "fuse.js": "^7.3.0"
+    "fuse.js": "^7.3.0",
+    "zod": "^4.6.5"
   }
 }

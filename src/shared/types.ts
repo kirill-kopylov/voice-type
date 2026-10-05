@@ -1,9 +1,11 @@
+// Типы, общие для main, preload и renderer: данные приложения и контракт IPC.
+
 export type Provider = 'openai' | 'openrouter' | 'groq'
 
 export interface DialogSegment {
-  speaker: string
+  speaker: string   // "Speaker 1", "Speaker 2" или пользовательское имя
   text: string
-  start: number
+  start: number     // секунды от начала
   end: number
 }
 
@@ -14,10 +16,20 @@ export interface MeetingDecision {
 }
 
 export interface MeetingSummary {
-  brief: string
+  brief: string                              // 2-3 предложения
   topics: string[]
   decisions: MeetingDecision[]
-  guessedNames?: Record<string, string>
+  guessedNames?: Record<string, string>      // raw speaker -> guessed name
+}
+
+/** Заметка к встрече: свою оставляет пользователь, остальные — нейроагенты через MCP. */
+export interface MeetingNote {
+  id: string
+  text: string
+  source: 'user' | 'agent'
+  author: string
+  createdAt: string
+  updatedAt?: string
 }
 
 export interface MeetingRecord {
@@ -27,20 +39,21 @@ export interface MeetingRecord {
   durationMs: number
   createdAt: string
   segments: DialogSegment[]
-  speakerNames: Record<string, string>
+  speakerNames: Record<string, string>       // "Speaker 1" -> "Кирилл"
   summary?: MeetingSummary
   summaryStatus?: 'pending' | 'done' | 'error'
   summaryError?: string
+  notes?: MeetingNote[]
   status: 'success' | 'error'
   error?: string
 }
 
 export interface VoiceProfile {
   id: string
-  name: string
-  audioFileName: string
+  name: string                               // "Кирилл"
+  audioFileName: string                      // wav в voice-profiles/
   durationMs: number
-  segmentCount: number
+  segmentCount: number                       // сколько кусков склеено
   sourceMeetingId?: string
   createdAt: string
 }
@@ -55,6 +68,11 @@ export interface TranscriptionRecord {
   model: string
   status: 'success' | 'error'
   error?: string
+}
+
+export interface ScreenPoint {
+  x: number
+  y: number
 }
 
 export interface AppSettings {
@@ -78,14 +96,34 @@ export interface AppSettings {
   telegramEnabled: boolean
   telegramBotToken: string
   telegramAllowedUserIds: number[]
+  // id канала, куда пишет приложение на телефоне (в формате Bot API, -100…); 0 — выключено
   telegramRelayChannelId: number
   vkEnabled: boolean
   vkCommunityToken: string
   vkAllowedUserIds: number[]
   floatingButton: boolean
-  floatingButtonPosition: { x: number; y: number } | null
+  floatingButtonPosition: ScreenPoint | null
+  // MCP-сервер: нейроагенты ищут по диктовкам и встречам и оставляют заметки
+  mcpEnabled: boolean
+  mcpPort: number
+  mcpToken: string
 }
 
+export interface StoreSchema {
+  settings: AppSettings
+  history: TranscriptionRecord[]
+  meetings: MeetingRecord[]
+  voiceProfiles: VoiceProfile[]
+}
+
+export interface McpStatus {
+  running: boolean
+  /** Адрес для подключения агента; пусто, пока сервер выключен */
+  url: string
+  error?: string
+}
+
+/** Контракт между renderer и main: что preload выставляет в window.api. */
 export interface VoiceTypeAPI {
   submitAudio: (audioData: ArrayBuffer, durationMs: number) => Promise<TranscriptionRecord>
   getHistory: () => Promise<TranscriptionRecord[]>
@@ -97,6 +135,9 @@ export interface VoiceTypeAPI {
   getMeetings: () => Promise<MeetingRecord[]>
   deleteMeeting: (id: string) => Promise<void>
   renameMeetingSpeaker: (id: string, oldName: string, newName: string) => Promise<void>
+  addMeetingNote: (meetingId: string, text: string) => Promise<MeetingRecord | null>
+  updateMeetingNote: (meetingId: string, noteId: string, text: string) => Promise<MeetingRecord | null>
+  deleteMeetingNote: (meetingId: string, noteId: string) => Promise<MeetingRecord | null>
   getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
   generateMeetingSummary: (id: string) => Promise<MeetingRecord | null>
   retryMeeting: (id: string) => Promise<MeetingRecord | null>
@@ -106,10 +147,12 @@ export interface VoiceTypeAPI {
   getVoiceProfileAudio: (fileName: string) => Promise<ArrayBuffer | null>
   onMeetingStateChanged: (callback: (isRecording: boolean) => void) => () => void
   onMeetingUpdated: (callback: (record: MeetingRecord) => void) => () => void
+  onMeetingNotesChanged: (callback: (meetingId: string, notes: MeetingNote[]) => void) => () => void
   copyText: (text: string) => Promise<void>
   getAudio: (fileName: string) => Promise<ArrayBuffer | null>
   getSettings: () => Promise<AppSettings>
   updateSettings: (partial: Partial<AppSettings>) => Promise<AppSettings>
+  getMcpStatus: () => Promise<McpStatus>
   testConnection: () => Promise<{ ok: boolean; error?: string }>
   windowMinimize: () => Promise<void>
   windowMaximize: () => Promise<void>
@@ -117,10 +160,4 @@ export interface VoiceTypeAPI {
   setOverlayTheme: (config: Record<string, string | number>) => void
   onRecordingStateChanged: (callback: (isRecording: boolean) => void) => () => void
   onTranscriptionComplete: (callback: (record: TranscriptionRecord) => void) => () => void
-}
-
-declare global {
-  interface Window {
-    api: VoiceTypeAPI
-  }
 }

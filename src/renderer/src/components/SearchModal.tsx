@@ -1,17 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Fuse from 'fuse.js'
-import { Search, X, Clock, Users, FileText } from 'lucide-react'
-import { TranscriptionRecord, MeetingRecord } from '../types'
+import { Search, X, Clock, Users, FileText, StickyNote } from 'lucide-react'
+import type { TranscriptionRecord, MeetingRecord } from '@shared/types'
+import { buildSearchDocs, searchDocs, type SearchHit } from '@shared/search'
 import { Page } from '../App'
 import { Modal } from './Modal'
-
-interface SearchHit {
-  type: 'transcription' | 'meeting' | 'segment' | 'summary'
-  id: string
-  text: string
-  meta: string
-  score?: number
-}
 
 interface SearchModalProps {
   history: TranscriptionRecord[]
@@ -28,62 +20,16 @@ export function SearchModal({ history, meetings, onClose, onNavigate }: SearchMo
     inputRef.current?.focus()
   }, [])
 
-  const haystack = useMemo<SearchHit[]>(() => {
-    const items: SearchHit[] = []
-
-    for (const r of history) {
-      if (r.text) {
-        items.push({
-          type: 'transcription',
-          id: r.id,
-          text: r.text,
-          meta: new Date(r.createdAt).toLocaleString('ru-RU')
-        })
-      }
-    }
-
-    for (const m of meetings) {
-      if (m.summary?.brief) {
-        items.push({
-          type: 'summary',
-          id: m.id,
-          text: m.summary.brief,
-          meta: m.title
-        })
-      }
-      for (const seg of m.segments) {
-        const speaker = m.speakerNames[seg.speaker] ?? seg.speaker
-        items.push({
-          type: 'segment',
-          id: m.id,
-          text: seg.text,
-          meta: `${m.title} · ${speaker}`
-        })
-      }
-    }
-
-    return items
-  }, [history, meetings])
-
-  const fuse = useMemo(
-    () =>
-      new Fuse(haystack, {
-        keys: ['text', 'meta'],
-        threshold: 0.4,
-        ignoreLocation: true,
-        includeScore: true
-      }),
-    [haystack]
-  )
+  const haystack = useMemo(() => buildSearchDocs(history, meetings), [history, meetings])
 
   const results = useMemo(() => {
     if (!query.trim()) return []
-    return fuse.search(query, { limit: 30 }).map((r) => ({ ...r.item, score: r.score }))
-  }, [query, fuse])
+    return searchDocs(haystack, query, { limit: 30 })
+  }, [query, haystack])
 
   const handleSelect = (hit: SearchHit): void => {
-    if (hit.type === 'transcription') onNavigate({ page: 'history', id: hit.id })
-    else onNavigate({ page: 'meetings', id: hit.id })
+    if (hit.type === 'dictation') onNavigate({ page: 'history', id: hit.recordId })
+    else onNavigate({ page: 'meetings', id: hit.recordId })
   }
 
   return (
@@ -125,7 +71,7 @@ export function SearchModal({ history, meetings, onClose, onNavigate }: SearchMo
 
           {results.map((hit, i) => (
             <button
-              key={`${hit.type}-${hit.id}-${i}`}
+              key={`${hit.type}-${hit.recordId}-${i}`}
               onClick={() => handleSelect(hit)}
               className="w-full px-4 py-3 text-left transition-colors flex items-start gap-3"
               style={{ borderBottom: i < results.length - 1 ? '1px solid var(--border)' : 'none' }}
@@ -133,16 +79,17 @@ export function SearchModal({ history, meetings, onClose, onNavigate }: SearchMo
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
               <div className="shrink-0 mt-0.5">
-                {hit.type === 'transcription' && <FileText size={14} style={{ color: 'var(--text-4)' }} />}
-                {hit.type === 'segment' && <Users size={14} style={{ color: 'var(--text-4)' }} />}
-                {hit.type === 'summary' && <Clock size={14} style={{ color: 'var(--accent)' }} />}
+                {hit.type === 'dictation' && <FileText size={14} style={{ color: 'var(--text-4)' }} />}
+                {hit.type === 'meeting_dialog' && <Users size={14} style={{ color: 'var(--text-4)' }} />}
+                {hit.type === 'meeting_summary' && <Clock size={14} style={{ color: 'var(--accent)' }} />}
+                {hit.type === 'meeting_note' && <StickyNote size={14} style={{ color: 'var(--accent)' }} />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm leading-snug" style={{ color: 'var(--text-1)' }}>
                   {highlight(hit.text, query)}
                 </p>
                 <p className="text-[11px] mt-1" style={{ color: 'var(--text-4)' }}>
-                  {labelFor(hit.type)} · {hit.meta}
+                  {labelFor(hit.type)} · {hit.type === 'dictation' ? new Date(hit.createdAt).toLocaleString('ru-RU') : hit.meta}
                 </p>
               </div>
             </button>
@@ -153,12 +100,14 @@ export function SearchModal({ history, meetings, onClose, onNavigate }: SearchMo
   )
 }
 
-function labelFor(type: SearchHit['type']): string {
-  if (type === 'transcription') return 'Диктовка'
-  if (type === 'segment') return 'Реплика встречи'
-  if (type === 'summary') return 'Саммари встречи'
-  return 'Встреча'
+const TYPE_LABELS: Record<SearchHit['type'], string> = {
+  dictation: 'Диктовка',
+  meeting_dialog: 'Реплика встречи',
+  meeting_summary: 'Саммари встречи',
+  meeting_note: 'Заметка к встрече'
 }
+
+const labelFor = (type: SearchHit['type']): string => TYPE_LABELS[type]
 
 function pluralize(n: number): string {
   const m100 = n % 100

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Search, Trash2, Copy, ClipboardPaste, Play, Pause, X, AlertCircle, RotateCcw } from 'lucide-react'
-import { TranscriptionRecord } from '../types'
+import type { TranscriptionRecord } from '@shared/types'
 import { formatDateTime, formatDuration } from '../utils/format'
 
 interface HistoryProps {

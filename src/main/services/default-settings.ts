@@ -1,0 +1,33 @@
+import type { AppSettings } from '../../shared/types'
+
+export const DEFAULT_SETTINGS: AppSettings = {
+  provider: 'openrouter',
+  openAiApiKey: '',
+  openRouterApiKey: '',
+  groqApiKey: '',
+  model: 'openai/gpt-4o-mini-transcribe',
+  language: 'ru',
+  hotkey: 'CommandOrControl+Shift+H',
+  autoPaste: true,
+  keepInClipboard: false,
+  autoEnter: true,
+  autoEnterTriggers: 'enter,энтер,ентер,отправь,отправить,send,пуш,push',
+  stickyWindow: false,
+  stickyHotkey: 'CommandOrControl+Shift+L',
+  meetingHotkey: 'CommandOrControl+Shift+M',
+  captureSystemAudio: true,
+  theme: 'sunset',
+  autoStart: false,
+  telegramEnabled: false,
+  telegramBotToken: '',
+  telegramAllowedUserIds: [],
+  telegramRelayChannelId: 0,
+  vkEnabled: false,
+  vkCommunityToken: '',
+  vkAllowedUserIds: [],
+  floatingButton: true,
+  floatingButtonPosition: null,
+  mcpEnabled: false,
+  mcpPort: 47321,
+  mcpToken: ''
+}

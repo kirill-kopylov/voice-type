@@ -2,7 +2,7 @@ import { net } from 'electron'
 import { chunkWebmBySilence } from './chunk-audio'
 import { extractSpeakerSegments } from './extract-speaker'
 import { extractJsonObject } from './extract-json'
-import type { DialogSegment } from './types'
+import type { DialogSegment } from '../../shared/types'
 
 // Диаризацию делает STT-модель: она разделяет голоса внутри куска.
 const DIARIZE_STT_MODEL = 'microsoft/mai-transcribe-2'

@@ -1,5 +1,5 @@
 import { Mic, MicOff, Activity, Clock, FileText, AlertCircle } from 'lucide-react'
-import { TranscriptionRecord, AppSettings } from '../types'
+import type { TranscriptionRecord, AppSettings } from '@shared/types'
 import { formatDuration, formatRelativeDate } from '../utils/format'
 
 interface DashboardProps {

@@ -1,7 +1,7 @@
 import { BrowserWindow, Menu, ipcMain, screen } from 'electron'
 import { FLOATING_BUTTON_HTML } from '../floating-button.html'
 import { store } from './store'
-import type { ScreenPoint } from './types'
+import type { ScreenPoint } from '../../shared/types'
 
 const SIZE = 20
 
