@@ -8,6 +8,7 @@ export interface MeetingAudio {
   playing: PlayTarget | null
   toggleAll: () => void
   toggleRange: (index: number, start: number, end: number) => void
+  stop: () => void
 }
 
 /**
@@ -82,7 +83,7 @@ export function useMeetingAudio(fileName: string): MeetingAudio {
     void play(index, start, end)
   }, [playing, play, stop])
 
-  return { loading, playing, toggleAll, toggleRange }
+  return { loading, playing, toggleAll, toggleRange, stop }
 }
 
 /**

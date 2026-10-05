@@ -4,9 +4,11 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { MeetingNote, MeetingRecord } from '../../shared/types'
 import { store } from '../services/store'
+import { extractFrames } from '../services/video-frames'
+import { videoPath } from '../services/video-storage'
 import { DateInputError, resolveDateRange } from './dates'
 import {
-  buildDigest, getDictationView, getMeetingView, listDictations, listMeetings, searchRecords, toNoteView
+  buildDigest, formatClock, getDictationView, getMeetingView, listDictations, listMeetings, searchRecords, toNoteView
 } from './queries'
 
 const SERVER_INSTRUCTIONS = [
@@ -14,9 +16,14 @@ const SERVER_INSTRUCTIONS = [
   'Date questions ("what happened last week"): start with `digest`, or `list_meetings` with from/to — they return summaries only.',
   'Read a transcript (`get_meeting` with include=["transcript"]) only when the summary is not enough; use from_sec/to_sec/speaker to read a part.',
   'Keywords: `search` (fuzzy by default). Dates everywhere: 2026-10-05, 2026-10, today, yesterday, 7d, 2w.',
+  'Meetings with has_video=true have a screen recording: when the transcript refers to something shown on screen, look at it with `get_frames` (a short window around the moment, a few frames).',
   'After doing something because of a meeting (created tasks, sent messages) record it with `add_meeting_note` — the user sees these notes in the app.'
 ].join('\n')
 
+const MAX_FRAMES = 20
+const DEFAULT_FRAMES = 8
+const DEFAULT_FRAME_WIDTH = 1280
+const DEFAULT_WINDOW_SEC = 30
 const MAX_NOTE_CHARS = 5000
 const AGENT_AUTHOR = 'agent'
 
@@ -141,6 +148,57 @@ export function createMcpServer(host: McpToolsHost): McpServer {
       maxChars: args.max_chars
     })
     return ok(view)
+  })
+
+  server.registerTool('get_frames', {
+    description:
+      'Look at the screen recording of a meeting: returns still images (JPEG) taken from the video between from_sec and to_sec. '
+      + 'Use it when the transcript is not enough — e.g. someone shows a bug on screen: find the moment in the transcript ([mm:ss] lines), '
+      + 'then request frames around it. Frames are evenly spaced; with skip_similar (default) near-identical ones are dropped so you see only changes. '
+      + 'Prefer a short window (10-60 s) with 4-10 frames; only meetings with has_video=true have a recording.',
+    inputSchema: {
+      meeting_id: z.string(),
+      from_sec: z.number().min(0).describe('Start of the window, seconds from the start of the meeting.'),
+      to_sec: z.number().min(0).optional().describe('End of the window. Default: from_sec + 30.'),
+      count: z.number().int().min(1).max(MAX_FRAMES).optional().describe(`How many frames (default ${DEFAULT_FRAMES}, max ${MAX_FRAMES}).`),
+      skip_similar: z.boolean().optional().describe('Drop frames that look the same as the previous one (default true). With false you get exactly `count` evenly spaced frames.'),
+      max_width: z.number().int().min(320).max(1920).optional().describe(`Frame width in pixels (default ${DEFAULT_FRAME_WIDTH}). Lower it to save tokens.`)
+    },
+    annotations: READ_ONLY
+  }, async (args) => {
+    const meeting = store.getMeeting(args.meeting_id)
+    if (!meeting) return fail(`Meeting ${args.meeting_id} not found`)
+    if (!meeting.videoFileName) return fail('This meeting has no screen recording')
+
+    const durationSec = meeting.durationMs / 1000
+    const fromSec = Math.min(args.from_sec, durationSec)
+    const toSec = Math.min(args.to_sec ?? fromSec + DEFAULT_WINDOW_SEC, durationSec)
+    if (toSec < fromSec) return fail('to_sec must not be less than from_sec')
+
+    const { frames, skippedSimilar } = await extractFrames(videoPath(meeting.videoFileName), {
+      fromSec,
+      toSec,
+      count: args.count ?? DEFAULT_FRAMES,
+      skipSimilar: args.skip_similar ?? true,
+      maxWidth: args.max_width ?? DEFAULT_FRAME_WIDTH
+    })
+    if (frames.length === 0) return fail('No frames in this window — the recording may be shorter than the meeting')
+
+    const summary = {
+      meeting: meeting.title,
+      window: `${formatClock(fromSec)}-${formatClock(toSec)}`,
+      frames: frames.map((frame) => formatClock(frame.atSec)),
+      skippedSimilar
+    }
+    return {
+      content: [
+        { type: 'text', text: JSON.stringify(summary) },
+        ...frames.flatMap((frame): CallToolResult['content'] => [
+          { type: 'text', text: `[${formatClock(frame.atSec)}]` },
+          { type: 'image', data: frame.jpeg.toString('base64'), mimeType: 'image/jpeg' }
+        ])
+      ]
+    }
   })
 
   server.registerTool('list_dictations', {

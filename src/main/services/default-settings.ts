@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   stickyHotkey: 'CommandOrControl+Shift+L',
   meetingHotkey: 'CommandOrControl+Shift+M',
   captureSystemAudio: true,
+  screenCaptureMode: 'off',
   theme: 'sunset',
   autoStart: false,
   telegramEnabled: false,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Eye, EyeOff, CheckCircle, XCircle, Loader2, Copy, RefreshCw } from 'lucide-react'
-import type { AppSettings, McpStatus } from '@shared/types'
+import type { AppSettings, McpStatus, ScreenCaptureMode } from '@shared/types'
 import { Select } from '../components/Select'
 import { HotkeyInput } from '../components/HotkeyInput'
 
@@ -27,6 +27,13 @@ const OPENROUTER_MODELS = [
   { id: 'openai/gpt-4o-transcribe', name: 'GPT-4o Transcribe', sub: '$0.006/мин — высокая точность' },
   { id: 'mistralai/voxtral-mini-transcribe', name: 'Voxtral Mini Transcribe', sub: '$0.002/мин — самая быстрая, заточена под голосовые' },
   { id: 'qwen/qwen3-asr-flash-2026-02-10', name: 'Qwen3 ASR Flash', sub: '$0.002/мин — устойчива к шуму' },
+]
+
+const SCREEN_CAPTURE_MODES: Array<{ id: ScreenCaptureMode; name: string; sub: string }> = [
+  { id: 'off', name: 'Не записывать', sub: 'только звук' },
+  { id: 'screen', name: 'Весь экран', sub: 'основной монитор' },
+  { id: 'all-screens', name: 'Все экраны', sub: 'мониторы рядом, как стоят на столе' },
+  { id: 'region', name: 'Область экрана', sub: 'выделяете мышью при старте встречи' },
 ]
 
 const LANGUAGES = [
@@ -140,9 +147,20 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
           <div>
             <label className="block text-xs mb-1.5" style={{ color: 'var(--text-4)' }}>Хоткей встречи</label>
             <HotkeyInput value={settings.meetingHotkey} onChange={(v) => onUpdate({ meetingHotkey: v })} />
-            <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Старт/стоп записи встречи. Нужен OpenRouter ключ — диаризация через MAI-Transcribe 2, имена по образцам голоса — через Gemini 3.5 Flash.</p>
+            <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Старт/стоп записи встречи. Нужен OpenRouter ключ — голоса размечает Fish Audio, текст — MAI-Transcribe 2, имена — Gemini 3.5 Flash.</p>
           </div>
           <Toggle label="Захватывать системный звук (голос коллеги)" checked={settings.captureSystemAudio} onChange={() => onUpdate({ captureSystemAudio: !settings.captureSystemAudio })} />
+          <div>
+            <label className="block text-xs mb-1.5" style={{ color: 'var(--text-4)' }}>Запись экрана вместе со встречей</label>
+            <Select
+              value={settings.screenCaptureMode}
+              options={SCREEN_CAPTURE_MODES.map((m) => ({ value: m.id, label: m.name, sub: m.sub }))}
+              onChange={(v) => onUpdate({ screenCaptureMode: v as ScreenCaptureMode })}
+            />
+            <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>
+              1080p, 16 кадров/с, видео хранится вместе со встречей, пока вы его не удалите. Кадры из записи агенты получают через MCP.
+            </p>
+          </div>
         </div>
       </Section>
 

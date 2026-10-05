@@ -46,6 +46,10 @@ export function saveAudio(id: string, buffer: Buffer, ext = 'webm'): string {
   return fileName
 }
 
+export function audioPath(fileName: string): string {
+  return path.join(getAudioDir(), fileName)
+}
+
 export function loadAudio(fileName: string): Buffer | null {
   const filePath = path.join(getAudioDir(), fileName)
   try {

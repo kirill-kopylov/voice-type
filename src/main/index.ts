@@ -7,6 +7,7 @@ import {
   clipboard,
   screen,
   session,
+  shell,
   nativeImage
 } from 'electron'
 import path from 'path'
@@ -17,7 +18,7 @@ import { transcribeAudio, testConnection } from './services/transcription'
 import { transcribeDiarized, KnownSpeaker } from './services/diarization'
 import { generateSummary } from './services/summary'
 import { extractSpeakerSegments } from './services/extract-speaker'
-import type { AppSettings, MeetingLevels, MeetingRecord, VoiceProfile, TranscriptionRecord, McpStatus } from '../shared/types'
+import type { AppSettings, MeetingLevels, MeetingRecord, VoiceProfile, TranscriptionRecord, McpStatus, ScreenDisplay } from '../shared/types'
 import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
 import { saveAudio, loadAudio, deleteAudio, saveProfileAudio, loadProfileAudio, deleteProfileAudio } from './services/audio-storage'
@@ -29,6 +30,12 @@ import { telegramBot } from './services/telegram-bot'
 import { vkBot } from './services/vk-bot'
 import { setTranscriptionRecorder } from './services/remote-input'
 import { McpHttpServer } from './mcp/server'
+import { appendVideoChunk, beginVideoRecording, deleteVideo, saveMeetingVideo, videoPath } from './services/video-storage'
+import { handleMediaProtocol, registerMediaScheme } from './services/media-protocol'
+import { selectScreenRegion } from './services/region-selector'
+
+// Схему для видео нужно объявить до app.ready
+registerMediaScheme()
 
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
@@ -39,6 +46,18 @@ let currentMeetingHotkey: string | null = null
 let isMeetingRecording = false
 let currentOverlayTheme: Record<string, string | number> | null = null
 let trayCallbacks: TrayCallbacks | null = null
+// Монитор, который отдаст следующий getDisplayMedia: renderer выбирает его перед вызовом
+let captureDisplayId: string | null = null
+
+function listDisplays(): ScreenDisplay[] {
+  const primaryId = screen.getPrimaryDisplay().id
+  return screen.getAllDisplays().map((display) => ({
+    id: String(display.id),
+    bounds: display.bounds,
+    scaleFactor: display.scaleFactor,
+    primary: display.id === primaryId
+  }))
+}
 
 // Агенты добавляют заметки через MCP — окну приложения нужно подхватить изменения
 const mcpServer = new McpHttpServer({
@@ -419,18 +438,26 @@ function setupIpcHandlers(): void {
   })
 
   // ═══ MEETINGS ═══
-  ipcMain.handle('submit-meeting', async (_event, audioData: ArrayBuffer, durationMs: number) => {
-    console.log(`[meeting] submit: ${audioData.byteLength} байт, ${durationMs}мс`)
+  ipcMain.handle('get-screen-displays', () => listDisplays())
+  ipcMain.handle('select-capture-source', (_event, displayId: string) => { captureDisplayId = displayId })
+  ipcMain.handle('select-screen-region', () => selectScreenRegion())
+
+  ipcMain.handle('begin-video-upload', () => beginVideoRecording())
+  ipcMain.on('video-chunk', (_event, chunk: ArrayBuffer) => appendVideoChunk(Buffer.from(chunk)))
+
+  ipcMain.handle('submit-meeting', async (_event, audioData: ArrayBuffer, durationMs: number, videoOffsetMs: number | null) => {
+    console.log(`[meeting] submit: ${audioData.byteLength} байт, ${durationMs}мс, видео: ${videoOffsetMs === null ? 'нет' : `сдвиг ${videoOffsetMs}мс`}`)
     const settings = store.getSettings()
     const id = randomUUID()
     const audioBuffer = Buffer.from(audioData)
     const audioFileName = saveAudio(id, audioBuffer)
+    const videoFileName = videoOffsetMs === null ? undefined : (await saveMeetingVideo(id, audioFileName, videoOffsetMs)) ?? undefined
 
     const apiKey = settings.openRouterApiKey
     if (!apiKey) {
       const record: MeetingRecord = {
         id, title: `Встреча ${new Date().toLocaleString('ru-RU')}`,
-        audioFileName, durationMs,
+        audioFileName, videoFileName, durationMs,
         createdAt: new Date().toISOString(),
         segments: [], speakerNames: {},
         status: 'error', error: 'OpenRouter API ключ не задан (нужен для диаризации встреч)'
@@ -466,7 +493,7 @@ function setupIpcHandlers(): void {
     const record: MeetingRecord = {
       id,
       title: `Встреча ${new Date().toLocaleString('ru-RU')}`,
-      audioFileName, durationMs,
+      audioFileName, videoFileName, durationMs,
       createdAt: new Date().toISOString(),
       segments: result.segments,
       speakerNames: initialSpeakerNames,
@@ -606,8 +633,23 @@ function setupIpcHandlers(): void {
     const m = store.getMeeting(id)
     if (m) {
       deleteAudio(m.audioFileName)
+      if (m.videoFileName) deleteVideo(m.videoFileName)
       store.deleteMeeting(id)
     }
+  })
+
+  // Видео можно убрать, не трогая звук, расшифровку и саммари
+  ipcMain.handle('delete-meeting-video', (_event, id: string) => {
+    const meeting = store.getMeeting(id)
+    if (!meeting?.videoFileName) return meeting ?? null
+    deleteVideo(meeting.videoFileName)
+    store.updateMeeting(id, { videoFileName: undefined })
+    return store.getMeeting(id) ?? null
+  })
+
+  ipcMain.handle('reveal-meeting-video', (_event, id: string) => {
+    const fileName = store.getMeeting(id)?.videoFileName
+    if (fileName) shell.showItemInFolder(videoPath(fileName))
   })
 
   ipcMain.handle('rename-meeting-speaker', (_event, id: string, oldName: string, newName: string) => {
@@ -752,11 +794,14 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(true))
   session.defaultSession.setPermissionCheckHandler(() => true)
 
-  // Захват системного звука для встреч — даём первый screen с loopback audio
-  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
-    desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+  handleMediaProtocol()
+
+  // Захват экрана и системного звука для встреч: монитор выбран заранее (select-capture-source)
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } }).then((sources) => {
+      const source = sources.find((s) => s.display_id === captureDisplayId) ?? sources[0]
       // На Windows audio: 'loopback' даёт системный звук
-      callback({ video: sources[0], audio: 'loopback' })
+      callback(request.audioRequested ? { video: source, audio: 'loopback' } : { video: source })
     }).catch((err) => {
       console.error('[displayMedia] Ошибка:', err)
       callback({})

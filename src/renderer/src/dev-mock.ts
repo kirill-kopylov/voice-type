@@ -30,7 +30,7 @@ export function installDevMock(): void {
     hotkey: 'CommandOrControl+Shift+H', autoPaste: true, keepInClipboard: false,
     autoEnter: true, autoEnterTriggers: 'enter',
     stickyWindow: false, stickyHotkey: '',
-    meetingHotkey: '', captureSystemAudio: true,
+    meetingHotkey: '', captureSystemAudio: true, screenCaptureMode: 'off' as const,
     autoStart: false, theme: 'sunset',
     telegramEnabled: false, telegramBotToken: '', telegramAllowedUserIds: [], telegramRelayChannelId: 0,
     vkEnabled: false, vkCommunityToken: '', vkAllowedUserIds: [],
@@ -90,6 +90,13 @@ export function installDevMock(): void {
     windowClose: noop,
     setOverlayTheme: () => {},
     sendMeetingLevels: () => {},
+    getScreenDisplays: async () => [],
+    selectCaptureSource: noop,
+    selectScreenRegion: async () => null,
+    beginVideoUpload: noop,
+    sendVideoChunk: () => {},
+    deleteMeetingVideo: async () => mockMeeting,
+    revealMeetingVideo: noop,
   }
 
   ;(window as unknown as { api: VoiceTypeAPI }).api = api

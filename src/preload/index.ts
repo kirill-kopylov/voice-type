@@ -15,9 +15,16 @@ const api: VoiceTypeAPI = {
 
   retryTranscription: (id) => ipcRenderer.invoke('retry-transcription', id),
 
-  submitMeeting: (audioData, durationMs) => ipcRenderer.invoke('submit-meeting', audioData, durationMs),
+  submitMeeting: (audioData, durationMs, videoOffsetMs) => ipcRenderer.invoke('submit-meeting', audioData, durationMs, videoOffsetMs),
   getMeetings: () => ipcRenderer.invoke('get-meetings'),
   deleteMeeting: (id) => ipcRenderer.invoke('delete-meeting', id),
+  getScreenDisplays: () => ipcRenderer.invoke('get-screen-displays'),
+  selectCaptureSource: (displayId) => ipcRenderer.invoke('select-capture-source', displayId),
+  selectScreenRegion: () => ipcRenderer.invoke('select-screen-region'),
+  beginVideoUpload: () => ipcRenderer.invoke('begin-video-upload'),
+  sendVideoChunk: (chunk) => ipcRenderer.send('video-chunk', chunk),
+  deleteMeetingVideo: (id) => ipcRenderer.invoke('delete-meeting-video', id),
+  revealMeetingVideo: (id) => ipcRenderer.invoke('reveal-meeting-video', id),
   renameMeetingSpeaker: (id, oldName, newName) => ipcRenderer.invoke('rename-meeting-speaker', id, oldName, newName),
   addMeetingNote: (meetingId, text) => ipcRenderer.invoke('add-meeting-note', meetingId, text),
   updateMeetingNote: (meetingId, noteId, text) => ipcRenderer.invoke('update-meeting-note', meetingId, noteId, text),

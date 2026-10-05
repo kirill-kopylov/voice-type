@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
-import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw, StickyNote, Bot, Plus } from 'lucide-react'
+import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw, StickyNote, Bot, Plus, Video, FolderOpen } from 'lucide-react'
 import type { MeetingRecord, MeetingNote, DialogSegment, VoiceProfile } from '@shared/types'
 import { formatDateTime, formatDuration } from '../utils/format'
 import { MeetingLevelMeter } from '../components/MeetingLevelMeter'
 import { useMeetingAudio } from '../hooks/useMeetingAudio'
+import { meetingVideoUrl, useMeetingVideo, type MeetingVideo } from '../hooks/useMeetingVideo'
 
 interface Props {
   meetings: MeetingRecord[]
   voiceProfiles: VoiceProfile[]
   isRecording: boolean
   onDelete: (id: string) => void
+  onDeleteVideo: (id: string) => void
   onRenameSpeaker: (id: string, oldName: string, newName: string) => void
   onAddNote: (meetingId: string, text: string) => void
   onUpdateNote: (meetingId: string, noteId: string, text: string) => void
@@ -23,7 +25,7 @@ interface Props {
 
 export function Meetings({
   meetings, voiceProfiles, isRecording,
-  onDelete, onRenameSpeaker, onAddNote, onUpdateNote, onDeleteNote,
+  onDelete, onDeleteVideo, onRenameSpeaker, onAddNote, onUpdateNote, onDeleteNote,
   onSaveVoiceProfile, onDeleteVoiceProfile, onGenerateSummary, onRetryMeeting, showToast
 }: Props): JSX.Element {
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -85,6 +87,7 @@ export function Meetings({
               expanded={expandedId === m.id}
               onToggle={() => setExpandedId(expandedId === m.id ? null : m.id)}
               onDelete={() => onDelete(m.id)}
+              onDeleteVideo={() => onDeleteVideo(m.id)}
               onRenameSpeaker={(oldName, newName) => onRenameSpeaker(m.id, oldName, newName)}
               onAddNote={(text) => onAddNote(m.id, text)}
               onUpdateNote={(noteId, text) => onUpdateNote(m.id, noteId, text)}
@@ -191,13 +194,14 @@ function VoiceProfileRow({ profile, active, onDelete }: { profile: VoiceProfile;
 }
 
 function MeetingCard({
-  meeting: m, expanded, onToggle, onDelete, onRenameSpeaker, onAddNote, onUpdateNote, onDeleteNote,
+  meeting: m, expanded, onToggle, onDelete, onDeleteVideo, onRenameSpeaker, onAddNote, onUpdateNote, onDeleteNote,
   onSaveVoiceProfile, onGenerateSummary, onRetry, showToast
 }: {
   meeting: MeetingRecord
   expanded: boolean
   onToggle: () => void
   onDelete: () => void
+  onDeleteVideo: () => void
   onRenameSpeaker: (oldName: string, newName: string) => void
   onAddNote: (text: string) => void
   onUpdateNote: (noteId: string, text: string) => void
@@ -208,6 +212,7 @@ function MeetingCard({
   showToast: (message: string, type: 'success' | 'error') => void
 }): JSX.Element {
   const audio = useMeetingAudio(m.audioFileName)
+  const video = useMeetingVideo()
   const speakerName = (raw: string): string => m.speakerNames[raw] ?? raw
   const uniqueSpeakers = Array.from(new Set(m.segments.map((s) => s.speaker)))
 
@@ -244,7 +249,7 @@ function MeetingCard({
           {/* Панель действий */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={audio.toggleAll}
+              onClick={() => { video.pause(); audio.toggleAll() }}
               disabled={audio.loading}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50"
               style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
@@ -303,6 +308,10 @@ function MeetingCard({
             </button>
           </div>
 
+          {m.videoFileName && (
+            <MeetingVideoBlock meeting={m} video={video} onDelete={onDeleteVideo} />
+          )}
+
           {/* Саммари */}
           {m.summaryStatus === 'pending' && (
             <div className="p-3 rounded-lg flex items-center gap-2 text-xs" style={{ background: 'var(--accent-bg)', color: 'var(--text-3)' }}>
@@ -347,7 +356,9 @@ function MeetingCard({
                     speakerName={speakerName(seg.speaker)}
                     playing={audio.playing === i}
                     loading={audio.loading}
-                    onTogglePlay={() => audio.toggleRange(i, seg.start, seg.end)}
+                    onTogglePlay={() => { video.pause(); audio.toggleRange(i, seg.start, seg.end) }}
+                    watching={m.videoFileName ? video.playingLine === i : undefined}
+                    onToggleWatch={() => { audio.stop(); video.playLine(i, seg.start, seg.end) }}
                   />
                 ))}
               </div>
@@ -355,6 +366,56 @@ function MeetingCard({
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function MeetingVideoBlock({ meeting, video, onDelete }: {
+  meeting: MeetingRecord
+  video: MeetingVideo
+  onDelete: () => void
+}): JSX.Element {
+  const [confirming, setConfirming] = useState(false)
+
+  // Удаление необратимо — просим второй клик, а если пользователь передумал, кнопка возвращается сама
+  useEffect(() => {
+    if (!confirming) return
+    const timer = setTimeout(() => setConfirming(false), 4000)
+    return () => clearTimeout(timer)
+  }, [confirming])
+
+  return (
+    <div className="space-y-2">
+      <video
+        ref={video.videoRef}
+        onPause={video.onPause}
+        src={meetingVideoUrl(meeting.videoFileName ?? '')}
+        controls
+        preload="metadata"
+        className="w-full rounded-lg bg-black"
+        style={{ maxHeight: 420 }}
+      />
+      <div className="flex items-center gap-2">
+        <Video size={13} style={{ color: 'var(--text-3)' }} />
+        <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Видео встречи</span>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => window.api.revealMeetingVideo(meeting.id)}
+            className="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg transition-colors"
+            style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
+          >
+            <FolderOpen size={12} /> Открыть файл
+          </button>
+          <button
+            onClick={() => (confirming ? onDelete() : setConfirming(true))}
+            className="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg transition-colors hover:bg-red-500/15"
+            style={{ color: confirming ? '#fca5a5' : 'var(--text-4)' }}
+            title="Звук и расшифровка останутся"
+          >
+            <Trash2 size={12} /> {confirming ? 'Точно удалить видео?' : 'Удалить видео'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -568,12 +629,15 @@ function SpeakerTag({
   )
 }
 
-function DialogLine({ segment, speakerName, playing, loading, onTogglePlay }: {
+function DialogLine({ segment, speakerName, playing, loading, onTogglePlay, watching, onToggleWatch }: {
   segment: DialogSegment
   speakerName: string
   playing: boolean
   loading: boolean
   onTogglePlay: () => void
+  /** Есть видео встречи: undefined — кнопки «Смотреть» нет, иначе играет ли сейчас этот кусок на видео */
+  watching?: boolean
+  onToggleWatch: () => void
 }): JSX.Element {
   const mins = Math.floor(segment.start / 60)
   const secs = Math.floor(segment.start % 60).toString().padStart(2, '0')
@@ -586,19 +650,35 @@ function DialogLine({ segment, speakerName, playing, loading, onTogglePlay }: {
       </div>
       <div className="flex-1 space-y-1">
         <p className="text-sm leading-relaxed" style={{ color: 'var(--text-1)' }}>{segment.text}</p>
-        <button
-          onClick={onTogglePlay}
-          disabled={loading}
-          className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-md transition-colors disabled:opacity-50"
-          style={{
-            background: playing ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
-            color: playing ? 'var(--accent)' : 'var(--text-3)'
-          }}
-          title="Прослушать реплику"
-        >
-          {playing ? <Pause size={10} /> : <Play size={10} />}
-          {playing ? 'Пауза' : 'Слушать'}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={onTogglePlay}
+            disabled={loading}
+            className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-md transition-colors disabled:opacity-50"
+            style={{
+              background: playing ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
+              color: playing ? 'var(--accent)' : 'var(--text-3)'
+            }}
+            title="Прослушать реплику"
+          >
+            {playing ? <Pause size={10} /> : <Play size={10} />}
+            {playing ? 'Пауза' : 'Слушать'}
+          </button>
+          {watching !== undefined && (
+            <button
+              onClick={onToggleWatch}
+              className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-md transition-colors"
+              style={{
+                background: watching ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
+                color: watching ? 'var(--accent)' : 'var(--text-3)'
+              }}
+              title="Показать этот момент на видео"
+            >
+              {watching ? <Pause size={10} /> : <Video size={10} />}
+              {watching ? 'Пауза' : 'Смотреть'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

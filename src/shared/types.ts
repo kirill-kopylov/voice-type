@@ -32,10 +32,35 @@ export interface MeetingNote {
   updatedAt?: string
 }
 
+/** Что снимать на видео во время встречи */
+export type ScreenCaptureMode = 'off' | 'screen' | 'all-screens' | 'region'
+
+export interface Rect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** Монитор: границы и масштаб в DIP (логических пикселях), как их отдаёт Electron */
+export interface ScreenDisplay {
+  id: string
+  bounds: Rect
+  scaleFactor: number
+  primary: boolean
+}
+
+/** Выбранная пользователем область: координаты в DIP относительно левого верхнего угла монитора */
+export interface ScreenRegion extends Rect {
+  displayId: string
+}
+
 export interface MeetingRecord {
   id: string
   title: string
   audioFileName: string
+  /** Запись экрана со звуком встречи; пока видео не удалено, лежит отдельно от аудио */
+  videoFileName?: string
   durationMs: number
   createdAt: string
   segments: DialogSegment[]
@@ -91,6 +116,7 @@ export interface AppSettings {
   stickyHotkey: string
   meetingHotkey: string
   captureSystemAudio: boolean
+  screenCaptureMode: ScreenCaptureMode
   autoStart: boolean
   theme: string
   telegramEnabled: boolean
@@ -138,9 +164,20 @@ export interface VoiceTypeAPI {
   clearHistory: () => Promise<void>
   rePaste: (id: string) => Promise<void>
   retryTranscription: (id: string) => Promise<TranscriptionRecord>
-  submitMeeting: (audioData: ArrayBuffer, durationMs: number) => Promise<MeetingRecord>
+  /** videoOffsetMs — на сколько видео стартовало позже аудио; null, если экран не писался */
+  submitMeeting: (audioData: ArrayBuffer, durationMs: number, videoOffsetMs: number | null) => Promise<MeetingRecord>
   getMeetings: () => Promise<MeetingRecord[]>
   deleteMeeting: (id: string) => Promise<void>
+  getScreenDisplays: () => Promise<ScreenDisplay[]>
+  /** Какой монитор отдаст следующий getDisplayMedia */
+  selectCaptureSource: (displayId: string) => Promise<void>
+  /** Показывает рамку выбора области; null, если пользователь отменил */
+  selectScreenRegion: () => Promise<ScreenRegion | null>
+  /** Видео приходит кусками во время записи, чтобы не держать часовой файл в памяти */
+  beginVideoUpload: () => Promise<void>
+  sendVideoChunk: (chunk: ArrayBuffer) => void
+  deleteMeetingVideo: (id: string) => Promise<MeetingRecord | null>
+  revealMeetingVideo: (id: string) => Promise<void>
   renameMeetingSpeaker: (id: string, oldName: string, newName: string) => Promise<void>
   addMeetingNote: (meetingId: string, text: string) => Promise<MeetingRecord | null>
   updateMeetingNote: (meetingId: string, noteId: string, text: string) => Promise<MeetingRecord | null>

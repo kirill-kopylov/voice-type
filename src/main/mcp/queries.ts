@@ -10,7 +10,7 @@ import { formatLocalDate, formatLocalDateTime, isInRange, type DateRange } from 
 // Внутренний запас: сортировка по дате применяется к лучшим совпадениям, а не к первым попавшимся
 const SEARCH_CANDIDATES = 500
 
-const clock = (seconds: number): string => {
+export const formatClock = (seconds: number): string => {
   const total = Math.floor(seconds)
   const minutes = Math.floor(total / 60)
   return `${String(minutes).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
@@ -76,7 +76,7 @@ export function searchRecords(history: TranscriptionRecord[], meetings: MeetingR
     snippet: makeSnippet(hit.text, query),
     score: Math.round(hit.score * 100) / 100,
     speaker: hit.speaker,
-    at: hit.startSec === undefined ? undefined : clock(hit.startSec),
+    at: hit.startSec === undefined ? undefined : formatClock(hit.startSec),
     noteId: hit.noteId
   }))
 }
@@ -106,6 +106,8 @@ export interface MeetingListItem {
   topics?: string[]
   decisionsCount: number
   notesCount: number
+  /** Есть запись экрана — кадры можно запросить через get_frames */
+  hasVideo: boolean
 }
 
 export interface Page<T> {
@@ -157,7 +159,8 @@ function toMeetingListItem(meeting: MeetingRecord): MeetingListItem {
     brief: meeting.summary?.brief,
     topics: meeting.summary?.topics,
     decisionsCount: meeting.summary?.decisions.length ?? 0,
-    notesCount: meeting.notes?.length ?? 0
+    notesCount: meeting.notes?.length ?? 0,
+    hasVideo: Boolean(meeting.videoFileName)
   }
 }
 
@@ -215,6 +218,7 @@ export function getMeetingView(meeting: MeetingRecord, params: MeetingViewParams
 
   return {
     id, title, status, error, summaryStatus,
+    hasVideo: Boolean(meeting.videoFileName),
     date: formatLocalDateTime(createdAt),
     durationMin: minutesOf(durationMs),
     speakers: meetingSpeakers(meeting),
@@ -236,7 +240,7 @@ export function formatTranscript(meeting: MeetingRecord, params: MeetingViewPara
   const lines: string[] = []
   let length = 0
   for (const segment of segments) {
-    const line = `[${clock(segment.start)}] ${speakerName(meeting, segment.speaker)}: ${segment.text}`
+    const line = `[${formatClock(segment.start)}] ${speakerName(meeting, segment.speaker)}: ${segment.text}`
     // Первую строку отдаём всегда, даже если она длиннее лимита
     if (lines.length > 0 && length + line.length + 1 > maxChars) {
       return { text: lines.join('\n'), lines: lines.length, truncated: true, nextFromSec: Math.floor(segment.start) }

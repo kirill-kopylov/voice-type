@@ -10,6 +10,7 @@ import { SearchModal } from './components/SearchModal'
 import { applyTheme, getThemeById } from './themes'
 import { generateNoiseTextures } from './noise'
 import { createLevelMeter, meetingLevels, SILENT_LEVELS } from './utils/audio-levels'
+import { createScreenRecorder, openDisplayStreams, planFromMode, stopStream, type ScreenRecorder } from './utils/screen-recorder'
 
 const LEVEL_REPORT_INTERVAL_MS = 50
 
@@ -36,6 +37,9 @@ export function App(): JSX.Element {
   const meetingStartRef = useRef<number>(0)
   const meetingStreamsRef = useRef<MediaStream[]>([])
   const meetingAudioContextRef = useRef<AudioContext | null>(null)
+  const screenRecorderRef = useRef<ScreenRecorder | null>(null)
+  // На сколько видео стартовало позже аудио; null — экран не писался
+  const videoOffsetRef = useRef<number | null>(null)
   const levelTimerRef = useRef<number | null>(null)
 
   // Voice profiles + search
@@ -177,33 +181,19 @@ export function App(): JSX.Element {
   // ═══ MEETING RECORDING ═══
   async function startMeetingRecording(): Promise<void> {
     try {
-      const captureSystem = settings?.captureSystemAudio ?? true
+      // Настройки читаем заново: эта функция живёт в замыкании первого рендера, где settings ещё пуст
+      const { captureSystemAudio, screenCaptureMode } = await window.api.getSettings()
       const micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
       meetingStreamsRef.current = [micStream]
 
-      let systemStream: MediaStream | null = null
+      const plan = await planFromMode(screenCaptureMode)
+      if (screenCaptureMode !== 'off' && !plan) showToast('Область не выбрана — пишу только звук', 'error')
 
-      if (captureSystem) {
-        try {
-          // Захват системного звука через desktopCapturer (Electron)
-          const displayStream = await navigator.mediaDevices.getDisplayMedia({
-            audio: true,
-            video: true  // Требуется для getDisplayMedia, но будем использовать только audio
-          })
-
-          // Останавливаем видео-трек, оставляем только аудио
-          displayStream.getVideoTracks().forEach((t) => t.stop())
-
-          const systemAudio = displayStream.getAudioTracks()
-          if (systemAudio.length > 0) {
-            meetingStreamsRef.current.push(displayStream)
-            systemStream = new MediaStream(systemAudio)
-          }
-        } catch (err) {
-          console.warn('Системный звук не захвачен:', err)
-          showToast('Системный звук недоступен — пишу только микрофон', 'error')
-        }
-      }
+      const display = await openDisplayStreams(plan, captureSystemAudio)
+      meetingStreamsRef.current.push(...display.allStreams)
+      if (display.videoFailed) showToast('Экран не захвачен — пишу только звук', 'error')
+      else if (captureSystemAudio && !display.systemAudio) showToast('Системный звук недоступен — пишу только микрофон', 'error')
+      const systemStream = display.systemAudio
 
       const audioContext = new AudioContext()
       meetingAudioContextRef.current = audioContext
@@ -221,12 +211,25 @@ export function App(): JSX.Element {
 
       const recorder = new MediaRecorder(combinedStream, { mimeType: 'audio/webm;codecs=opus' })
       meetingChunksRef.current = []
-      meetingStartRef.current = Date.now()
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) meetingChunksRef.current.push(e.data)
       }
+
+      let screenRecorder: ScreenRecorder | null = null
+      if (plan && !display.videoFailed) {
+        try {
+          screenRecorder = await createScreenRecorder(plan, display.layerStreams)
+        } catch (err) {
+          console.warn('Запись экрана не стартовала:', err)
+          showToast('Экран не записывается — пишу только звук', 'error')
+        }
+      }
+      // Оба рекордера стартуют подряд: разница старта потом учитывается при склейке видео со звуком
+      meetingStartRef.current = Date.now()
       recorder.start(1000)
       meetingRecorderRef.current = recorder
+      screenRecorderRef.current = screenRecorder
+      videoOffsetRef.current = screenRecorder ? screenRecorder.start() - meetingStartRef.current : null
 
       showToast('Запись встречи началась', 'success')
     } catch {
@@ -260,18 +263,25 @@ export function App(): JSX.Element {
     stopLevelReporting()
     showToast('Обработка встречи... это может занять минуту', 'success')
 
+    // Видео останавливается вместе со звуком; встреча уходит в main, когда доехали оба
+    const videoStopped = screenRecorderRef.current?.stop() ?? Promise.resolve()
+    const videoOffsetMs = videoOffsetRef.current
+    screenRecorderRef.current = null
+    videoOffsetRef.current = null
+
     recorder.onstop = async () => {
       const durationMs = Date.now() - meetingStartRef.current
       const blob = new Blob(meetingChunksRef.current, { type: 'audio/webm' })
       const arrayBuffer = await blob.arrayBuffer()
+      await videoStopped
 
       // Останавливаем все стримы
-      meetingStreamsRef.current.forEach((s) => s.getTracks().forEach((t) => t.stop()))
+      meetingStreamsRef.current.forEach(stopStream)
       meetingStreamsRef.current = []
       void meetingAudioContextRef.current?.close()
       meetingAudioContextRef.current = null
 
-      const record = await window.api.submitMeeting(arrayBuffer, durationMs)
+      const record = await window.api.submitMeeting(arrayBuffer, durationMs, videoOffsetMs)
       setMeetings((prev) => [record, ...prev])
 
       if (record.status === 'error') {
@@ -291,6 +301,13 @@ export function App(): JSX.Element {
   const handleDeleteMeeting = async (id: string): Promise<void> => {
     await window.api.deleteMeeting(id)
     setMeetings((prev) => prev.filter((m) => m.id !== id))
+  }
+
+  const handleDeleteVideo = async (id: string): Promise<void> => {
+    const updated = await window.api.deleteMeetingVideo(id)
+    if (!updated) return
+    setMeetings((prev) => prev.map((m) => (m.id === id ? updated : m)))
+    showToast('Видео удалено, звук и расшифровка остались', 'success')
   }
 
   const handleRenameSpeaker = async (id: string, oldName: string, newName: string): Promise<void> => {
@@ -404,6 +421,7 @@ export function App(): JSX.Element {
           voiceProfiles={voiceProfiles}
           isRecording={isMeetingRecording}
           onDelete={handleDeleteMeeting}
+          onDeleteVideo={handleDeleteVideo}
           onRenameSpeaker={handleRenameSpeaker}
           onAddNote={handleAddNote}
           onUpdateNote={handleUpdateNote}
