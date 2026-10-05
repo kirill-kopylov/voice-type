@@ -69,6 +69,8 @@ export function createDrawingOverlay({ displayIds, hotkey, onShapeDrawn }: Overl
   for (const display of displays) {
     const win = createTransparentWindow(display.bounds, { focusable: false })
     win.setIgnoreMouseEvents(true)
+    // Окно, на которое кликнули, поднимается выше остальных: без этого оверлей перекрывает панель
+    win.on('focus', () => { if (drawing && !toolbar.isDestroyed()) toolbar.moveTop() })
     void win.loadFile(overlayPage, { query: { display: String(display.id) } })
     win.once('ready-to-show', () => win.showInactive())
     overlays.set(String(display.id), win)
@@ -120,10 +122,10 @@ export function createDrawingOverlay({ displayIds, hotkey, onShapeDrawn }: Overl
       win.webContents.send('draw:mode', true)
     })
     placeToolbar()
-    toolbar.show()
-    toolbar.setAlwaysOnTop(true, 'screen-saver')
     const cursorDisplay = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
     ;(overlays.get(String(cursorDisplay.id)) ?? overlays.values().next().value)?.focus()
+    toolbar.show()
+    toolbar.moveTop()
     globalShortcut.register('Escape', exitDrawing)
     globalShortcut.register('CommandOrControl+Z', undo)
   }
