@@ -347,11 +347,17 @@ export function App(): JSX.Element {
 
   const handleRetryMeeting = async (meetingId: string): Promise<void> => {
     showToast('Повторная транскрипция встречи...', 'success')
-    const updated = await window.api.retryMeeting(meetingId)
-    if (updated) {
+    try {
+      const updated = await window.api.retryMeeting(meetingId)
+      if (!updated) {
+        showToast('Встреча не найдена', 'error')
+        return
+      }
       setMeetings((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
       if (updated.status === 'success') showToast('Встреча расшифрована', 'success')
       else if (updated.error) showToast(updated.error, 'error')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Не удалось запустить расшифровку', 'error')
     }
   }
 

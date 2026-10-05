@@ -547,7 +547,7 @@ function setupIpcHandlers(): void {
     if (!meeting) return null
 
     const audioBuffer = loadAudio(meeting.audioFileName)
-    if (!audioBuffer) return null
+    if (!audioBuffer) throw new Error(`Аудиофайл встречи не найден: ${meeting.audioFileName}`)
 
     const settings = store.getSettings()
     const apiKey = settings.openRouterApiKey
@@ -556,6 +556,7 @@ function setupIpcHandlers(): void {
       return store.getMeeting(id)
     }
 
+    console.log(`[meeting] Повторная расшифровка ${id}, аудио ${Math.round(audioBuffer.length / 1024)} КБ`)
     showOverlay('processing')
 
     const profiles = store.getVoiceProfiles().slice(0, 4)

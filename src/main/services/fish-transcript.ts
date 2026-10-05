@@ -77,6 +77,24 @@ export interface TimedText {
   end: number
 }
 
+// Whisper на паузах и тихих местах дописывает фразы из субтитров обучающих видео
+const HALLUCINATED_PHRASES = [
+  /продолжение следует[.!…]*/giu,
+  /субтитры\s+(?:сделал|делал|создал|подготовил)\w*[^.!?…]*[.!?…]*/giu,
+  /спасибо за просмотр[.!…]*/giu,
+  /редактор субтитров[^.!?…]*[.!?…]*/giu
+]
+
+/** Вырезает из отрезков фразы-галлюцинации; отрезок, где ничего кроме них не было, пропадает. */
+export function stripHallucinations(texts: TimedText[]): TimedText[] {
+  return texts
+    .map((item) => ({
+      ...item,
+      text: HALLUCINATED_PHRASES.reduce((text, phrase) => text.replace(phrase, ' '), item.text).replace(/\s+/g, ' ').trim()
+    }))
+    .filter((item) => /[\p{L}\p{N}]/u.test(item.text))
+}
+
 /**
  * Голоса от одной модели, текст от другой: отрезок текста достаётся голосу, который звучал в нём дольше всех.
  * Отрезок в паузе между репликами — ближайшему по времени.

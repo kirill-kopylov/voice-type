@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { parseFishTranscript, assignSpeakers, WordTiming, SpeakerTurn } from './fish-transcript'
+import { parseFishTranscript, assignSpeakers, stripHallucinations, WordTiming, SpeakerTurn } from './fish-transcript'
+
+describe('stripHallucinations', () => {
+  it('вырезает фразы из субтитров, оставляя настоящую речь', () => {
+    const result = stripHallucinations([
+      { text: 'Посмотрим по товарам. Продолжение следует...', start: 0, end: 5 },
+      { text: 'Субтитры сделал DimaTorzok', start: 5, end: 7 },
+      { text: 'Продолжение следует.', start: 7, end: 9 }
+    ])
+
+    expect(result.map((r) => r.text)).toEqual(['Посмотрим по товарам.'])
+  })
+})
 
 const words = (...items: Array<[string, number, number]>): WordTiming[] =>
   items.map(([word, start, end]) => ({ word, start, end }))

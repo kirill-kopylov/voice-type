@@ -2,7 +2,7 @@ import { net } from 'electron'
 import { encodeMp3 } from './encode-audio'
 import { extractSpeakerSegments } from './extract-speaker'
 import { extractJsonObject } from './extract-json'
-import { parseFishTranscript, assignSpeakers, SpeakerTurn, TimedText, WordTiming } from './fish-transcript'
+import { parseFishTranscript, assignSpeakers, stripHallucinations, SpeakerTurn, TimedText, WordTiming } from './fish-transcript'
 import type { DialogSegment } from '../../shared/types'
 
 // Голоса размечает fish по всей записи целиком: метки общие на всю встречу, есть времена слов.
@@ -76,9 +76,8 @@ async function diarize(mp3: Buffer, apiKey: string, language: string): Promise<S
   if (!voices.text) throw new DiarizationError('STT не вернул разметку голосов')
 
   const turns = parseFishTranscript(voices.text, voices.words ?? [])
-  const segments = (text.segments ?? [])
-    .map((s) => ({ text: (s.text ?? '').trim(), start: s.start, end: s.end }))
-    .filter((s) => s.text)
+  const segments = stripHallucinations((text.segments ?? [])
+    .map((s) => ({ text: (s.text ?? '').trim(), start: s.start, end: s.end })))
   if (segments.length === 0) throw new DiarizationError('STT не вернул текст')
 
   const labelled = assignSpeakers(segments, turns)
