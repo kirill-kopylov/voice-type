@@ -1,14 +1,18 @@
 import { net } from 'electron'
-import { encodeMp3 } from './encode-audio'
+import { encodeMp3Chunks } from './encode-audio'
 import { extractSpeakerSegments } from './extract-speaker'
 import { extractJsonObject } from './extract-json'
 import { parseFishTranscript, assignSpeakers, stripHallucinations, SpeakerTurn, TimedText, WordTiming } from './fish-transcript'
 import type { DialogSegment } from '../../shared/types'
 
 // Голоса размечает fish по всей записи целиком: метки общие на всю встречу, есть времена слов.
-// Слова она коверкает, поэтому текст берём у whisper (со временами отрезков) — fish отдаёт только «кто говорил».
+// Слова она коверкает, поэтому текст берём у mai-transcribe-2 — fish отдаёт только «кто говорил».
+// У mai времена отрезков есть, только пока запись короткая (на длинной они нулевые), поэтому текст берём кусками.
 const VOICES_STT_MODEL = 'fish-audio/transcribe-1-pro'
-const TEXT_STT_MODEL = 'openai/whisper-large-v3'
+const TEXT_STT_MODEL = 'microsoft/mai-transcribe-2'
+const TEXT_CHUNK_SEC = 600
+// Включает у mai времена отрезков; голоса mai не используем — они нестабильны между кусками
+const TEXT_STT_OPTIONS = { provider: { options: { azure: { diarization: { enabled: true } } } } }
 const STT_URL = 'https://openrouter.ai/api/v1/audio/transcriptions'
 const RETRYABLE_STATUSES = [429, 502, 503]
 const MAX_ATTEMPTS = 3
@@ -43,7 +47,7 @@ export async function transcribeDiarized(
 ): Promise<{ segments: DialogSegment[]; error?: string }> {
   try {
     console.log(`[diarize] Известных голосов: ${knownSpeakers.length}`)
-    const turns = await diarize(await encodeMp3(audioBuffer), apiKey, language)
+    const turns = await diarize(audioBuffer, apiKey, language)
 
     const names = await nameSpeakers(apiKey, audioBuffer, knownSpeakers, turns)
     const segments = mergeNeighbors(turns.map((turn) => ({
@@ -67,30 +71,40 @@ export async function transcribeDiarized(
   }
 }
 
-/** Голоса и времена — от fish, текст — от whisper: fish путает слова, зато лучше всех отличает людей. */
-async function diarize(mp3: Buffer, apiKey: string, language: string): Promise<SpeakerTurn[]> {
-  const [voices, text] = await Promise.all([
-    transcribe<{ text?: string; words?: WordTiming[] }>(mp3, apiKey, language, VOICES_STT_MODEL),
-    transcribe<{ segments?: TimedText[] }>(mp3, apiKey, language, TEXT_STT_MODEL)
+/** Голоса и времена — от fish, текст — от mai: fish путает слова, зато лучше всех отличает людей. */
+async function diarize(audioBuffer: Buffer, apiKey: string, language: string): Promise<SpeakerTurn[]> {
+  const [[whole], chunks] = await Promise.all([encodeMp3Chunks(audioBuffer), encodeMp3Chunks(audioBuffer, TEXT_CHUNK_SEC)])
+  const [voices, texts] = await Promise.all([
+    transcribe<{ text?: string; words?: WordTiming[] }>(whole, apiKey, language, VOICES_STT_MODEL),
+    transcribeText(chunks, apiKey, language)
   ])
   if (!voices.text) throw new DiarizationError('STT не вернул разметку голосов')
+  if (texts.length === 0) throw new DiarizationError('STT не вернул текст')
 
   const turns = parseFishTranscript(voices.text, voices.words ?? [])
-  const segments = stripHallucinations((text.segments ?? [])
-    .map((s) => ({ text: (s.text ?? '').trim(), start: s.start, end: s.end })))
-  if (segments.length === 0) throw new DiarizationError('STT не вернул текст')
-
-  const labelled = assignSpeakers(segments, turns)
+  const labelled = assignSpeakers(texts, turns)
   console.log(`[diarize] Отрезков текста: ${labelled.length}, голосов: ${new Set(labelled.map((t) => t.speaker)).size}`)
   return labelled
 }
 
-async function transcribe<T>(mp3: Buffer, apiKey: string, language: string, model: string): Promise<T> {
+/** Куски идут по очереди (параллельные запросы провайдер режет по 429); времена сдвигаем на начало куска. */
+async function transcribeText(chunks: Buffer[], apiKey: string, language: string): Promise<TimedText[]> {
+  const texts: TimedText[] = []
+  for (const [index, chunk] of chunks.entries()) {
+    const offset = index * TEXT_CHUNK_SEC
+    const { segments = [] } = await transcribe<{ segments?: TimedText[] }>(chunk, apiKey, language, TEXT_STT_MODEL, TEXT_STT_OPTIONS)
+    texts.push(...segments.map((s) => ({ text: (s.text ?? '').trim(), start: s.start + offset, end: s.end + offset })))
+  }
+  return stripHallucinations(texts)
+}
+
+async function transcribe<T>(mp3: Buffer, apiKey: string, language: string, model: string, options: object = {}): Promise<T> {
   const body = JSON.stringify({
     model,
     input_audio: { data: mp3.toString('base64'), format: 'mp3' },
     language,
-    response_format: 'verbose_json'
+    response_format: 'verbose_json',
+    ...options
   })
 
   // Провайдер временно отвечает 429/502 — повторяем, запрос не тарифицируется при отказе
