@@ -71,6 +71,35 @@ function alignTimings(turns: UntimedTurn[], words: WordTiming[]): SpeakerTurn[] 
   })
 }
 
+export interface TimedText {
+  text: string
+  start: number
+  end: number
+}
+
+/**
+ * Голоса от одной модели, текст от другой: отрезок текста достаётся голосу, который звучал в нём дольше всех.
+ * Отрезок в паузе между репликами — ближайшему по времени.
+ */
+export function assignSpeakers(texts: TimedText[], turns: SpeakerTurn[]): SpeakerTurn[] {
+  return texts.map((text) => ({ ...text, speaker: speakerAt(text, turns) }))
+}
+
+function speakerAt(text: TimedText, turns: SpeakerTurn[]): number {
+  const overlapBySpeaker = new Map<number, number>()
+  for (const turn of turns) {
+    const overlap = Math.min(text.end, turn.end) - Math.max(text.start, turn.start)
+    if (overlap > 0) overlapBySpeaker.set(turn.speaker, (overlapBySpeaker.get(turn.speaker) ?? 0) + overlap)
+  }
+  const [loudest] = [...overlapBySpeaker].sort((a, b) => b[1] - a[1])
+  if (loudest) return loudest[0]
+
+  const middle = (text.start + text.end) / 2
+  const distanceTo = (turn: SpeakerTurn): number => Math.max(turn.start - middle, middle - turn.end, 0)
+  const [nearest] = [...turns].sort((a, b) => distanceTo(a) - distanceTo(b))
+  return nearest?.speaker ?? 0
+}
+
 /** Реплики мелких голосов достаются тому, кто говорил перед ними (или первому крупному, если реплика в начале). */
 function absorbMinorSpeakers(turns: SpeakerTurn[]): SpeakerTurn[] {
   const wordsBySpeaker = new Map<number, number>()

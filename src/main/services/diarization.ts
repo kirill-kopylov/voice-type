@@ -2,12 +2,13 @@ import { net } from 'electron'
 import { encodeMp3 } from './encode-audio'
 import { extractSpeakerSegments } from './extract-speaker'
 import { extractJsonObject } from './extract-json'
-import { parseFishTranscript, SpeakerTurn, WordTiming } from './fish-transcript'
+import { parseFishTranscript, assignSpeakers, SpeakerTurn, TimedText, WordTiming } from './fish-transcript'
 import type { DialogSegment } from '../../shared/types'
 
-// Диаризацию делает STT-модель целиком по всей записи: метки голосов общие на всю встречу.
-// На встрече в 33 минуты fish нашла тех же голосов, что и Gemini с mai-transcribe-2, и привязала к временам слов.
-const DIARIZE_STT_MODEL = 'fish-audio/transcribe-1-pro'
+// Голоса размечает fish по всей записи целиком: метки общие на всю встречу, есть времена слов.
+// Слова она коверкает, поэтому текст берём у whisper (со временами отрезков) — fish отдаёт только «кто говорил».
+const VOICES_STT_MODEL = 'fish-audio/transcribe-1-pro'
+const TEXT_STT_MODEL = 'openai/whisper-large-v3'
 const STT_URL = 'https://openrouter.ai/api/v1/audio/transcriptions'
 const RETRYABLE_STATUSES = [429, 502, 503]
 const MAX_ATTEMPTS = 3
@@ -66,9 +67,28 @@ export async function transcribeDiarized(
   }
 }
 
+/** Голоса и времена — от fish, текст — от whisper: fish путает слова, зато лучше всех отличает людей. */
 async function diarize(mp3: Buffer, apiKey: string, language: string): Promise<SpeakerTurn[]> {
+  const [voices, text] = await Promise.all([
+    transcribe<{ text?: string; words?: WordTiming[] }>(mp3, apiKey, language, VOICES_STT_MODEL),
+    transcribe<{ segments?: TimedText[] }>(mp3, apiKey, language, TEXT_STT_MODEL)
+  ])
+  if (!voices.text) throw new DiarizationError('STT не вернул разметку голосов')
+
+  const turns = parseFishTranscript(voices.text, voices.words ?? [])
+  const segments = (text.segments ?? [])
+    .map((s) => ({ text: (s.text ?? '').trim(), start: s.start, end: s.end }))
+    .filter((s) => s.text)
+  if (segments.length === 0) throw new DiarizationError('STT не вернул текст')
+
+  const labelled = assignSpeakers(segments, turns)
+  console.log(`[diarize] Отрезков текста: ${labelled.length}, голосов: ${new Set(labelled.map((t) => t.speaker)).size}`)
+  return labelled
+}
+
+async function transcribe<T>(mp3: Buffer, apiKey: string, language: string, model: string): Promise<T> {
   const body = JSON.stringify({
-    model: DIARIZE_STT_MODEL,
+    model,
     input_audio: { data: mp3.toString('base64'), format: 'mp3' },
     language,
     response_format: 'verbose_json'
@@ -81,17 +101,10 @@ async function diarize(mp3: Buffer, apiKey: string, language: string): Promise<S
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body
     })
-
-    if (response.ok) {
-      const data = (await response.json()) as { text?: string; words?: WordTiming[] }
-      if (!data.text) throw new DiarizationError('STT не вернул текст')
-      const turns = parseFishTranscript(data.text, data.words ?? [])
-      console.log(`[diarize] Реплик: ${turns.length}, голосов: ${new Set(turns.map((t) => t.speaker)).size}`)
-      return turns
-    }
+    if (response.ok) return (await response.json()) as T
 
     if (!RETRYABLE_STATUSES.includes(response.status) || attempt >= MAX_ATTEMPTS) {
-      throw new DiarizationError(`STT вернул ${response.status}: ${(await response.text()).slice(0, 300)}`)
+      throw new DiarizationError(`STT (${model}) вернул ${response.status}: ${(await response.text()).slice(0, 300)}`)
     }
     await new Promise((resolve) => setTimeout(resolve, attempt * 2000))
   }

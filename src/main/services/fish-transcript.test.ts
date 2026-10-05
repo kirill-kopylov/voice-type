@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseFishTranscript, WordTiming } from './fish-transcript'
+import { parseFishTranscript, assignSpeakers, WordTiming, SpeakerTurn } from './fish-transcript'
 
 const words = (...items: Array<[string, number, number]>): WordTiming[] =>
   items.map(([word, start, end]) => ({ word, start, end }))
@@ -49,5 +49,32 @@ describe('parseFishTranscript', () => {
     )
 
     expect(turns[1].start).toBeGreaterThanOrEqual(turns[0].end)
+  })
+})
+
+describe('assignSpeakers', () => {
+  const turns: SpeakerTurn[] = [
+    { speaker: 0, text: '', start: 0, end: 10 },
+    { speaker: 1, text: '', start: 12, end: 20 }
+  ]
+
+  it('отдаёт отрезок тому, кто звучал в нём дольше', () => {
+    const [first, second] = assignSpeakers([
+      { text: 'a', start: 8, end: 13 },
+      { text: 'b', start: 11, end: 19 }
+    ], turns)
+
+    expect(first.speaker).toBe(0)
+    expect(second.speaker).toBe(1)
+  })
+
+  it('отрезок в паузе достаётся ближайшей реплике', () => {
+    const [result] = assignSpeakers([{ text: 'a', start: 10.2, end: 10.8 }], turns)
+
+    expect(result.speaker).toBe(0)
+  })
+
+  it('без реплик голос по умолчанию — первый', () => {
+    expect(assignSpeakers([{ text: 'a', start: 0, end: 1 }], [])[0].speaker).toBe(0)
   })
 })

@@ -578,7 +578,8 @@ function setupIpcHandlers(): void {
 
     store.updateMeeting(id, {
       segments: result.segments,
-      speakerNames: { ...meeting.speakerNames, ...initialSpeakerNames },
+      // Прогон с нуля: старые переименования относились к прежним меткам и новым голосам не подходят
+      speakerNames: initialSpeakerNames,
       summary: undefined,
       summaryStatus: result.error ? undefined : 'pending',
       summaryError: undefined,
