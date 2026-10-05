@@ -7,3 +7,7 @@ release/
 *.log
 check*.png
 screenshot-full.png
+
+.playwright-mcp/
+snap-*.md
+vk-create-*.jpeg
