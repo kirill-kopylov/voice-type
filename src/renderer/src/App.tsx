@@ -9,6 +9,9 @@ import { Meetings } from './pages/Meetings'
 import { SearchModal } from './components/SearchModal'
 import { applyTheme, getThemeById } from './themes'
 import { generateNoiseTextures } from './noise'
+import { createLevelMeter, meetingLevels, SILENT_LEVELS } from './utils/audio-levels'
+
+const LEVEL_REPORT_INTERVAL_MS = 50
 
 export type Page = 'dashboard' | 'history' | 'meetings' | 'settings'
 
@@ -32,6 +35,8 @@ export function App(): JSX.Element {
   const meetingChunksRef = useRef<Blob[]>([])
   const meetingStartRef = useRef<number>(0)
   const meetingStreamsRef = useRef<MediaStream[]>([])
+  const meetingAudioContextRef = useRef<AudioContext | null>(null)
+  const levelTimerRef = useRef<number | null>(null)
 
   // Voice profiles + search
   const [voiceProfiles, setVoiceProfiles] = useState<VoiceProfile[]>([])
@@ -176,7 +181,7 @@ export function App(): JSX.Element {
       const micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
       meetingStreamsRef.current = [micStream]
 
-      let combinedStream: MediaStream = micStream
+      let systemStream: MediaStream | null = null
 
       if (captureSystem) {
         try {
@@ -192,24 +197,27 @@ export function App(): JSX.Element {
           const systemAudio = displayStream.getAudioTracks()
           if (systemAudio.length > 0) {
             meetingStreamsRef.current.push(displayStream)
-
-            // Микшируем микрофон + системное аудио
-            const audioContext = new AudioContext()
-            const destination = audioContext.createMediaStreamDestination()
-
-            const micSource = audioContext.createMediaStreamSource(micStream)
-            const sysSource = audioContext.createMediaStreamSource(new MediaStream(systemAudio))
-
-            micSource.connect(destination)
-            sysSource.connect(destination)
-
-            combinedStream = destination.stream
+            systemStream = new MediaStream(systemAudio)
           }
         } catch (err) {
           console.warn('Системный звук не захвачен:', err)
           showToast('Системный звук недоступен — пишу только микрофон', 'error')
         }
       }
+
+      const audioContext = new AudioContext()
+      meetingAudioContextRef.current = audioContext
+
+      let combinedStream: MediaStream = micStream
+      if (systemStream) {
+        // Микшируем микрофон + системное аудио
+        const destination = audioContext.createMediaStreamDestination()
+        audioContext.createMediaStreamSource(micStream).connect(destination)
+        audioContext.createMediaStreamSource(systemStream).connect(destination)
+        combinedStream = destination.stream
+      }
+
+      startLevelReporting(audioContext, micStream, systemStream)
 
       const recorder = new MediaRecorder(combinedStream, { mimeType: 'audio/webm;codecs=opus' })
       meetingChunksRef.current = []
@@ -222,14 +230,34 @@ export function App(): JSX.Element {
 
       showToast('Запись встречи началась', 'success')
     } catch {
+      stopLevelReporting()
       showToast('Не удалось начать запись встречи', 'error')
     }
+  }
+
+  // Уровни микрофона и звука компьютера: в индикатор окна и в оверлей, чтобы было видно, что слышно обоих
+  function startLevelReporting(context: AudioContext, micStream: MediaStream, systemStream: MediaStream | null): void {
+    const micMeter = createLevelMeter(context, micStream)
+    const systemMeter = systemStream ? createLevelMeter(context, systemStream) : null
+
+    levelTimerRef.current = window.setInterval(() => {
+      const levels = { mic: micMeter.read(), system: systemMeter?.read() ?? 0, systemCaptured: systemMeter !== null }
+      meetingLevels.set(levels)
+      window.api.sendMeetingLevels(levels)
+    }, LEVEL_REPORT_INTERVAL_MS)
+  }
+
+  function stopLevelReporting(): void {
+    if (levelTimerRef.current !== null) window.clearInterval(levelTimerRef.current)
+    levelTimerRef.current = null
+    meetingLevels.set(SILENT_LEVELS)
   }
 
   async function stopMeetingRecording(): Promise<void> {
     const recorder = meetingRecorderRef.current
     if (!recorder || recorder.state === 'inactive') return
 
+    stopLevelReporting()
     showToast('Обработка встречи... это может занять минуту', 'success')
 
     recorder.onstop = async () => {
@@ -240,6 +268,8 @@ export function App(): JSX.Element {
       // Останавливаем все стримы
       meetingStreamsRef.current.forEach((s) => s.getTracks().forEach((t) => t.stop()))
       meetingStreamsRef.current = []
+      void meetingAudioContextRef.current?.close()
+      meetingAudioContextRef.current = null
 
       const record = await window.api.submitMeeting(arrayBuffer, durationMs)
       setMeetings((prev) => [record, ...prev])

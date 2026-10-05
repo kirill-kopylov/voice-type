@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw, StickyNote, Bot, Plus } from 'lucide-react'
 import type { MeetingRecord, MeetingNote, DialogSegment, VoiceProfile } from '@shared/types'
 import { formatDateTime, formatDuration } from '../utils/format'
+import { MeetingLevelMeter } from '../components/MeetingLevelMeter'
+import { useMeetingAudio } from '../hooks/useMeetingAudio'
 
 interface Props {
   meetings: MeetingRecord[]
@@ -33,9 +35,12 @@ export function Meetings({
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Встречи</h1>
         <div className="flex items-center gap-3">
           {isRecording && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>
-              <div className="w-2 h-2 rounded-full animate-pulse-recording" style={{ background: 'var(--accent)' }} />
-              <span className="text-xs font-medium">Запись идёт</span>
+            <div className="flex items-center gap-4 px-3 py-2 rounded-lg" style={{ background: 'var(--accent-bg)' }}>
+              <div className="flex items-center gap-2" style={{ color: 'var(--accent)' }}>
+                <div className="w-2 h-2 rounded-full animate-pulse-recording" style={{ background: 'var(--accent)' }} />
+                <span className="text-xs font-medium">Запись идёт</span>
+              </div>
+              <MeetingLevelMeter />
             </div>
           )}
           <button
@@ -202,6 +207,7 @@ function MeetingCard({
   onRetry: () => void
   showToast: (message: string, type: 'success' | 'error') => void
 }): JSX.Element {
+  const audio = useMeetingAudio(m.audioFileName)
   const speakerName = (raw: string): string => m.speakerNames[raw] ?? raw
   const uniqueSpeakers = Array.from(new Set(m.segments.map((s) => s.speaker)))
 
@@ -237,7 +243,15 @@ function MeetingCard({
         <div className="px-4 py-4 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
           {/* Панель действий */}
           <div className="flex items-center gap-2 flex-wrap">
-            <AudioPlayer fileName={m.audioFileName} />
+            <button
+              onClick={audio.toggleAll}
+              disabled={audio.loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50"
+              style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
+            >
+              {audio.playing === 'all' ? <Pause size={12} /> : <Play size={12} />}
+              {audio.loading ? 'Загрузка...' : audio.playing === 'all' ? 'Пауза' : 'Прослушать'}
+            </button>
             <button
               onClick={onRetry}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
@@ -327,7 +341,14 @@ function MeetingCard({
               {/* Диалог */}
               <div className="space-y-3">
                 {m.segments.map((seg, i) => (
-                  <DialogLine key={i} segment={seg} speakerName={speakerName(seg.speaker)} />
+                  <DialogLine
+                    key={i}
+                    segment={seg}
+                    speakerName={speakerName(seg.speaker)}
+                    playing={audio.playing === i}
+                    loading={audio.loading}
+                    onTogglePlay={() => audio.toggleRange(i, seg.start, seg.end)}
+                  />
                 ))}
               </div>
             </>
@@ -547,62 +568,13 @@ function SpeakerTag({
   )
 }
 
-function AudioPlayer({ fileName }: { fileName: string }): JSX.Element {
-  const [playing, setPlaying] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const urlRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) audioRef.current.pause()
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current)
-    }
-  }, [])
-
-  const toggle = async (): Promise<void> => {
-    if (playing) {
-      audioRef.current?.pause()
-      setPlaying(false)
-      return
-    }
-
-    if (audioRef.current && urlRef.current) {
-      audioRef.current.play()
-      setPlaying(true)
-      return
-    }
-
-    setLoading(true)
-    const buf = await window.api.getMeetingAudio(fileName)
-    setLoading(false)
-    if (!buf) return
-
-    const blob = new Blob([buf], { type: 'audio/webm' })
-    const url = URL.createObjectURL(blob)
-    urlRef.current = url
-    const audio = new Audio(url)
-    audio.onended = () => setPlaying(false)
-    audio.onpause = () => setPlaying(false)
-    audio.onplay = () => setPlaying(true)
-    audio.play()
-    audioRef.current = audio
-  }
-
-  return (
-    <button
-      onClick={toggle}
-      disabled={loading}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50"
-      style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
-    >
-      {playing ? <Pause size={12} /> : <Play size={12} />}
-      {loading ? 'Загрузка...' : playing ? 'Пауза' : 'Прослушать'}
-    </button>
-  )
-}
-
-function DialogLine({ segment, speakerName }: { segment: DialogSegment; speakerName: string }): JSX.Element {
+function DialogLine({ segment, speakerName, playing, loading, onTogglePlay }: {
+  segment: DialogSegment
+  speakerName: string
+  playing: boolean
+  loading: boolean
+  onTogglePlay: () => void
+}): JSX.Element {
   const mins = Math.floor(segment.start / 60)
   const secs = Math.floor(segment.start % 60).toString().padStart(2, '0')
 
@@ -612,7 +584,22 @@ function DialogLine({ segment, speakerName }: { segment: DialogSegment; speakerN
         <div className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{speakerName}</div>
         <div className="text-[10px]" style={{ color: 'var(--text-4)' }}>{mins}:{secs}</div>
       </div>
-      <p className="text-sm leading-relaxed flex-1" style={{ color: 'var(--text-1)' }}>{segment.text}</p>
+      <div className="flex-1 space-y-1">
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-1)' }}>{segment.text}</p>
+        <button
+          onClick={onTogglePlay}
+          disabled={loading}
+          className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-md transition-colors disabled:opacity-50"
+          style={{
+            background: playing ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
+            color: playing ? 'var(--accent)' : 'var(--text-3)'
+          }}
+          title="Прослушать реплику"
+        >
+          {playing ? <Pause size={10} /> : <Play size={10} />}
+          {playing ? 'Пауза' : 'Слушать'}
+        </button>
+      </div>
     </div>
   )
 }

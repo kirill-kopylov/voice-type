@@ -1,0 +1,300 @@
+- generic [active] [ref=f17e1]:
+  - generic [ref=f17e31]:
+    - iframe [ref=f17e33]:
+      
+    - textbox [ref=f17e34]
+    - textbox [ref=f17e35]
+    - textbox [ref=f17e36]
+  - generic [ref=f17e37]:
+    - list [ref=f17e40]:
+      - listitem [ref=f17e41]:
+        - link "На главную" [ref=f17e42] [cursor=pointer]:
+          - /url: /feed
+          - img
+      - listitem [ref=f17e43]:
+        - search [ref=f17e44]:
+          - generic [ref=f17e47]:
+            - generic [ref=f17e48]: Поиск
+            - generic [ref=f17e49]:
+              - img [ref=f17e50]
+              - searchbox "Поиск" [ref=f17e52]
+            - button "Очистить поле" [ref=f17e54] [cursor=pointer]:
+              - generic [ref=f17e55]: Очистить поле
+              - img [ref=f17e56]
+          - button "Найти" [ref=f17e62] [cursor=pointer]:
+            - generic [ref=f17e63]: Найти
+      - listitem [ref=f17e65]:
+        - button "Уведомления" [ref=f17e66] [cursor=pointer]:
+          - generic [ref=f17e67]: Уведомления
+          - img [ref=f17e68]
+      - listitem [ref=f17e71]:
+        - button "Аудиоплеер" [ref=f17e73] [cursor=pointer]:
+          - generic [ref=f17e74]: Аудиоплеер
+          - img [ref=f17e75]
+      - listitem [ref=f17e78]:
+        - link "Настройки профиля Кирилл" [ref=f17e79] [cursor=pointer]:
+          - /url: https://vk.com/qoooo
+          - generic [ref=f17e80]: Настройки профиля
+          - generic [ref=f17e81]:
+            - img "Кирилл" [ref=f17e83]
+            - img [ref=f17e85]
+    - generic [ref=f17e89]:
+      - navigation [ref=f17e92]:
+        - list [ref=f17e93]:
+          - listitem [ref=f17e94]:
+            - link "Профиль" [ref=f17e95] [cursor=pointer]:
+              - /url: /qoooo
+              - img [ref=f17e99]
+              - heading "Профиль" [level=2] [ref=f17e103]
+            - button "Настройка пунктов меню" [ref=f17e105] [cursor=pointer]:
+              - img [ref=f17e106]
+          - listitem [ref=f17e110]:
+            - link "Лента" [ref=f17e111] [cursor=pointer]:
+              - /url: /feed
+              - img [ref=f17e115]
+              - generic [ref=f17e119]: Лента
+            - button [ref=f17e121] [cursor=pointer]:
+              - img [ref=f17e122]
+          - listitem [ref=f17e126]:
+            - link "Мессенджер 2" [ref=f17e127] [cursor=pointer]:
+              - /url: /im
+              - img [ref=f17e131]
+              - generic [ref=f17e138]: Мессенджер
+              - generic [ref=f17e139]: "2"
+            - button [ref=f17e141] [cursor=pointer]:
+              - img [ref=f17e142]
+          - listitem [ref=f17e146]:
+            - link "Друзья" [ref=f17e147] [cursor=pointer]:
+              - /url: /friends?section=all
+              - img [ref=f17e151]
+              - generic [ref=f17e158]: Друзья
+            - button [ref=f17e160] [cursor=pointer]:
+              - img [ref=f17e161]
+          - listitem [ref=f17e165]:
+            - link "Сообщества" [ref=f17e166] [cursor=pointer]:
+              - /url: /groups
+              - img [ref=f17e170]
+              - generic [ref=f17e174]: Сообщества
+            - button [ref=f17e176] [cursor=pointer]:
+              - img [ref=f17e177]
+          - listitem [ref=f17e181]:
+            - link "Фото" [ref=f17e182] [cursor=pointer]:
+              - /url: /photos65676077
+              - img [ref=f17e186]
+              - generic [ref=f17e190]: Фото
+            - button [ref=f17e192] [cursor=pointer]:
+              - img [ref=f17e193]
+          - listitem [ref=f17e197]:
+            - link "Музыка" [ref=f17e198] [cursor=pointer]:
+              - /url: /audios65676077
+              - img [ref=f17e202]
+              - generic [ref=f17e207]: Музыка
+            - button [ref=f17e209] [cursor=pointer]:
+              - img [ref=f17e210]
+          - listitem [ref=f17e214]:
+            - link "Видео" [ref=f17e215] [cursor=pointer]:
+              - /url: //vkvideo.ru
+              - img [ref=f17e219]
+              - generic [ref=f17e223]: Видео
+            - button [ref=f17e225] [cursor=pointer]:
+              - img [ref=f17e226]
+          - listitem [ref=f17e230]:
+            - link "Маркет" [ref=f17e231] [cursor=pointer]:
+              - /url: /market?utm_ref=left_menu
+              - img [ref=f17e235]
+              - generic [ref=f17e239]: Маркет
+            - button [ref=f17e241] [cursor=pointer]:
+              - img [ref=f17e242]
+          - listitem [ref=f17e246]:
+            - link "Голоса" [ref=f17e247] [cursor=pointer]:
+              - /url: /settings?act=payments&ref=left_menu
+              - img [ref=f17e251]
+              - generic [ref=f17e255]: Голоса
+            - button [ref=f17e257] [cursor=pointer]:
+              - img [ref=f17e258]
+          - separator [ref=f17e263]
+          - listitem [ref=f17e264]:
+            - link "Заказы" [ref=f17e265] [cursor=pointer]:
+              - /url: /orders?source=main_menu&ref_screen=menu
+              - img [ref=f17e269]
+              - generic [ref=f17e273]: Заказы
+            - button [ref=f17e275] [cursor=pointer]:
+              - img [ref=f17e276]
+          - listitem [ref=f17e280]:
+            - link "Закладки" [ref=f17e281] [cursor=pointer]:
+              - /url: /bookmarks?from_menu=1
+              - img [ref=f17e285]
+              - generic [ref=f17e289]: Закладки
+            - button [ref=f17e291] [cursor=pointer]:
+              - img [ref=f17e292]
+          - listitem [ref=f17e296]:
+            - link "Файлы" [ref=f17e297] [cursor=pointer]:
+              - /url: /docs
+              - img [ref=f17e301]
+              - generic [ref=f17e305]: Файлы
+            - button [ref=f17e307] [cursor=pointer]:
+              - img [ref=f17e308]
+          - listitem [ref=f17e312]:
+            - link "Реклама" [ref=f17e313] [cursor=pointer]:
+              - /url: //ads.vk.ru/hq/?ref=vkcomads&utm_source=vk_left_menu&v=1
+              - img [ref=f17e317]
+              - generic [ref=f17e321]: Реклама
+            - button [ref=f17e323] [cursor=pointer]:
+              - img [ref=f17e324]
+          - listitem [ref=f17e328]:
+            - link "Управление" [ref=f17e329] [cursor=pointer]:
+              - /url: //dev.vk.com/admin/apps-list
+              - img [ref=f17e333]
+              - generic [ref=f17e337]: Управление
+            - button [ref=f17e339] [cursor=pointer]:
+              - img [ref=f17e340]
+          - separator [ref=f17e345]
+          - listitem [ref=f17e346]:
+            - link "Театральная семья \"Живем и.." [ref=f17e347] [cursor=pointer]:
+              - /url: /club89699284
+              - generic [ref=f17e352]: Театральная семья "Живем и..
+            - button [ref=f17e354] [cursor=pointer]:
+              - img [ref=f17e355]
+          - listitem [ref=f17e359]:
+            - link "Живём и Дышим" [ref=f17e360] [cursor=pointer]:
+              - /url: /teatrmgtu
+              - generic [ref=f17e365]: Живём и Дышим
+            - button [ref=f17e367] [cursor=pointer]:
+              - img [ref=f17e368]
+        - generic [ref=f17e374]:
+          - generic [ref=f17e378]:
+            - generic [ref=f17e382] [cursor=pointer]:
+              - generic [ref=f17e384]:
+                - img [ref=f17e386]
+                - generic [ref=f17e388]:
+                  - generic [ref=f17e389]:
+                    - generic [ref=f17e390]: Дороги к больницам в РФ
+                    - generic [ref=f17e391]: национальныепроекты.рф
+                    - generic [ref=f17e392]: Как обновляют подъездные пути к больницам
+                  - generic [ref=f17e393]: Перейти
+              - generic [ref=f17e394]:
+                - img [ref=f17e396]
+                - generic [ref=f17e398]: Социальная реклама
+                - generic [ref=f17e399]: 18+
+              - img [ref=f17e401]
+            - generic [ref=f17e406] [cursor=pointer]:
+              - generic [ref=f17e408]:
+                - img [ref=f17e410]
+                - generic [ref=f17e412]:
+                  - generic [ref=f17e413]:
+                    - generic [ref=f17e414]: Запрет вейпов
+                    - generic [ref=f17e415]: объясняем.рф
+                    - generic [ref=f17e416]: Узнайте, где запретят продажу вейпов
+                  - generic [ref=f17e417]: Перейти
+              - generic [ref=f17e418]:
+                - img [ref=f17e420]
+                - generic [ref=f17e422]: Социальная реклама
+                - generic [ref=f17e423]: 18+
+              - img [ref=f17e425]
+            - generic [ref=f17e430] [cursor=pointer]:
+              - generic [ref=f17e432]:
+                - img [ref=f17e434]
+                - generic [ref=f17e436]:
+                  - generic [ref=f17e437]:
+                    - generic [ref=f17e438]: re:premium | Купить iPhone Магнитогорск
+                    - generic [ref=f17e439]: vk.com
+                    - generic [ref=f17e440]: Не покупай iPhone, пока не узнаешь наши цены и условия....
+                  - generic [ref=f17e441]: Узнать цену
+              - generic [ref=f17e442]:
+                - img [ref=f17e444]
+                - generic [ref=f17e446]: Реклама
+                - generic [ref=f17e447]: 0+
+              - img [ref=f17e449]
+          - separator [ref=f17e452]
+          - list [ref=f17e453]:
+            - listitem [ref=f17e454]:
+              - link "Блог" [ref=f17e455] [cursor=pointer]:
+                - /url: /blog
+                - generic [ref=f17e456]: Блог
+            - listitem [ref=f17e457]:
+              - link "Разработчикам" [ref=f17e458] [cursor=pointer]:
+                - /url: https://dev.vk.com
+                - generic [ref=f17e459]: Разработчикам
+            - listitem [ref=f17e460]:
+              - link "Для бизнеса" [ref=f17e461] [cursor=pointer]:
+                - /url: https://ads.vk.com/promo/firstbonus?utm_source=vk_left_menu_for_business&utm_medium=link
+                - generic [ref=f17e462]: Для бизнеса
+            - listitem [ref=f17e463]:
+              - link "Авторам" [ref=f17e464] [cursor=pointer]:
+                - /url: /vk_authors
+                - generic [ref=f17e465]: Авторам
+            - listitem [ref=f17e466]:
+              - generic [ref=f17e468]:
+                - text: Ещё
+                - img [ref=f17e469]
+          - separator [ref=f17e472]
+          - list [ref=f17e473]:
+            - listitem [ref=f17e474]:
+              - button "Информация о контенте" [ref=f17e475] [cursor=pointer]:
+                - generic [ref=f17e476]:
+                  - img [ref=f17e478]
+                  - text: Информация о контенте
+      - generic [ref=f17e480]:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic [ref=f17e482]:
+                    - list [ref=f17e483]:
+                      - link "VoiceType вернуться к странице" [ref=f17e484] [cursor=pointer]:
+                        - /url: /club240163387
+                        - img [ref=f17e488]
+                        - generic [ref=f17e489]:
+                          - generic [ref=f17e490]: VoiceType
+                          - generic [ref=f17e491]: вернуться к странице
+                      - link "Настройки" [ref=f17e493] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387?act=edit
+                        - generic [ref=f17e495]: Настройки
+                      - link "Подписчики" [ref=f17e496] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387/settings/subscribers
+                        - generic [ref=f17e498]: Подписчики
+                      - link "Сообщения" [ref=f17e499] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387?act=messages
+                        - generic [ref=f17e501]: Сообщения
+                      - link "Настройки для бота" [ref=f17e503] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387?act=messages&tab=bots
+                        - generic [ref=f17e505]: Настройки для бота
+                      - link "Приложения" [ref=f17e506] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387?act=apps
+                        - generic [ref=f17e508]: Приложения
+                      - link "Дополнительно" [ref=f17e509] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387/settings/extras
+                        - generic [ref=f17e511]: Дополнительно
+                      - link "Журнал действий" [ref=f17e512] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387?act=event_log
+                        - generic [ref=f17e514]: Журнал действий
+                    - generic [ref=f17e515]:
+                      - text: Монетизация ВКонтакте
+                      - text: Узнайте обо всех способах монетизации в специальном разделе.
+                      - link "Подробнее" [ref=f17e516] [cursor=pointer]:
+                        - /url: https://vk.ru/monetization
+                  - main [ref=f17e517]:
+                    - generic [ref=f17e518]:
+                      - heading "Сообщения" [level=2] [ref=f17e519]:
+                        - generic [ref=f17e521]: Сообщения
+                      - generic [ref=f17e522]:
+                        - generic [ref=f17e523]:
+                          - generic [ref=f17e524]: "Сообщения сообщества:"
+                          - button "Отключены" [ref=f17e527] [cursor=pointer]
+                        - button "Сохранить" [ref=f17e531] [cursor=pointer]:
+                          - generic [ref=f17e533]: Сохранить
+  - img
+  - complementary [ref=f17e534]:
+    - button "Развернуть" [ref=f17e535] [cursor=pointer]:
+      - img [ref=f17e536]
+    - article "ВКонтакте с авторами" [ref=f17e539]:
+      - button "Есть непрочитанные сообщения" [ref=f17e540] [cursor=pointer]:
+        - figure [ref=f17e541]:
+          - img [ref=f17e546]
+          - img [ref=f17e547]
+        - img "Есть непрочитанные сообщения" [ref=f17e549]: "1"
+      - button "Убрать чат из списка" [ref=f17e550] [cursor=pointer]:
+        - img [ref=f17e551]
+    - button [ref=f17e553] [cursor=pointer]:
+      - img [ref=f17e554]

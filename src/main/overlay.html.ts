@@ -150,6 +150,44 @@ function renderRecWave(){
   raf=requestAnimationFrame(renderRecWave);
 }
 
+// ═══════ MEETING (запись встречи: сверху — коллеги, снизу — я) ═══════
+const MN=32,MBW=3,MGAP=1.4;
+const histSys=new Float32Array(MN),histMic=new Float32Array(MN);
+let tgtSys=0,tgtMic=0,curSys=0,curMic=0,sysCaptured=true,lastPush=0;
+
+function setMeetingLevels(mic,sys,captured){tgtMic=mic;tgtSys=sys;sysCaptured=captured}
+
+function resetMeetingLevels(){
+  histSys.fill(0);histMic.fill(0);
+  tgtSys=tgtMic=curSys=curMic=0;sysCaptured=true;
+}
+
+function renderMeeting(){
+  rwc.clearRect(0,0,RWW,RWH);
+  curSys+=(tgtSys-curSys)*0.4;
+  curMic+=(tgtMic-curMic)*0.4;
+  const now=performance.now();
+  if(now-lastPush>55){
+    lastPush=now;
+    histSys.copyWithin(0,1);histMic.copyWithin(0,1);
+    histSys[MN-1]=curSys;histMic[MN-1]=curMic;
+  }
+  const x0=(RWW-(MN*(MBW+MGAP)-MGAP))/2,mid=RWH/2,maxH=mid-4;
+  for(let i=0;i<MN;i++){
+    const x=x0+i*(MBW+MGAP);
+    const age=0.3+0.7*(i/(MN-1)); // старые бары бледнее — видно, как звук уходит влево
+    const hs=Math.max(1,histSys[i]*maxH),hm=Math.max(1,histMic[i]*maxH);
+    rwc.globalAlpha=sysCaptured?age:age*0.25;
+    rwc.fillStyle=T.dotColor;
+    rwc.beginPath();rwc.roundRect(x,mid-0.5-hs,MBW,hs,1);rwc.fill();
+    rwc.globalAlpha=age;
+    rwc.fillStyle=T.waveColor;
+    rwc.beginPath();rwc.roundRect(x,mid+0.5,MBW,hm,1);rwc.fill();
+  }
+  rwc.globalAlpha=1;
+  raf=requestAnimationFrame(renderMeeting);
+}
+
 // ═══════ PROCESSING ═══════
 
 // ─── Tunnel ───
@@ -325,7 +363,13 @@ function setState(s){
   recWave.className='hide';
   proc.className='hide';
 
-  if(s==='recording'){
+  if(s==='meeting'){
+    // Уровни приходят из окна приложения, которое держит оба потока записи
+    recWave.className='';
+    badge.className='badge no-padding';
+    resetMeetingLevels();
+    renderMeeting();
+  }else if(s==='recording'){
     if(T.recordingStyle==='wave' || T.recordingStyle==='scope'){
       recWave.className='';
       badge.className='badge no-padding';

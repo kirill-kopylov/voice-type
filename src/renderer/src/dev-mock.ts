@@ -89,6 +89,7 @@ export function installDevMock(): void {
     windowMaximize: noop,
     windowClose: noop,
     setOverlayTheme: () => {},
+    sendMeetingLevels: () => {},
   }
 
   ;(window as unknown as { api: VoiceTypeAPI }).api = api

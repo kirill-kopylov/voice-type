@@ -1,0 +1,148 @@
+- generic [active] [ref=f21e1]:
+  - generic [ref=f21e5]:
+    - list [ref=f21e8]:
+      - listitem [ref=f21e9]:
+        - link "На главную" [ref=f21e10] [cursor=pointer]:
+          - /url: /feed
+          - img
+      - listitem [ref=f21e11]:
+        - search [ref=f21e12]:
+          - generic [ref=f21e15]:
+            - generic [ref=f21e16]: Поиск
+            - generic [ref=f21e17]:
+              - img [ref=f21e18]
+              - searchbox "Поиск" [ref=f21e20]
+            - button "Очистить поле" [ref=f21e22] [cursor=pointer]:
+              - generic [ref=f21e23]: Очистить поле
+              - img [ref=f21e24]
+          - button "Найти" [ref=f21e30] [cursor=pointer]:
+            - generic [ref=f21e31]: Найти
+      - listitem [ref=f21e33]:
+        - button "Уведомления" [ref=f21e34] [cursor=pointer]:
+          - generic [ref=f21e35]: Уведомления
+          - img [ref=f21e36]
+      - listitem [ref=f21e39]:
+        - button "Аудиоплеер" [ref=f21e41] [cursor=pointer]:
+          - generic [ref=f21e42]: Аудиоплеер
+          - img [ref=f21e43]
+      - listitem [ref=f21e46]:
+        - button "Настройки профиля" [ref=f21e47] [cursor=pointer]:
+          - generic [ref=f21e48]: Настройки профиля
+          - img [ref=f21e52]
+    - navigation [ref=f21e59]:
+      - list [ref=f21e60]:
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+        - listitem:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ‌
+            - generic: ‌
+  - img

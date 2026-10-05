@@ -17,7 +17,7 @@ import { transcribeAudio, testConnection } from './services/transcription'
 import { transcribeDiarized, KnownSpeaker } from './services/diarization'
 import { generateSummary } from './services/summary'
 import { extractSpeakerSegments } from './services/extract-speaker'
-import type { AppSettings, MeetingRecord, VoiceProfile, TranscriptionRecord, McpStatus } from '../shared/types'
+import type { AppSettings, MeetingLevels, MeetingRecord, VoiceProfile, TranscriptionRecord, McpStatus } from '../shared/types'
 import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
 import { saveAudio, loadAudio, deleteAudio, saveProfileAudio, loadProfileAudio, deleteProfileAudio } from './services/audio-storage'
@@ -65,7 +65,9 @@ function createMainWindow(): void {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      // Окно прячется в трей, а запись и уровни звука встречи должны идти без пауз
+      backgroundThrottling: false
     }
   })
 
@@ -124,8 +126,10 @@ function setFloatingButtonEnabled(enabled: boolean): void {
   refreshTrayMenu()
 }
 
-function showOverlay(state: 'recording' | 'processing' | 'hidden'): void {
-  setFloatingButtonState(state === 'hidden' ? 'idle' : state)
+type OverlayState = 'recording' | 'meeting' | 'processing' | 'hidden'
+
+function showOverlay(state: OverlayState): void {
+  setFloatingButtonState(state === 'hidden' ? 'idle' : state === 'meeting' ? 'recording' : state)
   if (!overlayWindow || overlayWindow.isDestroyed()) return
 
   if (state === 'hidden') {
@@ -212,7 +216,7 @@ function toggleMeetingRecording(): void {
   mainWindow?.webContents.send('meeting-state-changed', isMeetingRecording)
 
   if (isMeetingRecording) {
-    showOverlay('recording')
+    showOverlay('meeting')
   } else {
     showOverlay('processing')
   }
@@ -355,6 +359,14 @@ function setupIpcHandlers(): void {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       overlayWindow.webContents.executeJavaScript(`applyOverlayTheme(${JSON.stringify(config)})`)
     }
+  })
+
+  // Уровни звука встречи — из renderer (он держит оба потока) в оверлей
+  ipcMain.on('meeting-levels', (_event, levels: MeetingLevels) => {
+    if (!overlayWindow || overlayWindow.isDestroyed() || !isMeetingRecording) return
+    const mic = Number(levels.mic) || 0
+    const system = Number(levels.system) || 0
+    overlayWindow.webContents.executeJavaScript(`setMeetingLevels(${mic},${system},${Boolean(levels.systemCaptured)})`)
   })
 
   ipcMain.handle('submit-audio', async (_event, audioData: ArrayBuffer, durationMs: number) => {

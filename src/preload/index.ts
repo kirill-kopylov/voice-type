@@ -76,6 +76,8 @@ const api: VoiceTypeAPI = {
 
   setOverlayTheme: (config) => ipcRenderer.send('set-overlay-theme', config),
 
+  sendMeetingLevels: (levels) => ipcRenderer.send('meeting-levels', levels),
+
   onRecordingStateChanged: (callback) => {
     const handler = (_event: Electron.IpcRendererEvent, isRecording: boolean): void => {
       callback(isRecording)

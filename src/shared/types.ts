@@ -116,6 +116,13 @@ export interface StoreSchema {
   voiceProfiles: VoiceProfile[]
 }
 
+export interface MeetingLevels {
+  mic: number
+  system: number
+  /** false — системный звук не захвачен, коллег в записи не будет */
+  systemCaptured: boolean
+}
+
 export interface McpStatus {
   running: boolean
   /** Адрес для подключения агента; пусто, пока сервер выключен */
@@ -158,6 +165,8 @@ export interface VoiceTypeAPI {
   windowMaximize: () => Promise<void>
   windowClose: () => Promise<void>
   setOverlayTheme: (config: Record<string, string | number>) => void
+  /** Уровни звука во время записи встречи (0..1) для индикатора в оверлее: свой микрофон и системный звук (коллеги). */
+  sendMeetingLevels: (levels: MeetingLevels) => void
   onRecordingStateChanged: (callback: (isRecording: boolean) => void) => () => void
   onTranscriptionComplete: (callback: (record: TranscriptionRecord) => void) => () => void
 }

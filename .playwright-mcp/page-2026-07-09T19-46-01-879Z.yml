@@ -1,0 +1,477 @@
+- generic [ref=f19e1]:
+  - generic [ref=f19e5]:
+    - list [ref=f19e8]:
+      - listitem [ref=f19e9]:
+        - link "На главную" [ref=f19e10] [cursor=pointer]:
+          - /url: /feed
+          - img
+      - listitem [ref=f19e11]:
+        - search [ref=f19e12]:
+          - generic [ref=f19e15]:
+            - generic [ref=f19e16]: Поиск
+            - generic [ref=f19e17]:
+              - img [ref=f19e18]
+              - searchbox "Поиск" [ref=f19e20]
+            - button "Очистить поле" [ref=f19e22] [cursor=pointer]:
+              - generic [ref=f19e23]: Очистить поле
+              - img [ref=f19e24]
+          - button "Найти" [ref=f19e30] [cursor=pointer]:
+            - generic [ref=f19e31]: Найти
+      - listitem [ref=f19e33]:
+        - button "Уведомления" [ref=f19e34] [cursor=pointer]:
+          - generic [ref=f19e35]: Уведомления
+          - img [ref=f19e36]
+      - listitem [ref=f19e39]:
+        - button "Аудиоплеер" [ref=f19e41] [cursor=pointer]:
+          - generic [ref=f19e42]: Аудиоплеер
+          - img [ref=f19e43]
+      - listitem [ref=f19e46]:
+        - link "Настройки профиля Кирилл" [ref=f19e47] [cursor=pointer]:
+          - /url: https://vk.com/qoooo
+          - generic [ref=f19e48]: Настройки профиля
+          - generic [ref=f19e49]:
+            - img "Кирилл" [ref=f19e51]
+            - img [ref=f19e53]
+    - generic [ref=f19e57]:
+      - navigation [ref=f19e60]:
+        - list [ref=f19e61]:
+          - listitem [ref=f19e62]:
+            - link "Профиль" [ref=f19e63] [cursor=pointer]:
+              - /url: /qoooo
+              - img [ref=f19e67]
+              - heading "Профиль" [level=2] [ref=f19e71]
+            - button "Настройка пунктов меню" [ref=f19e73] [cursor=pointer]:
+              - img [ref=f19e74]
+          - listitem [ref=f19e78]:
+            - link "Лента" [ref=f19e79] [cursor=pointer]:
+              - /url: /feed
+              - img [ref=f19e83]
+              - generic [ref=f19e87]: Лента
+            - button [ref=f19e89] [cursor=pointer]:
+              - img [ref=f19e90]
+          - listitem [ref=f19e94]:
+            - link "Мессенджер 2" [ref=f19e95] [cursor=pointer]:
+              - /url: /im
+              - img [ref=f19e99]
+              - generic [ref=f19e106]: Мессенджер
+              - generic [ref=f19e107]: "2"
+            - button [ref=f19e109] [cursor=pointer]:
+              - img [ref=f19e110]
+          - listitem [ref=f19e114]:
+            - link "Друзья" [ref=f19e115] [cursor=pointer]:
+              - /url: /friends?section=all
+              - img [ref=f19e119]
+              - generic [ref=f19e126]: Друзья
+            - button [ref=f19e128] [cursor=pointer]:
+              - img [ref=f19e129]
+          - listitem [ref=f19e133]:
+            - link "Сообщества" [ref=f19e134] [cursor=pointer]:
+              - /url: /groups
+              - img [ref=f19e138]
+              - generic [ref=f19e142]: Сообщества
+            - button [ref=f19e144] [cursor=pointer]:
+              - img [ref=f19e145]
+          - listitem [ref=f19e149]:
+            - link "Фото" [ref=f19e150] [cursor=pointer]:
+              - /url: /photos65676077
+              - img [ref=f19e154]
+              - generic [ref=f19e158]: Фото
+            - button [ref=f19e160] [cursor=pointer]:
+              - img [ref=f19e161]
+          - listitem [ref=f19e165]:
+            - link "Музыка" [ref=f19e166] [cursor=pointer]:
+              - /url: /audios65676077
+              - img [ref=f19e170]
+              - generic [ref=f19e175]: Музыка
+            - button [ref=f19e177] [cursor=pointer]:
+              - img [ref=f19e178]
+          - listitem [ref=f19e182]:
+            - link "Видео" [ref=f19e183] [cursor=pointer]:
+              - /url: //vkvideo.ru
+              - img [ref=f19e187]
+              - generic [ref=f19e191]: Видео
+            - button [ref=f19e193] [cursor=pointer]:
+              - img [ref=f19e194]
+          - listitem [ref=f19e198]:
+            - link "Маркет" [ref=f19e199] [cursor=pointer]:
+              - /url: /market?utm_ref=left_menu
+              - img [ref=f19e203]
+              - generic [ref=f19e207]: Маркет
+            - button [ref=f19e209] [cursor=pointer]:
+              - img [ref=f19e210]
+          - listitem [ref=f19e214]:
+            - link "Голоса" [ref=f19e215] [cursor=pointer]:
+              - /url: /settings?act=payments&ref=left_menu
+              - img [ref=f19e219]
+              - generic [ref=f19e223]: Голоса
+            - button [ref=f19e225] [cursor=pointer]:
+              - img [ref=f19e226]
+          - separator [ref=f19e231]
+          - listitem [ref=f19e232]:
+            - link "Заказы" [ref=f19e233] [cursor=pointer]:
+              - /url: /orders?source=main_menu&ref_screen=menu
+              - img [ref=f19e237]
+              - generic [ref=f19e241]: Заказы
+            - button [ref=f19e243] [cursor=pointer]:
+              - img [ref=f19e244]
+          - listitem [ref=f19e248]:
+            - link "Закладки" [ref=f19e249] [cursor=pointer]:
+              - /url: /bookmarks?from_menu=1
+              - img [ref=f19e253]
+              - generic [ref=f19e257]: Закладки
+            - button [ref=f19e259] [cursor=pointer]:
+              - img [ref=f19e260]
+          - listitem [ref=f19e264]:
+            - link "Файлы" [ref=f19e265] [cursor=pointer]:
+              - /url: /docs
+              - img [ref=f19e269]
+              - generic [ref=f19e273]: Файлы
+            - button [ref=f19e275] [cursor=pointer]:
+              - img [ref=f19e276]
+          - listitem [ref=f19e280]:
+            - link "Реклама" [ref=f19e281] [cursor=pointer]:
+              - /url: //ads.vk.ru/hq/?ref=vkcomads&utm_source=vk_left_menu&v=1
+              - img [ref=f19e285]
+              - generic [ref=f19e289]: Реклама
+            - button [ref=f19e291] [cursor=pointer]:
+              - img [ref=f19e292]
+          - listitem [ref=f19e296]:
+            - link "Управление" [ref=f19e297] [cursor=pointer]:
+              - /url: //dev.vk.com/admin/apps-list
+              - img [ref=f19e301]
+              - generic [ref=f19e305]: Управление
+            - button [ref=f19e307] [cursor=pointer]:
+              - img [ref=f19e308]
+          - separator [ref=f19e313]
+          - listitem [ref=f19e314]:
+            - link "Театральная семья \"Живем и.." [ref=f19e315] [cursor=pointer]:
+              - /url: /club89699284
+              - generic [ref=f19e320]: Театральная семья "Живем и..
+            - button [ref=f19e322] [cursor=pointer]:
+              - img [ref=f19e323]
+          - listitem [ref=f19e327]:
+            - link "Живём и Дышим" [ref=f19e328] [cursor=pointer]:
+              - /url: /teatrmgtu
+              - generic [ref=f19e333]: Живём и Дышим
+            - button [ref=f19e335] [cursor=pointer]:
+              - img [ref=f19e336]
+        - generic [ref=f19e342]:
+          - separator [ref=f19e348]
+          - list [ref=f19e349]:
+            - listitem [ref=f19e350]:
+              - link "Блог" [ref=f19e351] [cursor=pointer]:
+                - /url: /blog
+                - generic [ref=f19e352]: Блог
+            - listitem [ref=f19e353]:
+              - link "Разработчикам" [ref=f19e354] [cursor=pointer]:
+                - /url: https://dev.vk.com
+                - generic [ref=f19e355]: Разработчикам
+            - listitem [ref=f19e356]:
+              - link "Для бизнеса" [ref=f19e357] [cursor=pointer]:
+                - /url: https://ads.vk.com/promo/firstbonus?utm_source=vk_left_menu_for_business&utm_medium=link
+                - generic [ref=f19e358]: Для бизнеса
+            - listitem [ref=f19e359]:
+              - link "Авторам" [ref=f19e360] [cursor=pointer]:
+                - /url: /vk_authors
+                - generic [ref=f19e361]: Авторам
+            - listitem [ref=f19e362]:
+              - generic [ref=f19e364]:
+                - text: Ещё
+                - img [ref=f19e365]
+          - separator [ref=f19e368]
+          - list [ref=f19e369]:
+            - listitem [ref=f19e370]:
+              - button "Информация о контенте" [ref=f19e371] [cursor=pointer]:
+                - generic [ref=f19e372]:
+                  - img [ref=f19e374]
+                  - text: Информация о контенте
+      - generic [ref=f19e381]:
+        - generic [ref=f19e382]:
+          - generic [ref=f19e387]:
+            - generic [ref=f19e388]: Поиск сообществ
+            - generic [ref=f19e389]:
+              - img [ref=f19e390]
+              - searchbox "Поиск сообществ" [active] [ref=f19e392]
+            - button "Очистить" [ref=f19e394] [cursor=pointer]:
+              - generic [ref=f19e395]: Очистить
+              - img [ref=f19e396]
+          - generic [ref=f19e400]:
+            - heading "Недавно посещали" [level=2] [ref=f19e401]:
+              - generic "Недавно посещали" [ref=f19e406]:
+                - generic [ref=f19e407]: Недавно посещали
+              - button "Очистить список недавно посещенных групп" [ref=f19e409] [cursor=pointer]:
+                - generic [ref=f19e410]: Очистить список недавно посещенных групп
+                - img [ref=f19e411]
+            - generic [ref=f19e415]:
+              - button:
+                - generic: Вперед
+                - generic:
+                  - img
+              - generic [ref=f19e418]:
+                - link "VoiceType" [ref=f19e420] [cursor=pointer]:
+                  - /url: /club240163387?trackcode=c1b98fa47l_nYfvXYm9H3rMbINXO86-TnIa9kWfg-eXHy_ZuTRgqNDO7ZtcGHEvSmAgp2czCtp6Mt5SMdeuv48ykhsGZ5tBbXA&from=groups
+                  - img "VoiceType" [ref=f19e423]
+                  - generic [ref=f19e427]: VoiceType
+                - link "Ирина Аркадьевна и К°" [ref=f19e430] [cursor=pointer]:
+                  - /url: /club132598842?trackcode=9b3ee93bB22IEkwqWVcIZkfs1HTVfoWYeN0XAIhzTSs38f51bS7DBl3kjmc-JARqbP_deNdPnJVo7D4dmngbLTyejtq50DlpMg&from=groups
+                  - img "Ирина Аркадьевна и К°" [ref=f19e433]
+                  - generic [ref=f19e437]: Ирина Аркадьевна и К°
+                - link "Оформление свадеб Бреды \"Праздник для Вас\"" [ref=f19e440] [cursor=pointer]:
+                  - /url: /prazdnik_bredy?trackcode=c6f1500bgNnGjxw_NOlG8FAVkmNtU97wEQOX_8tp8kDARPZhcMxEsgUK23tSmkr8ewabb29ix_0BMr7i2WKkRssrhs6kMr7dag&from=groups
+                  - img "Оформление свадеб Бреды \"Праздник для Вас\"" [ref=f19e443]
+                  - generic [ref=f19e447]: Оформление свадеб Бреды "Праздник для Вас"
+                - link "Вместо дневника" [ref=f19e450] [cursor=pointer]:
+                  - /url: /club224679059?trackcode=06120487c1gHvxiG5Gl_cVX1cfAZt90gT9FMSe5qKX-0Zfum9re3M_t41p-FGnN9fuZ4_BuGxC1f4GVU_GF_eb8KiwkiSU1clA&from=groups
+                  - img "Вместо дневника" [ref=f19e453]
+                  - generic [ref=f19e457]: Вместо дневника
+                - link "Медиа «Знамя» (ТО «Швейка»), Магнитогорск" [ref=f19e460] [cursor=pointer]:
+                  - /url: /media_znamya_mgn?trackcode=df0b8875ruhW88JZO2Zr73fWTeBa6aUyjfLJfz7fp5yoE7S6Hnhqg79dKVlbFWfjXMVE7FjYvD-dw-BiLNTxmqN8xBXKhpDs0A&from=groups
+                  - img "Медиа «Знамя» (ТО «Швейка»), Магнитогорск" [ref=f19e463]
+                  - generic [ref=f19e467]: Медиа «Знамя» (ТО «Швейка»), Магнитогорск
+                - link "Дом Дракона 3 сезон 3-4 серия онлайн" [ref=f19e470] [cursor=pointer]:
+                  - /url: /houseofthedragonvk?trackcode=529aa765xVSWnO8txq1hpOPm7gJFmCcOphg8jiLqbEAvOp3gKXoBP1pnFgil3m2oyPXnDkepPgO2KRWTMOE6RiRV7U_9hPtQNQ&from=groups
+                  - img "Дом Дракона 3 сезон 3-4 серия онлайн" [ref=f19e473]
+                  - generic [ref=f19e477]: Дом Дракона 3 сезон 3-4 серия онлайн
+                - link "Петербургский театральный журнал" [ref=f19e480] [cursor=pointer]:
+                  - /url: /ptjspb?trackcode=883e0514c23R55yDUpNBx_V9bHrj73xCcHp3zW9Ro-BF6MJXJoSqAHVnpuEhn03s5nRgeNL2cVJBU2rfZAel6yqYbYPYfsVv&from=groups
+                  - img "Петербургский театральный журнал" [ref=f19e483]
+                  - generic [ref=f19e487]: Петербургский театральный журнал
+                - link "ЭАВбп-13" [ref=f19e490] [cursor=pointer]:
+                  - /url: /eavbp?trackcode=25f2601b4NVUVfxL9pzOtgPxXMxtscS3bV5-23cj0gw-KwQvilMkvprUcSKb78K6KOJVwG-A3bp9b1fGZSiECjVEdIBerd7R9Q&from=groups
+                  - img "ЭАВбп-13" [ref=f19e493]
+                  - generic [ref=f19e497]: ЭАВбп-13
+                - link "ШГХ" [ref=f19e500] [cursor=pointer]:
+                  - /url: /club89406858?trackcode=31009a8fh_YPE9jJ1_3XenROcOepNFkIW7gYrZYGXZatqnzerxdDneqGV5G7jtt2X11566sFQAVLiTGwhA0LkKbFDHF76bnyhQ&from=groups
+                  - img "ШГХ" [ref=f19e503]
+                  - generic [ref=f19e507]: ШГХ
+                - link "Современный театр" [ref=f19e510] [cursor=pointer]:
+                  - /url: /protheatre?trackcode=ade6510b2NyccATR1JA-QcJp-T6uONZvxH4w6GFAoSBcYjEtXMEctwOJ27u74zJN6XrwMqwJz2LUTxn1c0v3JlcNQYKIP-bYbA&from=groups
+                  - img "Современный театр" [ref=f19e513]
+                  - generic [ref=f19e517]: Современный театр
+          - generic [ref=f19e520]:
+            - heading "Мои подписки" [level=2] [ref=f19e522]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic "Мои подписки":
+                        - generic [ref=f19e523]: Мои подписки
+            - generic [ref=f19e524]:
+              - tablist [ref=f19e526]:
+                - generic [ref=f19e527]:
+                  - tab "Все сообщества 295" [selected] [ref=f19e528] [cursor=pointer]:
+                    - generic [ref=f19e529]: Все сообщества
+                    - generic [ref=f19e530]: "295"
+                  - tab "Управляемые 16" [ref=f19e532] [cursor=pointer]:
+                    - generic [ref=f19e533]: Управляемые
+                    - generic [ref=f19e534]: "16"
+              - generic [ref=f19e537]:
+                - link "Ирина Аркадьевна и К°" [ref=f19e539] [cursor=pointer]:
+                  - /url: /club132598842?trackcode=03181771E9XkDpYlN_Q4nJH0oQgw1tyoMC1HZD-_LiSeOSArfFHXvjH4VHtaiASeivigEjngxaA8MBsQmGWqyfdU&from=groups
+                  - img [ref=f19e542]
+                  - generic [ref=f19e544]:
+                    - generic [ref=f19e546]: Ирина Аркадьевна и К°
+                    - generic [ref=f19e549]: Закрытое сообщество
+                - link "Магнитогорский академический драматический театр" [ref=f19e554] [cursor=pointer]:
+                  - /url: /drama_mgn?trackcode=ac9affa3zkwIjYor0k6kqRPzT3IAokpmkWxrOE0GJrSFNiRtUnUKJ4x5L0m8MpirCP9OaAmUU26dcTdM6tyiWexb&from=groups
+                  - img [ref=f19e557]
+                  - generic [ref=f19e559]:
+                    - generic [ref=f19e561]: Магнитогорский академический драматический театр
+                    - generic [ref=f19e563]:
+                      - img [ref=f19e565]
+                      - generic [ref=f19e567]: Театр
+                - link "Хабр" [ref=f19e572] [cursor=pointer]:
+                  - /url: /habr?trackcode=763e978dB1l0sVtm4Ez-3QjhINoMqekllLH147xEQu2_MDnDEdfDMsdO7w6PMMLfE-0hwAWf8C2YrKmXG57GANZd&from=groups
+                  - img [ref=f19e575]
+                  - generic [ref=f19e577]:
+                    - generic [ref=f19e579]: Хабр
+                    - generic [ref=f19e582]: Программирование
+                - link "Медиа «Знамя» (ТО «Швейка»), Магнитогорск" [ref=f19e588] [cursor=pointer]:
+                  - /url: /media_znamya_mgn?trackcode=48f4be48oybzc3QBTDmeXuRVqeuQJXwlRtULdubdbzFFLgKIRvNnTRrdnxIkRaJc_1mo8ZkTZS1KyFcCQQfr3CxD&from=groups
+                  - img [ref=f19e591]
+                  - generic [ref=f19e593]:
+                    - generic [ref=f19e595]: Медиа «Знамя» (ТО «Швейка»), Магнитогорск
+                    - generic [ref=f19e598]: Культура
+                  - generic [ref=f19e601]: "4"
+                - link "Лавры / Мастерская Н. П. Лавровой" [ref=f19e604] [cursor=pointer]:
+                  - /url: /lavrs2327?trackcode=1fcca979ins54NbxwwAa9Tpw9FMTFJ-j9DJyh5JZRuoHyScT_iBOEMA_aP2qfCb3IXz1SRoihqv4Ly7zNYPCB26k&from=groups
+                  - img [ref=f19e607]
+                  - generic [ref=f19e609]:
+                    - generic [ref=f19e611]: Лавры / Мастерская Н. П. Лавровой
+                    - generic [ref=f19e614]: Театр
+                - link "Современный театр" [ref=f19e619] [cursor=pointer]:
+                  - /url: /protheatre?trackcode=24465baeKZF5R5j_xWLC5Bor5kMsLFL6ac6TCX5j1sLObFcEcCLt-ua-R4avHv7mASfnWSUaS_Jl08992blSL6cB&from=groups
+                  - img [ref=f19e622]
+                  - generic [ref=f19e624]:
+                    - generic [ref=f19e626]: Современный театр
+                    - generic [ref=f19e629]: Культура
+                - link "Хабр Карьера" [ref=f19e635] [cursor=pointer]:
+                  - /url: /habr_career?trackcode=81b9d7fcuuvo6RSP8YqFJCP_Obe1yDTbyAUIsSshyvS713BW8Tx-gGdP1fia9rkmOPM4rbz-LdPEGFTFjPtOGdK6&from=groups
+                  - img [ref=f19e638]
+                  - generic [ref=f19e640]:
+                    - generic [ref=f19e642]: Хабр Карьера
+                    - generic [ref=f19e645]: Объявления
+                - link "Фестиваль театров малых городов России" [ref=f19e651] [cursor=pointer]:
+                  - /url: /ftmgr?trackcode=32ea898dPUOgHWgrUSDMrwct8SyI-yM6YHEhh3WRhzKUNhZZUvH5KGHd_yI1XPCtHCHwNoHNOjJsbH3z0ksD3_1b&from=groups
+                  - img [ref=f19e654]
+                  - generic [ref=f19e656]:
+                    - generic [ref=f19e658]: Фестиваль театров малых городов России
+                    - generic [ref=f19e661]: Фестиваль
+              - separator [ref=f19e667]
+              - link "Мои подписки Показать все" [ref=f19e668] [cursor=pointer]:
+                - /url: https://vk.com/groups/my_all_groups
+                - generic [ref=f19e671]: Показать все
+                - img [ref=f19e674]
+          - generic [ref=f19e678]:
+            - heading "Для вас" [level=2] [ref=f19e679]:
+              - generic "Для вас" [ref=f19e684]:
+                - generic [ref=f19e685]: Для вас
+              - link "Для вас Показать все" [ref=f19e687] [cursor=pointer]:
+                - /url: https://vk.com/groups/for_you
+                - text: Показать все
+            - generic [ref=f19e689]:
+              - button:
+                - generic: Вперед
+                - generic:
+                  - img
+              - generic [ref=f19e692]:
+                - link "SQL" [ref=f19e695] [cursor=pointer]:
+                  - /url: /sql_learn?trackcode=87ca8ba6t0MWYL9x06rvxKjYc9FK8GAjjxvYGOYxwEjUU7ptR6RzKKiZXSWzyOPQr9xz4UvAfx2TcT_4X5Xf7QOhRAIr&from=groups
+                  - generic [ref=f19e697]:
+                    - generic [ref=f19e702]: 38K подписчиков
+                    - generic [ref=f19e703]:
+                      - generic "SQL" [ref=f19e705]
+                      - generic "Программирование" [ref=f19e707]
+                    - button "Подписаться" [ref=f19e709]:
+                      - generic [ref=f19e711]: Подписаться
+                - link "Курорты Банное и Абзаково, озеро Якты-Куль" [ref=f19e714] [cursor=pointer]:
+                  - /url: /nabannoe?trackcode=9788e22bpvknTLO3o6ihb9PtqVW5QwKe8i0pOnD9if4VUA3zJA9ikr6vS-_Ayq171OmpZbhzHaDuR87ayVmWW8Ki85xI&from=groups
+                  - generic [ref=f19e716]:
+                    - generic [ref=f19e721]:
+                      - generic [ref=f19e722]:
+                        - img [ref=f19e724]
+                        - img [ref=f19e730]
+                      - generic [ref=f19e736]: 30 друзей
+                    - generic [ref=f19e737]:
+                      - generic "Курорты Банное и Абзаково, озеро Якты-Куль" [ref=f19e739]
+                      - generic "Туризм, путешествия" [ref=f19e741]
+                    - button "Подписаться" [ref=f19e743]:
+                      - generic [ref=f19e745]: Подписаться
+                - link "Алла Пугачева- Великая \"Рыжая бестия\"" [ref=f19e748] [cursor=pointer]:
+                  - /url: /drakon191?trackcode=5fe6b873a4gKzn3uSi7XQ37R51brLuIsftmkaiYZhaCZJNyOq8ev49VayqIoTNtXedXnZuoe_RJis0OKn72aBU7WIuHH&from=groups
+                  - generic [ref=f19e750]:
+                    - generic [ref=f19e755]:
+                      - img [ref=f19e758]
+                      - generic [ref=f19e764]: 1 друг
+                    - generic [ref=f19e765]:
+                      - generic "Алла Пугачева- Великая \"Рыжая бестия\"" [ref=f19e767]
+                      - generic "Обмен музыкой" [ref=f19e769]
+                    - button "Подписаться" [ref=f19e771]:
+                      - generic [ref=f19e773]: Подписаться
+                - link "Ювелирная школа «Да, Могу!» | Москва" [ref=f19e776] [cursor=pointer]:
+                  - /url: /damoguschool?trackcode=baf041e39a_bACDHwyeJtDbxTlwDo2cSK99dLyIgQo3Rhxlo4vExxGjGq8CmRYWgMfVObAKTeCw3tbrPm4RdKAZ15weO&from=groups
+                  - generic [ref=f19e778]:
+                    - generic [ref=f19e783]: 3,4K подписчиков
+                    - generic [ref=f19e784]:
+                      - generic "Ювелирная школа «Да, Могу!» | Москва" [ref=f19e786]
+                      - generic "Обучающие курсы" [ref=f19e788]
+                    - button "Подписаться" [ref=f19e790]:
+                      - generic [ref=f19e792]: Подписаться
+                - link [ref=f19e795] [cursor=pointer]:
+                  - /url: /russian_painting?trackcode=862bb7d7q-gT9JfUJM1VubAWxFZkXTEU6aUGBuZWGvadBfHfh-tvg_oRIqdAr1mttxLEZmVtLir1z-HmX_IFU0r3D7Dr&from=groups
+                  - generic [ref=f19e797]:
+                    - generic [ref=f19e802]:
+                      - generic [ref=f19e803]:
+                        - img [ref=f19e805]
+                        - img [ref=f19e811]
+                      - generic [ref=f19e817]: 17 друзей
+                    - generic [ref=f19e818]:
+                      - generic [ref=f19e820]: Русская живопись
+                      - generic [ref=f19e822]: Культура
+                    - button [ref=f19e824]:
+                      - generic [ref=f19e826]: Подписаться
+                - link [ref=f19e829] [cursor=pointer]:
+                  - /url: /kolyada_theatre?trackcode=a7d73980qU2wkjisY7AHoODpU_7vhIVSSMOzYOsaSnNqDh0Bze5wIH9bf8sBvBOn5Olj_9-bu04iJFPZTwXvpJjwcm0&from=groups
+                  - generic [ref=f19e831]:
+                    - generic [ref=f19e836]:
+                      - generic [ref=f19e837]:
+                        - img [ref=f19e839]
+                        - img [ref=f19e845]
+                      - generic [ref=f19e851]: 9 друзей
+                    - generic [ref=f19e852]:
+                      - generic [ref=f19e854]: Коляда-Театр
+                      - generic [ref=f19e856]: Театр
+                    - button [ref=f19e858]:
+                      - generic [ref=f19e860]: Подписаться
+                - link [ref=f19e863] [cursor=pointer]:
+                  - /url: /academic_painting?trackcode=51c776e9gETCTS6mdnFPEDOOwKfIALIsr2oinhr5suGGK5LjwsBEL0Ty_eEQE0MENIrAl8kwrRKzAMV-o12tRFHZbIyu&from=groups
+                  - generic [ref=f19e865]:
+                    - generic [ref=f19e870]:
+                      - generic [ref=f19e871]:
+                        - img [ref=f19e873]
+                        - img [ref=f19e879]
+                      - generic [ref=f19e885]: 2 друга
+                    - generic [ref=f19e886]:
+                      - generic [ref=f19e888]: Академическая живопись
+                      - generic [ref=f19e890]: Творчество
+                    - button [ref=f19e892]:
+                      - generic [ref=f19e894]: Подписаться
+                - link [ref=f19e897] [cursor=pointer]:
+                  - /url: /pro_puppet?trackcode=2377365aV7oe1mwjUawZQpAL9hUS9zMXj_63VI-X3v3X8E50Rq2T0dBd1X84zhVWlw_2JRPHLCmTlFC0NjPBWAACsBsq&from=groups
+                  - generic [ref=f19e899]:
+                    - generic [ref=f19e904]:
+                      - generic [ref=f19e905]:
+                        - img [ref=f19e907]
+                        - img [ref=f19e913]
+                      - generic [ref=f19e919]: 3 друга
+                    - generic [ref=f19e920]:
+                      - generic [ref=f19e922]: PRO Puppet | Сообщество о театре кукол
+                      - generic [ref=f19e924]: Культура
+                    - button [ref=f19e926]:
+                      - generic [ref=f19e928]: Подписаться
+                - link [ref=f19e931] [cursor=pointer]:
+                  - /url: /nostalgia_2000?trackcode=6810fbe33QlMBjO7SumD1EhBRATlGQDaun5duKEIS1bppj1kFpwZYvqh2roii4_AT0VENOQpH-SmFLpYGKxU8z5Uwwt6&from=groups
+                  - generic [ref=f19e933]:
+                    - generic [ref=f19e938]: 40,6K подписчиков
+                    - generic [ref=f19e939]:
+                      - generic [ref=f19e941]: Ностальгия 2000-х
+                      - generic [ref=f19e943]: Фан-сообщество
+                    - button [ref=f19e945]:
+                      - generic [ref=f19e947]: Подписаться
+                - link [ref=f19e950] [cursor=pointer]:
+                  - /url: /mednolist?trackcode=e6666d99LYWXN2pz-R-x3oSJfMyj_xz7K9PLFUuiSIBOFma_R5fp7jD9-EuSfb3Kg418_KLPA8U3uSz18gZXJZnkmNAr&from=groups
+                  - generic [ref=f19e952]:
+                    - generic [ref=f19e957]: 2,1K подписчиков
+                    - generic [ref=f19e958]:
+                      - generic [ref=f19e960]: Меднолист. Украшения из меди. Подарки. Фибулы
+                      - generic [ref=f19e962]: Творчество
+                    - button [ref=f19e964]:
+                      - generic [ref=f19e966]: Подписаться
+                - generic [ref=f19e969]:
+                  - status [ref=f19e971]:
+                    - img [ref=f19e972]
+                    - generic [ref=f19e974]: Загружается...
+                  - generic [ref=f19e978]:
+                    - generic [ref=f19e982]:
+                      - generic [ref=f19e984]: t
+                      - generic [ref=f19e986]: s
+                    - button [ref=f19e988] [cursor=pointer]:
+                      - generic [ref=f19e989]:
+                        - img [ref=f19e990]
+                        - generic [ref=f19e992]: placeholder
+          - status [ref=f19e1000]:
+            - img [ref=f19e1001]
+            - generic [ref=f19e1003]: Загружается...
+        - generic [ref=f19e1007]:
+          - link "Создать сообщество" [ref=f19e1010] [cursor=pointer]:
+            - /url: /groups_create
+            - generic [ref=f19e1012]: Создать сообщество
+          - separator [ref=f19e1014]
+          - button "Главная" [ref=f19e1015] [cursor=pointer]:
+            - generic [ref=f19e1016]: Главная
+          - link "Мероприятия Календарь" [ref=f19e1017] [cursor=pointer]:
+            - /url: https://vk.com/groups/events_interesting
+            - generic [ref=f19e1018]: Мероприятия
+            - button "Календарь" [ref=f19e1020]:
+              - img [ref=f19e1021]
+  - img

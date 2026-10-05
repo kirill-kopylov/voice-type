@@ -1,0 +1,395 @@
+- generic [active] [ref=f12e1]:
+  - iframe [ref=f12e4]:
+    
+  - generic [ref=f12e8]:
+    - list [ref=f12e11]:
+      - listitem [ref=f12e3874]:
+        - link "На главную" [ref=f12e3875] [cursor=pointer]:
+          - /url: /feed
+          - img
+      - listitem [ref=f12e14]:
+        - search [ref=f12e15]:
+          - generic [ref=f12e18]:
+            - generic [ref=f12e19]: Поиск
+            - generic [ref=f12e20]:
+              - img [ref=f12e21]
+              - searchbox "Поиск" [ref=f12e23]
+            - button "Очистить поле" [ref=f12e25] [cursor=pointer]:
+              - generic [ref=f12e26]: Очистить поле
+              - img [ref=f12e27]
+          - button "Найти" [ref=f12e33] [cursor=pointer]:
+            - generic [ref=f12e34]: Найти
+      - listitem [ref=f12e36]:
+        - button "Уведомления" [ref=f12e37] [cursor=pointer]:
+          - generic [ref=f12e38]: Уведомления
+          - img [ref=f12e39]
+      - listitem [ref=f12e42]:
+        - button "Аудиоплеер" [ref=f12e44] [cursor=pointer]:
+          - generic [ref=f12e45]: Аудиоплеер
+          - img [ref=f12e46]
+      - listitem [ref=f12e49]:
+        - link "Настройки профиля Кирилл" [ref=f12e50] [cursor=pointer]:
+          - /url: https://vk.com/qoooo
+          - generic [ref=f12e51]: Настройки профиля
+          - generic [ref=f12e52]:
+            - img "Кирилл" [ref=f12e54]
+            - img [ref=f12e56]
+    - generic [ref=f12e60]:
+      - navigation [ref=f12e63]:
+        - list [ref=f12e64]:
+          - listitem [ref=f12e65]:
+            - link "Профиль" [ref=f12e66] [cursor=pointer]:
+              - /url: /qoooo
+              - img [ref=f12e70]
+              - heading "Профиль" [level=2] [ref=f12e74]
+            - button "Настройка пунктов меню" [ref=f12e76] [cursor=pointer]:
+              - img [ref=f12e77]
+          - listitem [ref=f12e81]:
+            - link "Лента" [ref=f12e82] [cursor=pointer]:
+              - /url: /feed
+              - img [ref=f12e86]
+              - generic [ref=f12e90]: Лента
+            - button [ref=f12e92] [cursor=pointer]:
+              - img [ref=f12e93]
+          - listitem [ref=f12e97]:
+            - link "Мессенджер 1" [ref=f12e98] [cursor=pointer]:
+              - /url: /im
+              - img [ref=f12e102]
+              - generic [ref=f12e109]: Мессенджер
+              - generic [ref=f12e110]: "1"
+            - button [ref=f12e112] [cursor=pointer]:
+              - img [ref=f12e113]
+          - listitem [ref=f12e117]:
+            - link "Друзья" [ref=f12e118] [cursor=pointer]:
+              - /url: /friends?section=all
+              - img [ref=f12e122]
+              - generic [ref=f12e129]: Друзья
+            - button [ref=f12e131] [cursor=pointer]:
+              - img [ref=f12e132]
+          - listitem [ref=f12e136]:
+            - link "Сообщества" [ref=f12e137] [cursor=pointer]:
+              - /url: /groups
+              - img [ref=f12e141]
+              - generic [ref=f12e145]: Сообщества
+            - button [ref=f12e147] [cursor=pointer]:
+              - img [ref=f12e148]
+          - listitem [ref=f12e152]:
+            - link "Фото" [ref=f12e153] [cursor=pointer]:
+              - /url: /photos65676077
+              - img [ref=f12e157]
+              - generic [ref=f12e161]: Фото
+            - button [ref=f12e163] [cursor=pointer]:
+              - img [ref=f12e164]
+          - listitem [ref=f12e168]:
+            - link "Музыка" [ref=f12e169] [cursor=pointer]:
+              - /url: /audios65676077
+              - img [ref=f12e173]
+              - generic [ref=f12e178]: Музыка
+            - button [ref=f12e180] [cursor=pointer]:
+              - img [ref=f12e181]
+          - listitem [ref=f12e185]:
+            - link "Видео" [ref=f12e186] [cursor=pointer]:
+              - /url: //vkvideo.ru
+              - img [ref=f12e190]
+              - generic [ref=f12e194]: Видео
+            - button [ref=f12e196] [cursor=pointer]:
+              - img [ref=f12e197]
+          - listitem [ref=f12e201]:
+            - link "Маркет" [ref=f12e202] [cursor=pointer]:
+              - /url: /market?utm_ref=left_menu
+              - img [ref=f12e206]
+              - generic [ref=f12e210]: Маркет
+            - button [ref=f12e212] [cursor=pointer]:
+              - img [ref=f12e213]
+          - listitem [ref=f12e217]:
+            - link "Голоса" [ref=f12e218] [cursor=pointer]:
+              - /url: /settings?act=payments&ref=left_menu
+              - img [ref=f12e222]
+              - generic [ref=f12e226]: Голоса
+            - button [ref=f12e228] [cursor=pointer]:
+              - img [ref=f12e229]
+          - separator [ref=f12e234]
+          - listitem [ref=f12e235]:
+            - link "Заказы" [ref=f12e236] [cursor=pointer]:
+              - /url: /orders?source=main_menu&ref_screen=menu
+              - img [ref=f12e240]
+              - generic [ref=f12e244]: Заказы
+            - button [ref=f12e246] [cursor=pointer]:
+              - img [ref=f12e247]
+          - listitem [ref=f12e251]:
+            - link "Закладки" [ref=f12e252] [cursor=pointer]:
+              - /url: /bookmarks?from_menu=1
+              - img [ref=f12e256]
+              - generic [ref=f12e260]: Закладки
+            - button [ref=f12e262] [cursor=pointer]:
+              - img [ref=f12e263]
+          - listitem [ref=f12e267]:
+            - link "Файлы" [ref=f12e268] [cursor=pointer]:
+              - /url: /docs
+              - img [ref=f12e272]
+              - generic [ref=f12e276]: Файлы
+            - button [ref=f12e278] [cursor=pointer]:
+              - img [ref=f12e279]
+          - listitem [ref=f12e283]:
+            - link "Реклама" [ref=f12e284] [cursor=pointer]:
+              - /url: //ads.vk.ru/hq/?ref=vkcomads&utm_source=vk_left_menu&v=1
+              - img [ref=f12e288]
+              - generic [ref=f12e292]: Реклама
+            - button [ref=f12e294] [cursor=pointer]:
+              - img [ref=f12e295]
+          - listitem [ref=f12e299]:
+            - link "Управление" [ref=f12e300] [cursor=pointer]:
+              - /url: //dev.vk.com/admin/apps-list
+              - img [ref=f12e304]
+              - generic [ref=f12e308]: Управление
+            - button [ref=f12e310] [cursor=pointer]:
+              - img [ref=f12e311]
+          - separator [ref=f12e316]
+          - listitem [ref=f12e317]:
+            - link "Театральная семья \"Живем и.." [ref=f12e318] [cursor=pointer]:
+              - /url: /club89699284
+              - generic [ref=f12e323]: Театральная семья "Живем и..
+            - button [ref=f12e325] [cursor=pointer]:
+              - img [ref=f12e326]
+          - listitem [ref=f12e330]:
+            - link "Живём и Дышим" [ref=f12e331] [cursor=pointer]:
+              - /url: /teatrmgtu
+              - generic [ref=f12e336]: Живём и Дышим
+            - button [ref=f12e338] [cursor=pointer]:
+              - img [ref=f12e339]
+        - generic [ref=f12e345]:
+          - generic [ref=f12e349]:
+            - generic [ref=f12e353] [cursor=pointer]:
+              - generic [ref=f12e355]:
+                - img [ref=f12e357]
+                - generic [ref=f12e359]:
+                  - generic [ref=f12e360]:
+                    - generic [ref=f12e361]: Получите промокод на 5 000...
+                    - generic [ref=f12e362]: direct.yandex.ru
+                    - generic [ref=f12e363]: Пополните счет на 10 000 ₽ и Яндекс добавит вам...
+                  - generic [ref=f12e364]: Подробнее
+              - generic [ref=f12e365]:
+                - img [ref=f12e367]
+                - generic [ref=f12e369]: Реклама
+                - generic [ref=f12e370]: 0+
+              - img [ref=f12e372]
+            - generic [ref=f12e377] [cursor=pointer]:
+              - generic [ref=f12e379]:
+                - img [ref=f12e381]
+                - generic [ref=f12e383]:
+                  - generic [ref=f12e384]:
+                    - generic [ref=f12e385]: Промокод для новых...
+                    - generic [ref=f12e386]: yandex.ru
+                    - generic [ref=f12e387]: Получите промокод на 5 000 ₽ и запустите первое...
+                  - generic [ref=f12e388]: Подробнее
+              - generic [ref=f12e389]:
+                - img [ref=f12e391]
+                - generic [ref=f12e393]: Реклама
+                - generic [ref=f12e394]: 0+
+              - img [ref=f12e396]
+            - generic [ref=f12e401] [cursor=pointer]:
+              - generic [ref=f12e403]:
+                - img [ref=f12e405]
+                - generic [ref=f12e407]:
+                  - generic [ref=f12e408]:
+                    - generic [ref=f12e409]: Спартакиада пенсионеров
+                    - generic [ref=f12e410]: национальныепроекты.рф
+                    - generic [ref=f12e411]: Как пенсионеры бьют спорт-рекорды
+                  - generic [ref=f12e412]: Перейти
+              - generic [ref=f12e413]:
+                - img [ref=f12e415]
+                - generic [ref=f12e417]: Социальная реклама
+                - generic [ref=f12e418]: 18+
+              - img [ref=f12e420]
+          - separator [ref=f12e423]
+          - list [ref=f12e424]:
+            - listitem [ref=f12e425]:
+              - link "Блог" [ref=f12e426] [cursor=pointer]:
+                - /url: /blog
+                - generic [ref=f12e427]: Блог
+            - listitem [ref=f12e428]:
+              - link "Разработчикам" [ref=f12e429] [cursor=pointer]:
+                - /url: https://dev.vk.com
+                - generic [ref=f12e430]: Разработчикам
+            - listitem [ref=f12e431]:
+              - link "Для бизнеса" [ref=f12e432] [cursor=pointer]:
+                - /url: https://ads.vk.com/promo/firstbonus?utm_source=vk_left_menu_for_business&utm_medium=link
+                - generic [ref=f12e433]: Для бизнеса
+            - listitem [ref=f12e434]:
+              - link "Авторам" [ref=f12e435] [cursor=pointer]:
+                - /url: /vk_authors
+                - generic [ref=f12e436]: Авторам
+            - listitem [ref=f12e437]:
+              - generic [ref=f12e439]:
+                - text: Ещё
+                - img [ref=f12e440]
+          - separator [ref=f12e443]
+          - list [ref=f12e444]:
+            - listitem [ref=f12e445]:
+              - button "Информация о контенте" [ref=f12e446] [cursor=pointer]:
+                - generic [ref=f12e447]:
+                  - img [ref=f12e449]
+                  - text: Информация о контенте
+      - generic [ref=f12e3876]:
+        - generic [ref=f12e3878]:
+          - generic [ref=f12e3879]:
+            - generic:
+              - generic: ‌
+          - generic [ref=f12e3880]:
+            - generic [ref=f12e3882]: ‌
+            - generic [ref=f12e3884]:
+              - generic [ref=f12e3885]:
+                - generic [ref=f12e3886]: ‌
+                - generic [ref=f12e3887]:
+                  - generic [ref=f12e3888]: ‌
+                  - generic [ref=f12e3889]: ‌
+              - generic [ref=f12e3890]:
+                - generic [ref=f12e3891]: ‌
+                - generic [ref=f12e3892]: ‌
+        - generic [ref=f12e3895]:
+          - generic [ref=f12e3896]:
+            - generic [ref=f12e3897]:
+              - generic [ref=f12e3899]:
+                - generic [ref=f12e3900]: ‌
+                - generic [ref=f12e3901]: ‌
+                - generic [ref=f12e3902]: ‌
+                - generic [ref=f12e3903]: ‌
+                - generic [ref=f12e3904]: ‌
+                - generic [ref=f12e3905]: ‌
+                - generic [ref=f12e3906]: ‌
+                - generic [ref=f12e3907]: ‌
+              - generic [ref=f12e3909]: ‌
+            - generic [ref=f12e3913]:
+              - generic [ref=f12e3914]: ‌
+              - generic [ref=f12e3915]: ‌
+            - generic [ref=f12e3918]:
+              - generic [ref=f12e3920]:
+                - tablist [ref=f12e3921]:
+                  - generic [ref=f12e3922]:
+                    - tab [selected] [ref=f12e3923]:
+                      - generic [ref=f12e3926]: ‌
+                    - tab [selected] [ref=f12e3927]:
+                      - generic [ref=f12e3930]: ‌
+                    - tab [selected] [ref=f12e3931]:
+                      - generic [ref=f12e3934]: ‌
+                - generic [ref=f12e3935]: ‌
+              - generic [ref=f12e3936]:
+                - generic [ref=f12e3939]: ‌
+                - generic [ref=f12e3940]:
+                  - generic [ref=f12e3943]: ‌
+                  - generic [ref=f12e3947]: ‌
+                - generic [ref=f12e3950]: ‌
+              - generic [ref=f12e3951]:
+                - generic [ref=f12e3952]:
+                  - generic [ref=f12e3953]: ‌
+                  - generic [ref=f12e3954]: ‌
+                  - generic [ref=f12e3955]: ‌
+                - generic [ref=f12e3957]: ‌
+                - generic [ref=f12e3959]:
+                  - generic [ref=f12e3960]:
+                    - generic [ref=f12e3961]: ‌
+                    - generic [ref=f12e3962]: ‌
+                    - generic [ref=f12e3963]: ‌
+                  - generic [ref=f12e3964]:
+                    - generic [ref=f12e3965]: ‌
+                    - generic [ref=f12e3966]: ‌
+          - generic [ref=f12e3969]:
+            - generic [ref=f12e3970]:
+              - generic [ref=f12e3976]:
+                - generic [ref=f12e3977]: ‌
+                - generic [ref=f12e3978]: ‌
+              - generic [ref=f12e3986]:
+                - generic [ref=f12e3987]: ‌
+                - generic [ref=f12e3988]: ‌
+              - generic [ref=f12e3996]:
+                - generic [ref=f12e3997]: ‌
+                - generic [ref=f12e3998]: ‌
+              - generic [ref=f12e4006]:
+                - generic [ref=f12e4007]: ‌
+                - generic [ref=f12e4008]: ‌
+            - generic [ref=f12e4013]:
+              - heading [level=2] [ref=f12e4014]:
+                - generic [ref=f12e4021]: ‌
+              - generic [ref=f12e4023]:
+                - generic [ref=f12e4027]:
+                  - generic [ref=f12e4028]: ‌
+                  - generic [ref=f12e4029]: ‌
+                - generic [ref=f12e4033]:
+                  - generic [ref=f12e4034]: ‌
+                  - generic [ref=f12e4035]: ‌
+                - generic [ref=f12e4039]:
+                  - generic [ref=f12e4040]: ‌
+                  - generic [ref=f12e4041]: ‌
+                - generic [ref=f12e4045]:
+                  - generic [ref=f12e4046]: ‌
+                  - generic [ref=f12e4047]: ‌
+                - generic [ref=f12e4051]:
+                  - generic [ref=f12e4052]: ‌
+                  - generic [ref=f12e4053]: ‌
+                - generic [ref=f12e4057]:
+                  - generic [ref=f12e4058]: ‌
+                  - generic [ref=f12e4059]: ‌
+                - generic [ref=f12e4063]:
+                  - generic [ref=f12e4064]: ‌
+                  - generic [ref=f12e4065]: ‌
+                - generic [ref=f12e4069]:
+                  - generic [ref=f12e4070]: ‌
+                  - generic [ref=f12e4071]: ‌
+            - generic [ref=f12e4074]:
+              - heading [level=2] [ref=f12e4075]:
+                - generic [ref=f12e4082]: ‌
+              - generic [ref=f12e4084]:
+                - generic [ref=f12e4085]:
+                  - generic [ref=f12e4086]: ‌
+                  - generic [ref=f12e4087]:
+                    - generic [ref=f12e4088]: ‌
+                    - generic [ref=f12e4089]: ‌
+                - generic [ref=f12e4090]:
+                  - generic [ref=f12e4091]: ‌
+                  - generic [ref=f12e4092]:
+                    - generic [ref=f12e4093]: ‌
+                    - generic [ref=f12e4094]: ‌
+                - generic [ref=f12e4095]:
+                  - generic [ref=f12e4096]: ‌
+                  - generic [ref=f12e4097]:
+                    - generic [ref=f12e4098]: ‌
+                    - generic [ref=f12e4099]: ‌
+                - generic [ref=f12e4100]:
+                  - generic [ref=f12e4101]: ‌
+                  - generic [ref=f12e4102]:
+                    - generic [ref=f12e4103]: ‌
+                    - generic [ref=f12e4104]: ‌
+                - generic [ref=f12e4105]:
+                  - generic [ref=f12e4106]: ‌
+                  - generic [ref=f12e4107]:
+                    - generic [ref=f12e4108]: ‌
+                    - generic [ref=f12e4109]: ‌
+  - img
+  - complementary [ref=f12e3812]:
+    - button "Развернуть" [ref=f12e3813] [cursor=pointer]:
+      - img [ref=f12e3814]
+    - generic [ref=f12e3816]:
+      - article "Дамир Алтынгужин" [ref=f12e3817]:
+        - button "Есть непрочитанные сообщения" [ref=f12e3818] [cursor=pointer]:
+          - figure [ref=f12e3819]:
+            - img [ref=f12e3824]
+            - img [ref=f12e3825]
+          - img "Есть непрочитанные сообщения" [ref=f12e3827]: "1"
+        - button "Убрать чат из списка" [ref=f12e3828] [cursor=pointer]:
+          - img [ref=f12e3829]
+      - article "Монетизация профиля ВКонтакте" [ref=f12e3831]:
+        - button [ref=f12e3832] [cursor=pointer]:
+          - figure [ref=f12e3833]:
+            - img [ref=f12e3838]
+            - img [ref=f12e3839]
+        - button "Убрать чат из списка" [ref=f12e3841] [cursor=pointer]:
+          - img [ref=f12e3842]
+      - article "Elvira Vildanova" [ref=f12e3844]:
+        - button [ref=f12e3845] [cursor=pointer]:
+          - figure [ref=f12e3846]:
+            - img [ref=f12e3851]
+            - img [ref=f12e3852]
+        - button "Убрать чат из списка" [ref=f12e3854] [cursor=pointer]:
+          - img [ref=f12e3855]
+    - button [ref=f12e3857] [cursor=pointer]:
+      - img [ref=f12e3858]

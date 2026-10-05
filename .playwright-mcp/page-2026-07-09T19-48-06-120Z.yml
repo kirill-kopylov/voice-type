@@ -1,0 +1,303 @@
+- generic [active] [ref=f23e1]:
+  - iframe [ref=f23e33]:
+    
+  - generic [ref=f23e34]:
+    - list [ref=f23e37]:
+      - listitem [ref=f23e38]:
+        - link "На главную" [ref=f23e39] [cursor=pointer]:
+          - /url: /feed
+          - img
+      - listitem [ref=f23e40]:
+        - search [ref=f23e41]:
+          - generic [ref=f23e44]:
+            - generic [ref=f23e45]: Поиск
+            - generic [ref=f23e46]:
+              - img [ref=f23e47]
+              - searchbox "Поиск" [ref=f23e49]
+            - button "Очистить поле" [ref=f23e51] [cursor=pointer]:
+              - generic [ref=f23e52]: Очистить поле
+              - img [ref=f23e53]
+          - button "Найти" [ref=f23e59] [cursor=pointer]:
+            - generic [ref=f23e60]: Найти
+      - listitem [ref=f23e62]:
+        - button "Уведомления" [ref=f23e63] [cursor=pointer]:
+          - generic [ref=f23e64]: Уведомления
+          - img [ref=f23e65]
+      - listitem [ref=f23e68]:
+        - button "Аудиоплеер" [ref=f23e70] [cursor=pointer]:
+          - generic [ref=f23e71]: Аудиоплеер
+          - img [ref=f23e72]
+      - listitem [ref=f23e75]:
+        - link "Настройки профиля Кирилл" [ref=f23e76] [cursor=pointer]:
+          - /url: https://vk.com/qoooo
+          - generic [ref=f23e77]: Настройки профиля
+          - generic [ref=f23e78]:
+            - img "Кирилл" [ref=f23e80]
+            - img [ref=f23e82]
+    - generic [ref=f23e86]:
+      - navigation [ref=f23e89]:
+        - list [ref=f23e90]:
+          - listitem [ref=f23e91]:
+            - link "Профиль" [ref=f23e92] [cursor=pointer]:
+              - /url: /qoooo
+              - img [ref=f23e96]
+              - heading "Профиль" [level=2] [ref=f23e100]
+            - button "Настройка пунктов меню" [ref=f23e102] [cursor=pointer]:
+              - img [ref=f23e103]
+          - listitem [ref=f23e107]:
+            - link "Лента" [ref=f23e108] [cursor=pointer]:
+              - /url: /feed
+              - img [ref=f23e112]
+              - generic [ref=f23e116]: Лента
+            - button [ref=f23e118] [cursor=pointer]:
+              - img [ref=f23e119]
+          - listitem [ref=f23e123]:
+            - link "Мессенджер 2" [ref=f23e124] [cursor=pointer]:
+              - /url: /im
+              - img [ref=f23e128]
+              - generic [ref=f23e135]: Мессенджер
+              - generic [ref=f23e136]: "2"
+            - button [ref=f23e138] [cursor=pointer]:
+              - img [ref=f23e139]
+          - listitem [ref=f23e143]:
+            - link "Друзья" [ref=f23e144] [cursor=pointer]:
+              - /url: /friends?section=all
+              - img [ref=f23e148]
+              - generic [ref=f23e155]: Друзья
+            - button [ref=f23e157] [cursor=pointer]:
+              - img [ref=f23e158]
+          - listitem [ref=f23e162]:
+            - link "Сообщества" [ref=f23e163] [cursor=pointer]:
+              - /url: /groups
+              - img [ref=f23e167]
+              - generic [ref=f23e171]: Сообщества
+            - button [ref=f23e173] [cursor=pointer]:
+              - img [ref=f23e174]
+          - listitem [ref=f23e178]:
+            - link "Фото" [ref=f23e179] [cursor=pointer]:
+              - /url: /photos65676077
+              - img [ref=f23e183]
+              - generic [ref=f23e187]: Фото
+            - button [ref=f23e189] [cursor=pointer]:
+              - img [ref=f23e190]
+          - listitem [ref=f23e194]:
+            - link "Музыка" [ref=f23e195] [cursor=pointer]:
+              - /url: /audios65676077
+              - img [ref=f23e199]
+              - generic [ref=f23e204]: Музыка
+            - button [ref=f23e206] [cursor=pointer]:
+              - img [ref=f23e207]
+          - listitem [ref=f23e211]:
+            - link "Видео" [ref=f23e212] [cursor=pointer]:
+              - /url: //vkvideo.ru
+              - img [ref=f23e216]
+              - generic [ref=f23e220]: Видео
+            - button [ref=f23e222] [cursor=pointer]:
+              - img [ref=f23e223]
+          - listitem [ref=f23e227]:
+            - link "Маркет" [ref=f23e228] [cursor=pointer]:
+              - /url: /market?utm_ref=left_menu
+              - img [ref=f23e232]
+              - generic [ref=f23e236]: Маркет
+            - button [ref=f23e238] [cursor=pointer]:
+              - img [ref=f23e239]
+          - listitem [ref=f23e243]:
+            - link "Голоса" [ref=f23e244] [cursor=pointer]:
+              - /url: /settings?act=payments&ref=left_menu
+              - img [ref=f23e248]
+              - generic [ref=f23e252]: Голоса
+            - button [ref=f23e254] [cursor=pointer]:
+              - img [ref=f23e255]
+          - separator [ref=f23e260]
+          - listitem [ref=f23e261]:
+            - link "Заказы" [ref=f23e262] [cursor=pointer]:
+              - /url: /orders?source=main_menu&ref_screen=menu
+              - img [ref=f23e266]
+              - generic [ref=f23e270]: Заказы
+            - button [ref=f23e272] [cursor=pointer]:
+              - img [ref=f23e273]
+          - listitem [ref=f23e277]:
+            - link "Закладки" [ref=f23e278] [cursor=pointer]:
+              - /url: /bookmarks?from_menu=1
+              - img [ref=f23e282]
+              - generic [ref=f23e286]: Закладки
+            - button [ref=f23e288] [cursor=pointer]:
+              - img [ref=f23e289]
+          - listitem [ref=f23e293]:
+            - link "Файлы" [ref=f23e294] [cursor=pointer]:
+              - /url: /docs
+              - img [ref=f23e298]
+              - generic [ref=f23e302]: Файлы
+            - button [ref=f23e304] [cursor=pointer]:
+              - img [ref=f23e305]
+          - listitem [ref=f23e309]:
+            - link "Реклама" [ref=f23e310] [cursor=pointer]:
+              - /url: //ads.vk.ru/hq/?ref=vkcomads&utm_source=vk_left_menu&v=1
+              - img [ref=f23e314]
+              - generic [ref=f23e318]: Реклама
+            - button [ref=f23e320] [cursor=pointer]:
+              - img [ref=f23e321]
+          - listitem [ref=f23e325]:
+            - link "Управление" [ref=f23e326] [cursor=pointer]:
+              - /url: //dev.vk.com/admin/apps-list
+              - img [ref=f23e330]
+              - generic [ref=f23e334]: Управление
+            - button [ref=f23e336] [cursor=pointer]:
+              - img [ref=f23e337]
+          - separator [ref=f23e342]
+          - listitem [ref=f23e343]:
+            - link "Театральная семья \"Живем и.." [ref=f23e344] [cursor=pointer]:
+              - /url: /club89699284
+              - generic [ref=f23e349]: Театральная семья "Живем и..
+            - button [ref=f23e351] [cursor=pointer]:
+              - img [ref=f23e352]
+          - listitem [ref=f23e356]:
+            - link "Живём и Дышим" [ref=f23e357] [cursor=pointer]:
+              - /url: /teatrmgtu
+              - generic [ref=f23e362]: Живём и Дышим
+            - button [ref=f23e364] [cursor=pointer]:
+              - img [ref=f23e365]
+        - generic [ref=f23e371]:
+          - generic [ref=f23e375]:
+            - generic [ref=f23e379] [cursor=pointer]:
+              - generic [ref=f23e381]:
+                - img [ref=f23e383]
+                - generic [ref=f23e385]:
+                  - generic [ref=f23e386]:
+                    - generic [ref=f23e387]: Обман с отключением воды
+                    - generic [ref=f23e388]: объясняем.рф
+                    - generic [ref=f23e389]: Читайте, как мошенники используют графики отключения...
+                  - generic [ref=f23e390]: Перейти
+              - generic [ref=f23e391]:
+                - img [ref=f23e393]
+                - generic [ref=f23e395]: Социальная реклама
+                - generic [ref=f23e396]: 0+
+              - img [ref=f23e398]
+            - generic [ref=f23e403] [cursor=pointer]:
+              - generic [ref=f23e405]:
+                - img [ref=f23e407]
+                - generic [ref=f23e409]:
+                  - generic [ref=f23e410]:
+                    - generic [ref=f23e411]: Спортивный конкурс
+                    - generic [ref=f23e412]: национальныепроекты.рф
+                    - generic [ref=f23e413]: Узнайте, кто победил в «Ты в игре»
+                  - generic [ref=f23e414]: Перейти
+              - generic [ref=f23e415]:
+                - img [ref=f23e417]
+                - generic [ref=f23e419]: Социальная реклама
+                - generic [ref=f23e420]: 18+
+              - img [ref=f23e422]
+            - generic [ref=f23e427] [cursor=pointer]:
+              - generic [ref=f23e429]:
+                - img [ref=f23e431]
+                - generic [ref=f23e433]:
+                  - generic [ref=f23e434]:
+                    - generic [ref=f23e435]: re:premium | Купить iPhone Магнитогорск
+                    - generic [ref=f23e436]: vk.com
+                    - generic [ref=f23e437]: Не покупай iPhone, пока не узнаешь наши цены и условия....
+                  - generic [ref=f23e438]: Узнать цену
+              - generic [ref=f23e439]:
+                - img [ref=f23e441]
+                - generic [ref=f23e443]: Реклама
+                - generic [ref=f23e444]: 0+
+              - img [ref=f23e446]
+          - separator [ref=f23e449]
+          - list [ref=f23e450]:
+            - listitem [ref=f23e451]:
+              - link "Блог" [ref=f23e452] [cursor=pointer]:
+                - /url: /blog
+                - generic [ref=f23e453]: Блог
+            - listitem [ref=f23e454]:
+              - link "Разработчикам" [ref=f23e455] [cursor=pointer]:
+                - /url: https://dev.vk.com
+                - generic [ref=f23e456]: Разработчикам
+            - listitem [ref=f23e457]:
+              - link "Для бизнеса" [ref=f23e458] [cursor=pointer]:
+                - /url: https://ads.vk.com/promo/firstbonus?utm_source=vk_left_menu_for_business&utm_medium=link
+                - generic [ref=f23e459]: Для бизнеса
+            - listitem [ref=f23e460]:
+              - link "Авторам" [ref=f23e461] [cursor=pointer]:
+                - /url: /vk_authors
+                - generic [ref=f23e462]: Авторам
+            - listitem [ref=f23e463]:
+              - generic [ref=f23e465]:
+                - text: Ещё
+                - img [ref=f23e466]
+          - separator [ref=f23e469]
+          - list [ref=f23e470]:
+            - listitem [ref=f23e471]:
+              - button "Информация о контенте" [ref=f23e472] [cursor=pointer]:
+                - generic [ref=f23e473]:
+                  - img [ref=f23e475]
+                  - text: Информация о контенте
+      - generic [ref=f23e477]:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic [ref=f23e479]:
+                    - list [ref=f23e480]:
+                      - link "VoiceType вернуться к странице" [ref=f23e481] [cursor=pointer]:
+                        - /url: /club240163387
+                        - img [ref=f23e485]
+                        - generic [ref=f23e486]:
+                          - generic [ref=f23e487]: VoiceType
+                          - generic [ref=f23e488]: вернуться к странице
+                      - link "Настройки" [ref=f23e490] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387?act=edit
+                        - generic [ref=f23e492]: Настройки
+                      - link "Подписчики" [ref=f23e493] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387/settings/subscribers
+                        - generic [ref=f23e495]: Подписчики
+                      - link "Сообщения" [ref=f23e496] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387?act=messages
+                        - generic [ref=f23e498]: Сообщения
+                      - link "Приложения" [ref=f23e499] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387?act=apps
+                        - generic [ref=f23e501]: Приложения
+                      - link "Дополнительно" [ref=f23e502] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387/settings/extras
+                        - generic [ref=f23e504]: Дополнительно
+                      - link "Работа с API" [ref=f23e506] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387?act=tokens
+                        - generic [ref=f23e508]: Работа с API
+                      - link "Журнал действий" [ref=f23e509] [cursor=pointer]:
+                        - /url: https://vk.com/club240163387?act=event_log
+                        - generic [ref=f23e511]: Журнал действий
+                    - generic [ref=f23e512]:
+                      - text: Ключи доступа используются для обращения к API ВКонтакте от имени сообщества.
+                      - link "Подробнее" [ref=f23e513] [cursor=pointer]:
+                        - /url: /dev/bizmessages
+                    - generic [ref=f23e514]:
+                      - text: Монетизация ВКонтакте
+                      - text: Узнайте обо всех способах монетизации в специальном разделе.
+                      - link "Подробнее" [ref=f23e515] [cursor=pointer]:
+                        - /url: https://vk.ru/monetization
+                  - main [ref=f23e516]:
+                    - generic [ref=f23e517]:
+                      - heading "Создать ключ" [level=2] [ref=f23e518]:
+                        - tablist [ref=f23e519]:
+                          - tab "Ключи доступа" [selected] [ref=f23e520] [cursor=pointer]:
+                            - generic [ref=f23e521]: Ключи доступа
+                          - tab "Callback API" [ref=f23e522] [cursor=pointer]:
+                            - generic [ref=f23e523]: Callback API
+                          - tab "Long Poll API" [ref=f23e524] [cursor=pointer]:
+                            - generic [ref=f23e525]: Long Poll API
+                        - button "Создать ключ" [ref=f23e527] [cursor=pointer]:
+                          - generic [ref=f23e529]: Создать ключ
+                      - generic [ref=f23e531]: Здесь будут выводиться полученные ключи.
+  - img
+  - complementary [ref=f23e532]:
+    - button "Развернуть" [ref=f23e533] [cursor=pointer]:
+      - img [ref=f23e534]
+    - article "ВКонтакте с авторами" [ref=f23e537]:
+      - button "Есть непрочитанные сообщения" [ref=f23e538] [cursor=pointer]:
+        - figure [ref=f23e539]:
+          - img [ref=f23e544]
+          - img [ref=f23e545]
+        - img "Есть непрочитанные сообщения" [ref=f23e547]: "1"
+      - button "Убрать чат из списка" [ref=f23e548] [cursor=pointer]:
+        - img [ref=f23e549]
+    - button [ref=f23e551] [cursor=pointer]:
+      - img [ref=f23e552]

@@ -119,15 +119,15 @@ export function createMcpServer(host: McpToolsHost): McpServer {
   server.registerTool('get_meeting', {
     description:
       'Read one meeting. By default returns the summary (brief, topics, decisions with assignee/deadline) and notes. '
-      + 'Add "transcript" to include the dialog as "[mm:ss] Speaker: text" lines; long transcripts are cut at max_chars and '
-      + 'the result gives next_from_sec to continue.',
+      + 'Add "transcript" to include the FULL dialog as "[mm:ss] Speaker: text" lines. By default it is cut at 20000 characters '
+      + '(the result then has next_from_sec to continue); pass max_chars=2000000 to get the whole transcript in one call.',
     inputSchema: {
       id: z.string().describe('Meeting id from list_meetings / search / digest.'),
       include: z.array(z.enum(['summary', 'notes', 'transcript'])).optional().describe('Default: ["summary","notes"].'),
       from_sec: z.number().min(0).optional().describe('Transcript: start from this second.'),
       to_sec: z.number().min(0).optional().describe('Transcript: stop at this second.'),
       speaker: z.string().optional().describe('Transcript: only this speaker (name substring).'),
-      max_chars: z.number().int().min(500).max(200000).optional().describe('Transcript size limit (default 20000).')
+      max_chars: z.number().int().min(500).max(2_000_000).optional().describe('Transcript size limit (default 20000; 2000000 = effectively no limit).')
     },
     annotations: READ_ONLY
   }, (args) => {
