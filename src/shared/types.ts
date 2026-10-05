@@ -55,6 +55,26 @@ export interface ScreenRegion extends Rect {
   displayId: string
 }
 
+/** Что происходило на экране во время записи; atMs — от начала встречи, как время реплик и видео */
+export type ScreenEvent = { atMs: number; /** Заголовок окна, в котором это случилось */ window?: string } & (
+  | { kind: 'click'; displayId: string; x: number; y: number; button: 'left' | 'right' | 'middle'; double: boolean }
+  | { kind: 'key'; shortcut: string }
+  /** Набранный текст целой фразой; hidden — окно похоже на ввод пароля, текст не записан */
+  | { kind: 'text'; text: string; hidden: boolean }
+  | { kind: 'clipboard'; text: string }
+  /** focus — окно стало активным, open/close — появилось/закрылось. Заголовок окна события — в title */
+  | { kind: 'window'; change: 'focus' | 'open' | 'close'; title: string; app?: string }
+  /** Рисунок пользователя поверх экрана; rect — его границы в DIP относительно монитора */
+  | { kind: 'drawing'; displayId: string; tool: string; color: string; text?: string; rect: Rect }
+)
+
+/** Начало записи экрана: что рисовать поверх и откуда отсчитывать время событий */
+export interface ScreenSessionStart {
+  displayIds: string[]
+  /** Момент начала встречи (Date.now), от него считаются atMs событий */
+  meetingStartMs: number
+}
+
 export interface MeetingRecord {
   id: string
   title: string
@@ -117,6 +137,12 @@ export interface AppSettings {
   meetingHotkey: string
   captureSystemAudio: boolean
   screenCaptureMode: ScreenCaptureMode
+  /** Режим рисования поверх экрана во время записи: включается и выключается этой клавишей */
+  drawHotkey: string
+  /** Записывать клики мыши и сочетания клавиш (без набираемого текста) и показывать кольцо на кликах */
+  recordInputEvents: boolean
+  /** Писать и набираемый текст (в окнах, похожих на ввод пароля, он скрывается) */
+  recordTypedText: boolean
   autoStart: boolean
   theme: string
   telegramEnabled: boolean
@@ -176,6 +202,11 @@ export interface VoiceTypeAPI {
   /** Видео приходит кусками во время записи, чтобы не держать часовой файл в памяти */
   beginVideoUpload: () => Promise<void>
   sendVideoChunk: (chunk: ArrayBuffer) => void
+  /** Включает рисование поверх экрана и запись кликов и клавиш на время записи видео */
+  startScreenSession: (start: ScreenSessionStart) => Promise<void>
+  /** Останавливает сессию; записанные события уйдут в карточку встречи вместе с видео */
+  endScreenSession: () => Promise<void>
+  getMeetingEvents: (id: string) => Promise<ScreenEvent[]>
   deleteMeetingVideo: (id: string) => Promise<MeetingRecord | null>
   revealMeetingVideo: (id: string) => Promise<void>
   renameMeetingSpeaker: (id: string, oldName: string, newName: string) => Promise<void>

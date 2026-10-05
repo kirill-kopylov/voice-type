@@ -231,6 +231,12 @@ export function App(): JSX.Element {
       screenRecorderRef.current = screenRecorder
       videoOffsetRef.current = screenRecorder ? screenRecorder.start() - meetingStartRef.current : null
 
+      if (plan && screenRecorder) {
+        // Рисование поверх экрана и журнал событий — приложение к видео; встреча от них не зависит
+        window.api.startScreenSession({ displayIds: plan.layers.map((layer) => layer.displayId), meetingStartMs: meetingStartRef.current })
+          .catch((err) => console.warn('Рисование и события экрана не включились:', err))
+      }
+
       showToast('Запись встречи началась', 'success')
     } catch {
       stopLevelReporting()
@@ -265,6 +271,9 @@ export function App(): JSX.Element {
 
     // Видео останавливается вместе со звуком; встреча уходит в main, когда доехали оба
     const videoStopped = screenRecorderRef.current?.stop() ?? Promise.resolve()
+    const screenSessionEnded = screenRecorderRef.current
+      ? window.api.endScreenSession().catch((err) => console.warn('События экрана не сохранились:', err))
+      : Promise.resolve()
     const videoOffsetMs = videoOffsetRef.current
     screenRecorderRef.current = null
     videoOffsetRef.current = null
@@ -273,7 +282,7 @@ export function App(): JSX.Element {
       const durationMs = Date.now() - meetingStartRef.current
       const blob = new Blob(meetingChunksRef.current, { type: 'audio/webm' })
       const arrayBuffer = await blob.arrayBuffer()
-      await videoStopped
+      await Promise.all([videoStopped, screenSessionEnded])
 
       // Останавливаем все стримы
       meetingStreamsRef.current.forEach(stopStream)

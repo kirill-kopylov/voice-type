@@ -3,7 +3,7 @@ import { resolveDateRange } from './dates'
 import {
   buildDigest, formatTranscript, getMeetingView, listDictations, listMeetings, searchRecords
 } from './queries'
-import type { MeetingRecord, TranscriptionRecord } from '../../shared/types'
+import type { MeetingRecord, ScreenEvent, TranscriptionRecord } from '../../shared/types'
 
 const at = (day: number, hour = 12): string => new Date(2026, 9, day, hour).toISOString()
 
@@ -116,6 +116,23 @@ describe('getMeetingView', () => {
 
     expect(formatTranscript(planning, { fromSec: 60, toSec: 100 }).lines).toBe(1)
     expect(formatTranscript(planning, { speaker: 'кир' }).lines).toBe(2)
+  })
+
+  it('события экрана вплетаются в стенограмму по времени и не мешают фильтру по спикеру', () => {
+    const events: ScreenEvent[] = [
+      { kind: 'window', atMs: 30000, change: 'focus', title: 'Бюджет.xlsx - Excel', app: 'EXCEL' },
+      { kind: 'key', atMs: 66000, shortcut: 'Ctrl+S', window: 'Бюджет.xlsx - Excel' }
+    ]
+    const woven = formatTranscript(planning, { events })
+    expect(woven.screenLines).toBe(2)
+    expect(woven.text.split('\n').map((line) => line.slice(0, 7))).toEqual(
+      ['[00:00]', '[00:30]', '[01:05]', '[01:06]', '[02:10]']
+    )
+    expect(woven.text).toContain('(экран)')
+
+    const bySpeaker = formatTranscript(planning, { speaker: 'кир', events })
+    expect(bySpeaker.screenLines).toBe(0)
+    expect(bySpeaker.lines).toBe(2)
   })
 
   it('длинная стенограмма обрезается и подсказывает, с какой секунды продолжить', () => {

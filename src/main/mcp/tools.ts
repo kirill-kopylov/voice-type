@@ -5,10 +5,10 @@ import { z } from 'zod'
 import type { MeetingNote, MeetingRecord } from '../../shared/types'
 import { store } from '../services/store'
 import { extractFrames } from '../services/video-frames'
-import { videoPath } from '../services/video-storage'
+import { loadEvents, videoPath } from '../services/video-storage'
 import { DateInputError, resolveDateRange } from './dates'
 import {
-  buildDigest, formatClock, getDictationView, getMeetingView, listDictations, listMeetings, searchRecords, toNoteView
+  buildDigest, formatClock, getDictationView, getMeetingView, listDictations, listMeetings, screenEventEntries, searchRecords, toNoteView
 } from './queries'
 
 const SERVER_INSTRUCTIONS = [
@@ -17,6 +17,7 @@ const SERVER_INSTRUCTIONS = [
   'Read a transcript (`get_meeting` with include=["transcript"]) only when the summary is not enough; use from_sec/to_sec/speaker to read a part.',
   'Keywords: `search` (fuzzy by default). Dates everywhere: 2026-10-05, 2026-10, today, yesterday, 7d, 2w.',
   'Meetings with has_video=true have a screen recording: when the transcript refers to something shown on screen, look at it with `get_frames` (a short window around the moment, a few frames).',
+  'The transcript of such meetings also contains "[mm:ss] (экран) ..." lines: windows opened/switched, clicks (monitor coordinates), shortcuts, typed and copied text, shapes the user drew. Use their timestamps to pick moments for `get_frames`.',
   'After doing something because of a meeting (created tasks, sent messages) record it with `add_meeting_note` — the user sees these notes in the app.'
 ].join('\n')
 
@@ -24,6 +25,7 @@ const MAX_FRAMES = 20
 const DEFAULT_FRAMES = 8
 const DEFAULT_FRAME_WIDTH = 1280
 const DEFAULT_WINDOW_SEC = 30
+const MAX_FRAME_WINDOW_EVENTS = 60
 const MAX_NOTE_CHARS = 5000
 const AGENT_AUTHOR = 'agent'
 
@@ -126,7 +128,7 @@ export function createMcpServer(host: McpToolsHost): McpServer {
   server.registerTool('get_meeting', {
     description:
       'Read one meeting. By default returns the summary (brief, topics, decisions with assignee/deadline) and notes. '
-      + 'Add "transcript" to include the FULL dialog as "[mm:ss] Speaker: text" lines. By default it is cut at 20000 characters '
+      + 'Add "transcript" to include the FULL dialog as "[mm:ss] Speaker: text" lines (for meetings with a screen recording, also "[mm:ss] (экран) ..." lines about what happened on screen). By default it is cut at 20000 characters '
       + '(the result then has next_from_sec to continue); pass max_chars=2000000 to get the whole transcript in one call.',
     inputSchema: {
       id: z.string().describe('Meeting id from list_meetings / search / digest.'),
@@ -134,18 +136,21 @@ export function createMcpServer(host: McpToolsHost): McpServer {
       from_sec: z.number().min(0).optional().describe('Transcript: start from this second.'),
       to_sec: z.number().min(0).optional().describe('Transcript: stop at this second.'),
       speaker: z.string().optional().describe('Transcript: only this speaker (name substring).'),
-      max_chars: z.number().int().min(500).max(2_000_000).optional().describe('Transcript size limit (default 20000; 2000000 = effectively no limit).')
+      max_chars: z.number().int().min(500).max(2_000_000).optional().describe('Transcript size limit (default 20000; 2000000 = effectively no limit).'),
+      screen_events: z.boolean().optional().describe('Transcript: weave in what happened on screen as "[mm:ss] (экран) ..." lines (default true when the meeting has a screen recording).')
     },
     annotations: READ_ONLY
   }, (args) => {
     const meeting = store.getMeeting(args.id)
     if (!meeting) return fail(`Meeting ${args.id} not found`)
+    const wantsEvents = args.screen_events ?? true
     const view = getMeetingView(meeting, {
       include: args.include,
       fromSec: args.from_sec,
       toSec: args.to_sec,
       speaker: args.speaker,
-      maxChars: args.max_chars
+      maxChars: args.max_chars,
+      events: wantsEvents && meeting.videoFileName ? loadEvents(meeting.videoFileName) : []
     })
     return ok(view)
   })
@@ -188,7 +193,9 @@ export function createMcpServer(host: McpToolsHost): McpServer {
       meeting: meeting.title,
       window: `${formatClock(fromSec)}-${formatClock(toSec)}`,
       frames: frames.map((frame) => formatClock(frame.atSec)),
-      skippedSimilar
+      skippedSimilar,
+      // Что делал пользователь в эти секунды: помогает понять кадры (клики — координаты на мониторе)
+      screenEvents: screenEventEntries(loadEvents(meeting.videoFileName), fromSec, toSec).slice(0, MAX_FRAME_WINDOW_EVENTS).map((entry) => entry.text)
     }
     return {
       content: [

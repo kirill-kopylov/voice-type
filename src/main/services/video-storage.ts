@@ -3,6 +3,7 @@ import path from 'path'
 import { app } from 'electron'
 import { runFfmpeg } from './ffmpeg'
 import { audioPath } from './audio-storage'
+import type { ScreenEvent } from '../../shared/types'
 
 const VIDEO_DIR = 'meeting-videos'
 const PENDING_FILE = '_recording.webm'
@@ -65,6 +66,22 @@ export async function saveMeetingVideo(meetingId: string, audioFileName: string,
   }
 }
 
+// События экрана живут рядом с видео и уходят вместе с ним: без картинки они никому не нужны
+const eventsPath = (videoFileName: string): string => videoPath(videoFileName.replace(/\.webm$/, '.events.json'))
+
+export function saveEvents(videoFileName: string, events: ScreenEvent[]): void {
+  if (events.length > 0) fs.writeFileSync(eventsPath(videoFileName), JSON.stringify(events), 'utf-8')
+}
+
+export function loadEvents(videoFileName: string): ScreenEvent[] {
+  try {
+    return JSON.parse(fs.readFileSync(eventsPath(videoFileName), 'utf-8')) as ScreenEvent[]
+  } catch {
+    return []
+  }
+}
+
 export function deleteVideo(fileName: string): void {
   fs.rmSync(videoPath(fileName), { force: true })
+  fs.rmSync(eventsPath(fileName), { force: true })
 }

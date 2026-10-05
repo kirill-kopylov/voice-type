@@ -18,7 +18,7 @@ import { transcribeAudio, testConnection } from './services/transcription'
 import { transcribeDiarized, KnownSpeaker } from './services/diarization'
 import { generateSummary } from './services/summary'
 import { extractSpeakerSegments } from './services/extract-speaker'
-import type { AppSettings, MeetingLevels, MeetingRecord, VoiceProfile, TranscriptionRecord, McpStatus, ScreenDisplay } from '../shared/types'
+import type { AppSettings, MeetingLevels, MeetingRecord, VoiceProfile, TranscriptionRecord, McpStatus, ScreenDisplay, ScreenSessionStart } from '../shared/types'
 import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
 import { saveAudio, loadAudio, deleteAudio, saveProfileAudio, loadProfileAudio, deleteProfileAudio } from './services/audio-storage'
@@ -30,7 +30,8 @@ import { telegramBot } from './services/telegram-bot'
 import { vkBot } from './services/vk-bot'
 import { setTranscriptionRecorder } from './services/remote-input'
 import { McpHttpServer } from './mcp/server'
-import { appendVideoChunk, beginVideoRecording, deleteVideo, saveMeetingVideo, videoPath } from './services/video-storage'
+import { appendVideoChunk, beginVideoRecording, deleteVideo, loadEvents, saveEvents, saveMeetingVideo, videoPath } from './services/video-storage'
+import { endScreenSession, startScreenSession, takeRecordedEvents } from './services/screen-session'
 import { handleMediaProtocol, registerMediaScheme } from './services/media-protocol'
 import { selectScreenRegion } from './services/region-selector'
 
@@ -445,6 +446,13 @@ function setupIpcHandlers(): void {
   ipcMain.handle('begin-video-upload', () => beginVideoRecording())
   ipcMain.on('video-chunk', (_event, chunk: ArrayBuffer) => appendVideoChunk(Buffer.from(chunk)))
 
+  ipcMain.handle('start-screen-session', (_event, start: ScreenSessionStart) => startScreenSession(start, store.getSettings()))
+  ipcMain.handle('end-screen-session', () => endScreenSession())
+  ipcMain.handle('get-meeting-events', (_event, id: string) => {
+    const videoFileName = store.getMeeting(id)?.videoFileName
+    return videoFileName ? loadEvents(videoFileName) : []
+  })
+
   ipcMain.handle('submit-meeting', async (_event, audioData: ArrayBuffer, durationMs: number, videoOffsetMs: number | null) => {
     console.log(`[meeting] submit: ${audioData.byteLength} байт, ${durationMs}мс, видео: ${videoOffsetMs === null ? 'нет' : `сдвиг ${videoOffsetMs}мс`}`)
     const settings = store.getSettings()
@@ -452,6 +460,8 @@ function setupIpcHandlers(): void {
     const audioBuffer = Buffer.from(audioData)
     const audioFileName = saveAudio(id, audioBuffer)
     const videoFileName = videoOffsetMs === null ? undefined : (await saveMeetingVideo(id, audioFileName, videoOffsetMs)) ?? undefined
+    const screenEvents = takeRecordedEvents()
+    if (videoFileName) saveEvents(videoFileName, screenEvents)
 
     const apiKey = settings.openRouterApiKey
     if (!apiKey) {
@@ -835,7 +845,7 @@ app.whenReady().then(() => {
   }
 })
 
-app.on('before-quit', () => { app.isQuitting = true; telegramBot.stop(); vkBot.stop(); void mcpServer.stop() })
+app.on('before-quit', () => { app.isQuitting = true; telegramBot.stop(); vkBot.stop(); void mcpServer.stop(); void endScreenSession() })
 app.on('will-quit', () => { globalShortcut.unregisterAll() })
 app.on('window-all-closed', () => {})
 

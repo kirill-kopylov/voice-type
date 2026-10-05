@@ -161,6 +161,24 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
               1080p, 16 кадров/с, видео хранится вместе со встречей, пока вы его не удалите. Кадры из записи агенты получают через MCP.
             </p>
           </div>
+          {settings.screenCaptureMode !== 'off' && (
+            <>
+              <div>
+                <label className="block text-xs mb-1.5" style={{ color: 'var(--text-4)' }}>Хоткей рисования на экране</label>
+                <HotkeyInput value={settings.drawHotkey} onChange={(v) => onUpdate({ drawHotkey: v })} />
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>
+                  Во время записи включает рисование: стрелки, кружки, прямоугольники, свободная рука, маркер, линии, текст. Esc — выйти, Ctrl+Z — отменить. Панель инструментов в видео не попадает, нарисованное — попадает.
+                </p>
+              </div>
+              <Toggle label="Записывать события: клики, окна, сочетания клавиш, скопированное" checked={settings.recordInputEvents} onChange={() => onUpdate({ recordInputEvents: !settings.recordInputEvents })} />
+              {settings.recordInputEvents && (
+                <Toggle label="Записывать набранный текст" checked={settings.recordTypedText} onChange={() => onUpdate({ recordTypedText: !settings.recordTypedText })} />
+              )}
+              <p className="text-[10px] -mt-2" style={{ color: 'var(--text-4)' }}>
+                События вплетаются в расшифровку для нейроагентов и показываются в карточке встречи. На кликах рисуется кольцо — оно видно на видео. В окнах входа и менеджерах паролей набранное и скопированное не записывается. Всё хранится рядом с видео и удаляется вместе с ним.
+              </p>
+            </>
+          )}
         </div>
       </Section>
 

@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
-import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw, StickyNote, Bot, Plus, Video, FolderOpen } from 'lucide-react'
-import type { MeetingRecord, MeetingNote, DialogSegment, VoiceProfile } from '@shared/types'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw, StickyNote, Bot, Plus, Video, FolderOpen, MousePointerClick, Keyboard, Type, Clipboard, Pencil, PanelTop, Eye, EyeOff } from 'lucide-react'
+import type { MeetingRecord, MeetingNote, DialogSegment, VoiceProfile, ScreenEvent } from '@shared/types'
+import { describeEvents, type EventLine } from '@shared/screen-events'
 import { formatDateTime, formatDuration } from '../utils/format'
 import { MeetingLevelMeter } from '../components/MeetingLevelMeter'
 import { useMeetingAudio } from '../hooks/useMeetingAudio'
@@ -215,6 +216,9 @@ function MeetingCard({
   const video = useMeetingVideo()
   const speakerName = (raw: string): string => m.speakerNames[raw] ?? raw
   const uniqueSpeakers = Array.from(new Set(m.segments.map((s) => s.speaker)))
+  const [showEvents, setShowEvents] = useState(true)
+  const eventLines = useScreenEventLines(m, expanded)
+  const timeline = useMemo(() => buildTimeline(m.segments, showEvents ? eventLines : []), [m.segments, eventLines, showEvents])
 
   const handleCopyDialog = (): void => {
     const text = m.segments.map((s) => `${speakerName(s.speaker)}: ${s.text}`).join('\n\n')
@@ -348,17 +352,37 @@ function MeetingCard({
               )}
 
               {/* Диалог */}
+              {eventLines.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Диалог</p>
+                  <button
+                    onClick={() => setShowEvents(!showEvents)}
+                    className="ml-auto flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg transition-colors"
+                    style={{ background: showEvents ? 'var(--accent-bg-hover)' : 'var(--accent-bg)', color: showEvents ? 'var(--accent)' : 'var(--text-3)' }}
+                    title="Клики, окна, набранный и скопированный текст, рисунки — по времени между репликами"
+                  >
+                    {showEvents ? <Eye size={12} /> : <EyeOff size={12} />}
+                    Системные события ({eventLines.length})
+                  </button>
+                </div>
+              )}
               <div className="space-y-3">
-                {m.segments.map((seg, i) => (
+                {timeline.map((item) => item.type === 'line' ? (
                   <DialogLine
-                    key={i}
-                    segment={seg}
-                    speakerName={speakerName(seg.speaker)}
-                    playing={audio.playing === i}
+                    key={`line-${item.index}`}
+                    segment={item.segment}
+                    speakerName={speakerName(item.segment.speaker)}
+                    playing={audio.playing === item.index}
                     loading={audio.loading}
-                    onTogglePlay={() => { video.pause(); audio.toggleRange(i, seg.start, seg.end) }}
-                    watching={m.videoFileName ? video.playingLine === i : undefined}
-                    onToggleWatch={() => { audio.stop(); video.playLine(i, seg.start, seg.end) }}
+                    onTogglePlay={() => { video.pause(); audio.toggleRange(item.index, item.segment.start, item.segment.end) }}
+                    watching={m.videoFileName ? video.playingLine === item.index : undefined}
+                    onToggleWatch={() => { audio.stop(); video.playLine(item.index, item.segment.start, item.segment.end) }}
+                  />
+                ) : (
+                  <ScreenEventRow
+                    key={`event-${item.line.atMs}-${item.line.kind}`}
+                    line={item.line}
+                    onWatch={() => { audio.stop(); video.playLine(SCREEN_EVENT_LINE, Math.max(0, item.line.atMs / 1000 - 1), item.line.atMs / 1000 + 5) }}
                   />
                 ))}
               </div>
@@ -366,6 +390,69 @@ function MeetingCard({
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// События экрана не реплики: у плеера для них общий номер «строки»
+const SCREEN_EVENT_LINE = -1
+
+type TimelineItem =
+  | { type: 'line'; index: number; segment: DialogSegment }
+  | { type: 'event'; line: EventLine }
+
+/** Реплики и события экрана одной лентой по времени. */
+function buildTimeline(segments: DialogSegment[], events: EventLine[]): TimelineItem[] {
+  const items: Array<TimelineItem & { atSec: number }> = [
+    ...segments.map((segment, index): TimelineItem & { atSec: number } => ({ type: 'line', index, segment, atSec: segment.start })),
+    ...events.map((line): TimelineItem & { atSec: number } => ({ type: 'event', line, atSec: line.atMs / 1000 }))
+  ]
+  return items.sort((a, b) => a.atSec - b.atSec)
+}
+
+/** События экрана встречи с видео: грузятся при раскрытии карточки, пересчитываются в строки. */
+function useScreenEventLines(meeting: MeetingRecord, expanded: boolean): EventLine[] {
+  const [events, setEvents] = useState<ScreenEvent[]>([])
+
+  useEffect(() => {
+    if (!expanded || !meeting.videoFileName) {
+      setEvents([])
+      return
+    }
+    let cancelled = false
+    window.api.getMeetingEvents(meeting.id).then((loaded) => { if (!cancelled) setEvents(loaded) })
+    return () => { cancelled = true }
+  }, [expanded, meeting.id, meeting.videoFileName])
+
+  return useMemo(() => describeEvents(events), [events])
+}
+
+const EVENT_ICONS: Record<ScreenEvent['kind'], typeof Keyboard> = {
+  click: MousePointerClick,
+  key: Keyboard,
+  text: Type,
+  clipboard: Clipboard,
+  window: PanelTop,
+  drawing: Pencil
+}
+
+function ScreenEventRow({ line, onWatch }: { line: EventLine; onWatch: () => void }): JSX.Element {
+  const Icon = EVENT_ICONS[line.kind]
+  const minutes = Math.floor(line.atMs / 60000)
+  const seconds = Math.floor((line.atMs % 60000) / 1000).toString().padStart(2, '0')
+
+  return (
+    <div className="flex gap-3 select-text">
+      <div className="shrink-0 w-24 text-[10px]" style={{ color: 'var(--text-4)' }}>{minutes}:{seconds}</div>
+      <button
+        onClick={onWatch}
+        className="flex-1 flex items-start gap-1.5 text-left text-[11px] leading-snug rounded-md px-2 py-1 transition-colors"
+        style={{ background: 'var(--accent-bg)', color: 'var(--text-3)' }}
+        title="Показать этот момент на видео"
+      >
+        <Icon size={11} className="mt-0.5 shrink-0" style={{ color: 'var(--accent)' }} />
+        <span>{line.text}</span>
+      </button>
     </div>
   )
 }

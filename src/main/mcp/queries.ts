@@ -4,7 +4,8 @@ import {
   buildSearchDocs, makeSnippet, searchDocs, summaryToText,
   type SearchDocType, type SearchMode
 } from '../../shared/search'
-import type { MeetingDecision, MeetingNote, MeetingRecord, TranscriptionRecord } from '../../shared/types'
+import { describeEvents, eventsBetween } from '../../shared/screen-events'
+import type { MeetingDecision, MeetingNote, MeetingRecord, ScreenEvent, TranscriptionRecord } from '../../shared/types'
 import { formatLocalDate, formatLocalDateTime, isInRange, type DateRange } from './dates'
 
 // Внутренний запас: сортировка по дате применяется к лучшим совпадениям, а не к первым попавшимся
@@ -172,6 +173,8 @@ export interface MeetingViewParams {
   toSec?: number
   speaker?: string
   maxChars?: number
+  /** События экрана встречи; вплетаются в расшифровку по времени */
+  events?: ScreenEvent[]
 }
 
 export interface NoteView {
@@ -186,6 +189,8 @@ export interface NoteView {
 export interface TranscriptView {
   text: string
   lines: number
+  /** Сколько строк «(экран)» вплетено в текст: клики, окна, набранное, скопированное, рисунки */
+  screenLines: number
   truncated: boolean
   nextFromSec?: number       // с какой секунды продолжить чтение, если текст обрезан
 }
@@ -228,27 +233,47 @@ export function getMeetingView(meeting: MeetingRecord, params: MeetingViewParams
   }
 }
 
-export function formatTranscript(meeting: MeetingRecord, params: MeetingViewParams = {}): TranscriptView {
-  const { fromSec = 0, toSec = Infinity, speaker, maxChars = DEFAULT_TRANSCRIPT_CHARS } = params
+/** Строки событий экрана для расшифровки: помечены (экран), чтобы их не спутать с речью */
+export function screenEventEntries(events: ScreenEvent[], fromSec: number, toSec: number): TranscriptEntry[] {
+  return describeEvents(eventsBetween(events, fromSec, toSec)).map((line) => ({
+    atSec: line.atMs / 1000,
+    text: `[${formatClock(line.atMs / 1000)}] (экран) ${line.text}`
+  }))
+}
 
-  const segments = meeting.segments.filter((segment) =>
-    segment.start >= fromSec
-    && segment.start <= toSec
-    && (!speaker || includesText(speakerName(meeting, segment.speaker), speaker))
-  )
+interface TranscriptEntry {
+  atSec: number
+  text: string
+}
+
+export function formatTranscript(meeting: MeetingRecord, params: MeetingViewParams = {}): TranscriptView {
+  const { fromSec = 0, toSec = Infinity, speaker, maxChars = DEFAULT_TRANSCRIPT_CHARS, events = [] } = params
+
+  const dialog: TranscriptEntry[] = meeting.segments
+    .filter((segment) =>
+      segment.start >= fromSec
+      && segment.start <= toSec
+      && (!speaker || includesText(speakerName(meeting, segment.speaker), speaker))
+    )
+    .map((segment) => ({
+      atSec: segment.start,
+      text: `[${formatClock(segment.start)}] ${speakerName(meeting, segment.speaker)}: ${segment.text}`
+    }))
+  // Фильтр по спикеру — разговор одного человека, события экрана ему не принадлежат
+  const screen = speaker ? [] : screenEventEntries(events, fromSec, toSec)
+  const entries = [...dialog, ...screen].sort((a, b) => a.atSec - b.atSec)
 
   const lines: string[] = []
   let length = 0
-  for (const segment of segments) {
-    const line = `[${formatClock(segment.start)}] ${speakerName(meeting, segment.speaker)}: ${segment.text}`
+  for (const entry of entries) {
     // Первую строку отдаём всегда, даже если она длиннее лимита
-    if (lines.length > 0 && length + line.length + 1 > maxChars) {
-      return { text: lines.join('\n'), lines: lines.length, truncated: true, nextFromSec: Math.floor(segment.start) }
+    if (lines.length > 0 && length + entry.text.length + 1 > maxChars) {
+      return { text: lines.join('\n'), lines: lines.length, screenLines: screen.length, truncated: true, nextFromSec: Math.floor(entry.atSec) }
     }
-    lines.push(line)
-    length += line.length + 1
+    lines.push(entry.text)
+    length += entry.text.length + 1
   }
-  return { text: lines.join('\n'), lines: lines.length, truncated: false }
+  return { text: lines.join('\n'), lines: lines.length, screenLines: screen.length, truncated: false }
 }
 
 // ─── Диктовки ───
