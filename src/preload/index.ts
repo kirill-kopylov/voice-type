@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { MeetingNote, MeetingRecord, TranscriptionRecord, VoiceTypeAPI } from '../shared/types'
+import type { MeetingNote, MeetingRecord, RemoteControlStatus, TranscriptionRecord, VoiceTypeAPI } from '../shared/types'
 
 const api: VoiceTypeAPI = {
   submitAudio: (audioData, durationMs) =>
@@ -75,6 +75,16 @@ const api: VoiceTypeAPI = {
   updateSettings: (partial) => ipcRenderer.invoke('update-settings', partial),
 
   getMcpStatus: () => ipcRenderer.invoke('get-mcp-status'),
+
+  getRemoteControlStatus: () => ipcRenderer.invoke('get-remote-control-status'),
+
+  onRemoteControlStatus: (callback) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: RemoteControlStatus): void => {
+      callback(status)
+    }
+    ipcRenderer.on('remote-control-status', handler)
+    return () => ipcRenderer.removeListener('remote-control-status', handler)
+  },
 
   testConnection: () => ipcRenderer.invoke('test-connection'),
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Eye, EyeOff, CheckCircle, XCircle, Loader2, Copy, RefreshCw } from 'lucide-react'
-import type { AppSettings, McpStatus, ScreenCaptureMode } from '@shared/types'
+import type { AppSettings, McpStatus, RemoteControlStatus, ScreenCaptureMode } from '@shared/types'
 import { Select } from '../components/Select'
 import { HotkeyInput } from '../components/HotkeyInput'
 
@@ -301,8 +301,45 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
         </div>
       </Section>
 
+      <RemoteControlSection settings={settings} onUpdate={onUpdate} showToast={showToast} />
+
       <McpSection settings={settings} onUpdate={onUpdate} showToast={showToast} />
     </div>
+  )
+}
+
+const REMOTE_STATUS_TEXT: Record<RemoteControlStatus, string> = {
+  off: 'Выключен',
+  connecting: 'Подключаюсь к серверу…',
+  connected: 'На связи — телефон может управлять'
+}
+
+function RemoteControlSection({ settings, onUpdate }: SettingsProps): JSX.Element {
+  const [status, setStatus] = useState<RemoteControlStatus>('off')
+  const [showKey, setShowKey] = useState(false)
+
+  useEffect(() => {
+    window.api.getRemoteControlStatus().then(setStatus)
+    return window.api.onRemoteControlStatus(setStatus)
+  }, [])
+
+  return (
+    <Section title="Пульт с телефона">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-xs" style={{ color: status === 'connected' ? 'var(--text-2)' : 'var(--text-4)' }}>
+          {status === 'connected' ? <CheckCircle size={14} className="text-green-300" /> : status === 'connecting' ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
+          {REMOTE_STATUS_TEXT[status]}
+        </div>
+        <div>
+          <label className="block text-xs mb-1.5" style={{ color: 'var(--text-3)' }}>Ключ пары</label>
+          <TokenInput value={settings.remoteControlKey} show={showKey} toggle={() => setShowKey(!showKey)} onChange={(v) => onUpdate({ remoteControlKey: v.trim() })} placeholder="64 символа, тот же, что в телефоне" />
+          <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>
+            Свайп влево в VoiceType на телефоне открывает пульт: колёса листают окна и группы VS Code, тачпад водит мышью.
+            Связь идёт через api.chatalert.cc по TLS; пульт умеет только клавиши навигации и мышь — набрать текст или команду через него нельзя.
+          </p>
+        </div>
+      </div>
+    </Section>
   )
 }
 

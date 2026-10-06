@@ -34,6 +34,8 @@ import { appendVideoChunk, beginVideoRecording, deleteVideo, loadEvents, saveEve
 import { endScreenSession, startScreenSession, takeRecordedEvents } from './services/screen-session'
 import { handleMediaProtocol, registerMediaScheme } from './services/media-protocol'
 import { selectScreenRegion } from './services/region-selector'
+import { remoteControl } from './services/remote-control'
+import { inputInjector } from './services/input-injector'
 
 // Схему для видео нужно объявить до app.ready
 registerMediaScheme()
@@ -328,6 +330,16 @@ function applyVkBot(): void {
   } else {
     vkBot.stop()
   }
+}
+
+function applyRemoteControl(): void {
+  const key = store.getSettings().remoteControlKey.trim()
+  if (!key) {
+    remoteControl.stop()
+    mainWindow?.webContents.send('remote-control-status', remoteControl.getStatus())
+    return
+  }
+  remoteControl.start(key, (status) => mainWindow?.webContents.send('remote-control-status', status))
 }
 
 async function applyMcpServer(): Promise<McpStatus> {
@@ -772,11 +784,13 @@ function setupIpcHandlers(): void {
     if ('mcpEnabled' in partial || 'mcpPort' in partial || 'mcpToken' in partial) {
       await applyMcpServer()
     }
+    if ('remoteControlKey' in partial) applyRemoteControl()
     // Читаем заново: applyMcpServer мог выпустить токен
     return store.getSettings()
   })
 
   ipcMain.handle('get-mcp-status', () => mcpServer.getStatus())
+  ipcMain.handle('get-remote-control-status', () => remoteControl.getStatus())
 
   ipcMain.handle('test-connection', async () => {
     const settings = store.getSettings()
@@ -833,6 +847,7 @@ app.whenReady().then(() => {
   applyTelegramBot()
   applyVkBot()
   applyMcpServer().catch((error) => console.error('[mcp] старт:', error))
+  applyRemoteControl()
 
   if (mainWindow) {
     trayCallbacks = {
@@ -845,7 +860,15 @@ app.whenReady().then(() => {
   }
 })
 
-app.on('before-quit', () => { app.isQuitting = true; telegramBot.stop(); vkBot.stop(); void mcpServer.stop(); void endScreenSession() })
+app.on('before-quit', () => {
+  app.isQuitting = true
+  telegramBot.stop()
+  vkBot.stop()
+  remoteControl.stop()
+  inputInjector.stop()
+  void mcpServer.stop()
+  void endScreenSession()
+})
 app.on('will-quit', () => { globalShortcut.unregisterAll() })
 app.on('window-all-closed', () => {})
 

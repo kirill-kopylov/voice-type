@@ -157,7 +157,12 @@ export interface AppSettings {
   mcpEnabled: boolean
   mcpPort: number
   mcpToken: string
+  /** Общий с телефоном ключ пульта (64 hex); пусто — пульт выключен */
+  remoteControlKey: string
 }
+
+/** Связь пульта с ретранслятором: телефон достучится, только когда connected */
+export type RemoteControlStatus = 'off' | 'connecting' | 'connected'
 
 export interface StoreSchema {
   settings: AppSettings
@@ -226,6 +231,8 @@ export interface VoiceTypeAPI {
   getSettings: () => Promise<AppSettings>
   updateSettings: (partial: Partial<AppSettings>) => Promise<AppSettings>
   getMcpStatus: () => Promise<McpStatus>
+  getRemoteControlStatus: () => Promise<RemoteControlStatus>
+  onRemoteControlStatus: (callback: (status: RemoteControlStatus) => void) => () => void
   testConnection: () => Promise<{ ok: boolean; error?: string }>
   windowMinimize: () => Promise<void>
   windowMaximize: () => Promise<void>

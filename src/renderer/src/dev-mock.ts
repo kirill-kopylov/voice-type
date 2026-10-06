@@ -36,7 +36,8 @@ export function installDevMock(): void {
     telegramEnabled: false, telegramBotToken: '', telegramAllowedUserIds: [], telegramRelayChannelId: 0,
     vkEnabled: false, vkCommunityToken: '', vkAllowedUserIds: [],
     floatingButton: true, floatingButtonPosition: null,
-    mcpEnabled: false, mcpPort: 47321, mcpToken: ''
+    mcpEnabled: false, mcpPort: 47321, mcpToken: '',
+    remoteControlKey: ''
   }
 
   // Валидный WAV с тишиной на 15 секунд — decodeAudioData разберёт
@@ -70,6 +71,8 @@ export function installDevMock(): void {
     updateMeetingNote: async () => null,
     deleteMeetingNote: async () => ({ ...mockMeeting, notes: [] }),
     getMcpStatus: async () => ({ running: false, url: '' }),
+    getRemoteControlStatus: async () => 'off',
+    onRemoteControlStatus: unsub,
     onMeetingNotesChanged: unsub,
     deleteMeeting: noop,
     updateSettings: async (p) => ({ ...mockSettings, ...p } as typeof mockSettings),

@@ -32,5 +32,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   floatingButtonPosition: null,
   mcpEnabled: false,
   mcpPort: 47321,
-  mcpToken: ''
+  mcpToken: '',
+  remoteControlKey: ''
 }
