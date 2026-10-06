@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { RemoteControlStatus } from '../../shared/types'
 import { inputInjector, VK } from './input-injector'
 import { lanAddresses, remoteControlLan } from './remote-control-lan'
+import { remoteCursor } from './remote-cursor'
 
 const SERVER_URL = 'https://api.chatalert.cc/remote-control'
 /** Alt отпускается сам, если телефон пропал посреди переключения окон — иначе Alt «залипнет» */
@@ -86,6 +87,7 @@ class RemoteControl {
     this.socket?.disconnect()
     this.socket = null
     remoteControlLan.stop()
+    remoteCursor.destroy()
     this.status = 'off'
     void this.releaseAlt()
   }
@@ -107,7 +109,9 @@ class RemoteControl {
       case 'window-release': return this.releaseAlt()
       // Привязаны к workbench.action.focusNext/PreviousGroup в keybindings.json VS Code
       case 'group': return inputInjector.tap(command.step > 0 ? VK.PAGE_DOWN : VK.PAGE_UP, 'ctrl', 'alt', 'shift')
-      case 'move': return inputInjector.move(command.dx, command.dy)
+      case 'move':
+        await inputInjector.move(command.dx, command.dy)
+        return remoteCursor.follow()
       case 'click':
         await inputInjector.button(command.button, true)
         return inputInjector.button(command.button, false)
