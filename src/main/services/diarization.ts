@@ -2,6 +2,7 @@ import { net } from 'electron'
 import { encodeMp3Chunks } from './encode-audio'
 import { extractSpeakerSegments } from './extract-speaker'
 import { extractJsonObject } from './extract-json'
+import { SttCache } from './stt-cache'
 import { parseFishTranscript, assignSpeakers, stripHallucinations, SpeakerTurn, TimedText, WordTiming } from './fish-transcript'
 import type { DialogSegment } from '../../shared/types'
 
@@ -45,9 +46,11 @@ export async function transcribeDiarized(
   language: string,
   knownSpeakers: KnownSpeaker[] = []
 ): Promise<{ segments: DialogSegment[]; error?: string }> {
+  // Ответы моделей кэшируются: если одна упала, повтор не гоняет вторую заново
+  const cache = new SttCache()
   try {
     console.log(`[diarize] Известных голосов: ${knownSpeakers.length}`)
-    const turns = await diarize(audioBuffer, apiKey, language)
+    const turns = await diarize(audioBuffer, apiKey, language, cache)
 
     const names = await nameSpeakers(apiKey, audioBuffer, knownSpeakers, turns)
     const segments = mergeNeighbors(turns.map((turn) => ({
@@ -63,6 +66,7 @@ export async function transcribeDiarized(
       console.warn('[diarize] Имена по контексту не определены:', err instanceof Error ? err.message : err)
       return new Map<string, string>()
     })
+    cache.dropUsed()
     return { segments: segments.map((s) => ({ ...s, speaker: inferred.get(s.speaker) ?? s.speaker })) }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -72,11 +76,11 @@ export async function transcribeDiarized(
 }
 
 /** Голоса и времена — от fish, текст — от mai: fish путает слова, зато лучше всех отличает людей. */
-async function diarize(audioBuffer: Buffer, apiKey: string, language: string): Promise<SpeakerTurn[]> {
+async function diarize(audioBuffer: Buffer, apiKey: string, language: string, cache: SttCache): Promise<SpeakerTurn[]> {
   const [[whole], chunks] = await Promise.all([encodeMp3Chunks(audioBuffer), encodeMp3Chunks(audioBuffer, TEXT_CHUNK_SEC)])
   const [voices, texts] = await Promise.all([
-    transcribe<{ text?: string; words?: WordTiming[] }>(whole, apiKey, language, VOICES_STT_MODEL),
-    transcribeText(chunks, apiKey, language)
+    transcribe<VoicesResponse>(whole, apiKey, language, VOICES_STT_MODEL, cache, (response) => Boolean(response.text)),
+    transcribeText(chunks, apiKey, language, cache)
   ])
   if (!voices.text) throw new DiarizationError('STT не вернул разметку голосов')
   if (texts.length === 0) throw new DiarizationError('STT не вернул текст')
@@ -88,17 +92,41 @@ async function diarize(audioBuffer: Buffer, apiKey: string, language: string): P
 }
 
 /** Куски идут по очереди (параллельные запросы провайдер режет по 429); времена сдвигаем на начало куска. */
-async function transcribeText(chunks: Buffer[], apiKey: string, language: string): Promise<TimedText[]> {
+async function transcribeText(chunks: Buffer[], apiKey: string, language: string, cache: SttCache): Promise<TimedText[]> {
   const texts: TimedText[] = []
   for (const [index, chunk] of chunks.entries()) {
     const offset = index * TEXT_CHUNK_SEC
-    const { segments = [] } = await transcribe<{ segments?: TimedText[] }>(chunk, apiKey, language, TEXT_STT_MODEL, TEXT_STT_OPTIONS)
+    const { segments = [] } = await transcribe<TextResponse>(
+      chunk, apiKey, language, TEXT_STT_MODEL, cache, (response) => Array.isArray(response.segments), TEXT_STT_OPTIONS
+    )
     texts.push(...segments.map((s) => ({ text: (s.text ?? '').trim(), start: s.start + offset, end: s.end + offset })))
   }
   return stripHallucinations(texts)
 }
 
-async function transcribe<T>(mp3: Buffer, apiKey: string, language: string, model: string, options: object = {}): Promise<T> {
+interface VoicesResponse {
+  text?: string
+  words?: WordTiming[]
+}
+
+interface TextResponse {
+  segments?: TimedText[]
+}
+
+/** Ответ STT; валидный (по isValid) кэшируется, и повтор после сбоя соседней модели его не запрашивает. */
+function transcribe<T>(
+  mp3: Buffer,
+  apiKey: string,
+  language: string,
+  model: string,
+  cache: SttCache,
+  isValid: (response: T) => boolean,
+  options: object = {}
+): Promise<T> {
+  return cache.run({ model, language, audio: mp3, options }, isValid, () => requestStt<T>(mp3, apiKey, language, model, options))
+}
+
+async function requestStt<T>(mp3: Buffer, apiKey: string, language: string, model: string, options: object): Promise<T> {
   const body = JSON.stringify({
     model,
     input_audio: { data: mp3.toString('base64'), format: 'mp3' },
