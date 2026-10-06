@@ -5,6 +5,9 @@ import { detectAudioFormat, handleRemoteVoice, insertTextIntoActiveWindow, textP
 // Текст кнопки в reply-клавиатуре. Получив такое сообщение, бот эмулирует Enter в активном окне.
 const SEND_BUTTON_LABEL = 'Отправить'
 
+// Подтверждение вставки в канале-ретрансляторе: «✓» и id поста, который вставили
+const RELAY_ACK_PREFIX = '✓'
+
 // Пауза long-poll'а — сколько ждёт сервер Telegram прежде чем вернуть пустоту
 const LONG_POLL_TIMEOUT_SEC = 25
 
@@ -60,6 +63,7 @@ class TelegramBotService {
   private pollAbort: AbortController | null = null
   private running = false
   private stopRequested = false
+  private relayQueue: Promise<void> = Promise.resolve()
 
   start(token: string, allowedUserIds: number[], relayChannelId: number): void {
     if (this.running && this.token === token && this.relayChannelId === relayChannelId && this.sameWhitelist(allowedUserIds)) {
@@ -143,11 +147,32 @@ class TelegramBotService {
 
   // Текст из приложения на телефоне: вставляем как есть, «Отправить» — Enter.
   // Доверяем только заранее заданному каналу: писать туда могут лишь его админы (боты).
+  // Посты идут по очереди: Enter не должен обогнать вставку, которая занимает время (запуск PowerShell).
   private handleRelayPost(post: TelegramMessage): void {
     if (!this.relayChannelId || post.chat.id !== this.relayChannelId || !post.text) return
+    // Наши же подтверждения в канале — не команды
+    if (post.text.startsWith(RELAY_ACK_PREFIX)) return
 
-    if (post.text === SEND_BUTTON_LABEL) simulateEnter()
-    else insertTextIntoActiveWindow(post.text)
+    const text = post.text
+    this.relayQueue = this.relayQueue
+      .then(async () => {
+        if (text === SEND_BUTTON_LABEL) await simulateEnter()
+        else await insertTextIntoActiveWindow(text)
+        await this.acknowledgeRelayPost(post.message_id)
+      })
+      .catch((err) => console.error('[telegram] Ошибка обработки поста телефона:', err))
+  }
+
+  // Телефон ждёт «✓<id поста>», чтобы знать: текст реально вставлен, а не просто принят каналом
+  private async acknowledgeRelayPost(messageId: number): Promise<void> {
+    const url = `https://api.telegram.org/bot${this.token}/sendMessage`
+    await net
+      .fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: this.relayChannelId, text: `${RELAY_ACK_PREFIX}${messageId}` })
+      })
+      .catch((err) => console.error('[telegram] Не отправилось подтверждение вставки:', err))
   }
 
   private async handleMessage(message: TelegramMessage): Promise<void> {

@@ -24,12 +24,12 @@ export function setTranscriptionRecorder(r: TranscriptionRecorder): void {
   recorder = r
 }
 
-export function insertTextIntoActiveWindow(text: string): void {
+export async function insertTextIntoActiveWindow(text: string): Promise<void> {
   const settings = store.getSettings()
   if (settings.stickyWindow && getStickyHwnd()) {
-    pasteToStickyWindow(text, settings.keepInClipboard)
+    await pasteToStickyWindow(text, settings.keepInClipboard)
   } else {
-    pasteText(text, settings.keepInClipboard)
+    await pasteText(text, settings.keepInClipboard)
   }
 }
 
@@ -52,7 +52,7 @@ export async function handleRemoteVoice(
     return { ok: false, text: '', error: result.error ?? 'Пустой результат' }
   }
 
-  insertTextIntoActiveWindow(text)
+  await insertTextIntoActiveWindow(text)
   return { ok: true, text }
 }
 

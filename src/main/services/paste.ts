@@ -132,27 +132,35 @@ Start-Sleep -Milliseconds 50
   return enterScriptPath
 }
 
-export function simulateEnter(): void {
+/** Промис завершается, когда PowerShell отработал: после него клавиша уже нажата. */
+export function simulateEnter(): Promise<void> {
   const script = ensureEnterScript()
-  execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script], (err) => {
-    if (err) console.error('Ошибка Enter:', err.message)
+  return new Promise((resolve) => {
+    execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script], (err) => {
+      if (err) console.error('Ошибка Enter:', err.message)
+      resolve()
+    })
   })
 }
 
-export function pasteText(text: string, keepInClipboard: boolean): void {
+/** Промис завершается, когда Ctrl+V нажат (буфер обмена восстанавливается уже после него). */
+export function pasteText(text: string, keepInClipboard: boolean): Promise<void> {
   const previousClipboard = clipboard.readText()
   clipboard.writeText(text)
 
   const script = ensurePasteScript()
 
-  execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script], (err) => {
-    if (err) {
-      console.error('Ошибка вставки:', err.message)
-    }
+  return new Promise((resolve) => {
+    execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script], (err) => {
+      if (err) {
+        console.error('Ошибка вставки:', err.message)
+      }
 
-    // Восстанавливаем предыдущее содержимое буфера обмена
-    if (!keepInClipboard) {
-      setTimeout(() => clipboard.writeText(previousClipboard), 300)
-    }
+      // Восстанавливаем предыдущее содержимое буфера обмена
+      if (!keepInClipboard) {
+        setTimeout(() => clipboard.writeText(previousClipboard), 300)
+      }
+      resolve()
+    })
   })
 }
