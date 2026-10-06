@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client'
 import { z } from 'zod'
 import type { RemoteControlStatus } from '../../shared/types'
 import { inputInjector, VK } from './input-injector'
+import { lanAddresses, remoteControlLan } from './remote-control-lan'
 
 const SERVER_URL = 'https://api.chatalert.cc/remote-control'
 /** Alt отпускается сам, если телефон пропал посреди переключения окон — иначе Alt «залипнет» */
@@ -41,7 +42,7 @@ const KEYS: Record<RemoteKey, () => Promise<void>> = {
 
 /**
  * Пульт с телефона: команды приходят через ретранслятор api.chatalert.cc (комната по общему ключу)
- * и исполняются здесь через SendInput.
+ * или напрямую по домашней сети, если телефон рядом, и исполняются здесь через SendInput.
  */
 class RemoteControl {
   private socket: Socket | null = null
@@ -59,7 +60,13 @@ class RemoteControl {
     }
 
     inputInjector.warmUp()
-    const socket = io(SERVER_URL, { path: '/socket.io/', transports: ['websocket'], auth: { key, role: 'desktop' } })
+    remoteControlLan.start(key, (payload) => this.handle(payload))
+    // auth — функцией: адреса в сети перечитываются на каждом переподключении (сменился Wi-Fi, новый DHCP)
+    const socket = io(SERVER_URL, {
+      path: '/socket.io/',
+      transports: ['websocket'],
+      auth: (send) => send({ key, role: 'desktop', lan: lanAddresses() })
+    })
     socket.on('connect', () => setStatus('connected'))
     socket.on('disconnect', () => {
       void this.releaseAlt()
@@ -69,11 +76,7 @@ class RemoteControl {
       console.warn('[remote] нет связи с сервером:', error.message)
       setStatus('connecting')
     })
-    socket.on('command', (payload: object) => {
-      const parsed = remoteCommand.safeParse(payload)
-      if (!parsed.success) return
-      this.queue = this.queue.then(() => this.execute(parsed.data)).catch((error: Error) => console.error('[remote]', error.message))
-    })
+    socket.on('command', (payload: object) => this.handle(payload))
 
     this.socket = socket
     setStatus('connecting')
@@ -82,12 +85,19 @@ class RemoteControl {
   stop(): void {
     this.socket?.disconnect()
     this.socket = null
+    remoteControlLan.stop()
     this.status = 'off'
     void this.releaseAlt()
   }
 
   getStatus(): RemoteControlStatus {
     return this.status
+  }
+
+  private handle(payload: object): void {
+    const parsed = remoteCommand.safeParse(payload)
+    if (!parsed.success) return
+    this.queue = this.queue.then(() => this.execute(parsed.data)).catch((error: Error) => console.error('[remote]', error.message))
   }
 
   private async execute(command: RemoteCommand): Promise<void> {

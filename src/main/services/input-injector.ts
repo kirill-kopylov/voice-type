@@ -29,11 +29,35 @@ public static class Injector {
     [StructLayout(LayoutKind.Sequential)]
     struct INPUT { public uint type; public InputUnion u; }
 
+    [StructLayout(LayoutKind.Sequential)]
+    struct POINT { public int X; public int Y; }
+
     [DllImport("user32.dll", SetLastError = true)]
     static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
+    [DllImport("user32.dll")]
+    static extern bool GetCursorPos(out POINT point);
+
+    [DllImport("user32.dll")]
+    static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    static extern bool SetProcessDpiAwarenessContext(IntPtr context);
+
     const uint KEYEVENTF_EXTENDEDKEY = 0x1, KEYEVENTF_KEYUP = 0x2;
-    const uint MOUSE_MOVE = 0x1, LEFT_DOWN = 0x2, LEFT_UP = 0x4, RIGHT_DOWN = 0x8, RIGHT_UP = 0x10, WHEEL = 0x800, HWHEEL = 0x1000;
+    const uint LEFT_DOWN = 0x2, LEFT_UP = 0x4, RIGHT_DOWN = 0x8, RIGHT_UP = 0x10, WHEEL = 0x800, HWHEEL = 0x1000;
+
+    /** Координаты в физических пикселях: без этого на мониторе с масштабом Windows пересчитывает их приблизительно */
+    public static void Init() { SetProcessDpiAwarenessContext((IntPtr)(-4)); }
+
+    // Относительный SendInput проходит через «повышенную точность указателя»: мелкие сдвиги Windows гасит
+    // (600 сдвигов по 5 px дали 654 px вместо 3000), а абсолютный SendInput в быстрой серии читает устаревший
+    // GetCursorPos. SetCursorPos синхронный и сам прижимает к краю экрана — ускорение решает телефон.
+    static void MoveBy(int dx, int dy) {
+        POINT point;
+        GetCursorPos(out point);
+        SetCursorPos(point.X + dx, point.Y + dy);
+    }
 
     static bool IsExtended(ushort vk) { return (vk >= 0x21 && vk <= 0x28) || vk == 0x2D || vk == 0x2E; }
 
@@ -82,7 +106,7 @@ public static class Injector {
             }
             case "down": Send(Key(ushort.Parse(p[1]), false)); break;
             case "up": Send(Key(ushort.Parse(p[1]), true)); break;
-            case "move": Send(Mouse(MOUSE_MOVE, int.Parse(p[1]), int.Parse(p[2]), 0)); break;
+            case "move": MoveBy(int.Parse(p[1]), int.Parse(p[2])); break;
             case "button": {
                 bool left = p[1] == "left", down = p[2] == "down";
                 Send(Mouse(left ? (down ? LEFT_DOWN : LEFT_UP) : (down ? RIGHT_DOWN : RIGHT_UP), 0, 0, 0));
@@ -98,6 +122,7 @@ public static class Injector {
     }
 }
 "@
+[Injector]::Init()
 [Console]::Out.WriteLine("ready")
 while ($null -ne ($line = [Console]::In.ReadLine())) {
     try { [Injector]::Run($line) } catch { [Console]::Error.WriteLine($_.Exception.Message) }
