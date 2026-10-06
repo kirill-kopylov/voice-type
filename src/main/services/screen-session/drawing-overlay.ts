@@ -3,8 +3,8 @@ import path from 'path'
 import { app, BrowserWindow, globalShortcut, ipcMain, screen } from 'electron'
 import type { Rect } from '../../../shared/types'
 import { DRAW_OVERLAY_HTML } from './draw-overlay.html'
-import { DRAW_TOOLBAR_HTML, DRAW_TOOLBAR_SIZE } from './draw-toolbar.html'
-import { DEFAULT_DRAW_STYLE, type DrawStyle } from './draw-style'
+import { DRAW_TOOLBAR_COLLAPSED_WIDTH, DRAW_TOOLBAR_HTML, DRAW_TOOLBAR_SIZE } from './draw-toolbar.html'
+import { DEFAULT_DRAW_STYLE, type DrawStyle, type DrawTool } from './draw-style'
 
 export interface DrawnShape {
   displayId: string
@@ -15,6 +15,7 @@ export interface DrawnShape {
 }
 
 export interface DrawingOverlay {
+  /** Инструмент взят и ждёт рисунка: мышь перехвачена оверлеем */
   isDrawing: () => boolean
   /** Короткое кольцо на месте клика: видно на кадрах записи */
   showClickRing: (displayId: string, x: number, y: number) => void
@@ -23,8 +24,6 @@ export interface DrawingOverlay {
 
 interface OverlayOptions {
   displayIds: string[]
-  /** Клавиша включения и выключения режима рисования */
-  hotkey: string
   onShapeDrawn: (shape: DrawnShape) => void
 }
 
@@ -56,11 +55,12 @@ function createTransparentWindow(bounds: Rect, options: Electron.BrowserWindowCo
 }
 
 /**
- * Прозрачные окна поверх выбранных мониторов. Пока режим рисования выключен, они пропускают мышь
- * и ничем не мешают; включённый — перехватывает мышь, а панель инструментов скрыта от записи экрана.
- * Нарисованное остаётся в записи, потому что оверлеи — обычные окна поверх экрана.
+ * Прозрачные окна поверх выбранных мониторов и панель инструментов, которая видна всю запись.
+ * Оверлеи пропускают мышь сквозь себя, пока инструмент не выбран на панели; выбранный инструмент
+ * перехватывает мышь на один рисунок и сам отпускает её обратно. Панель скрыта от записи экрана,
+ * а нарисованное остаётся в видео, потому что оверлеи — обычные окна поверх экрана.
  */
-export function createDrawingOverlay({ displayIds, hotkey, onShapeDrawn }: OverlayOptions): DrawingOverlay {
+export function createDrawingOverlay({ displayIds, onShapeDrawn }: OverlayOptions): DrawingOverlay {
   const overlayPage = writePage('draw-overlay.html', DRAW_OVERLAY_HTML)
   const toolbarPage = writePage('draw-toolbar.html', DRAW_TOOLBAR_HTML)
 
@@ -69,23 +69,27 @@ export function createDrawingOverlay({ displayIds, hotkey, onShapeDrawn }: Overl
   for (const display of displays) {
     const win = createTransparentWindow(display.bounds, { focusable: false })
     win.setIgnoreMouseEvents(true)
-    // Окно, на которое кликнули, поднимается выше остальных: без этого оверлей перекрывает панель
-    win.on('focus', () => { if (drawing && !toolbar.isDestroyed()) toolbar.moveTop() })
     void win.loadFile(overlayPage, { query: { display: String(display.id) } })
     win.once('ready-to-show', () => win.showInactive())
     overlays.set(String(display.id), win)
   }
 
+  // Панель не берёт фокус, чтобы приложение, с которым работают, оставалось активным
   const toolbar = createTransparentWindow(
     { x: 0, y: 0, ...DRAW_TOOLBAR_SIZE },
-    { focusable: true, skipTaskbar: true, movable: true }
+    { focusable: false, movable: true }
   )
   // Панель не должна попадать в видео
   toolbar.setContentProtection(true)
   void toolbar.loadFile(toolbarPage)
+  toolbar.once('ready-to-show', () => {
+    placeToolbar()
+    toolbar.showInactive()
+  })
 
   let style: DrawStyle = DEFAULT_DRAW_STYLE
-  let drawing = false
+  let armed = false
+  let collapsed = false
   // Порядок рисунков для отмены: id и монитор, на котором нарисовано
   let history: Array<{ id: string; displayId: string }> = []
 
@@ -94,7 +98,7 @@ export function createDrawingOverlay({ displayIds, hotkey, onShapeDrawn }: Overl
   }
   const broadcastStyle = (): void => {
     eachOverlay((win) => win.webContents.send('draw:style', style))
-    if (!toolbar.isDestroyed()) toolbar.webContents.send('draw:style', style)
+    if (!toolbar.isDestroyed()) toolbar.webContents.send('draw:state', { style, armed })
   }
   toolbar.webContents.once('did-finish-load', broadcastStyle)
   overlays.forEach((win) => win.webContents.once('did-finish-load', () => win.webContents.send('draw:style', style)))
@@ -108,39 +112,49 @@ export function createDrawingOverlay({ displayIds, hotkey, onShapeDrawn }: Overl
     eachOverlay((win) => win.webContents.send('draw:clear'))
   }
 
-  const placeToolbar = (): void => {
+  function placeToolbar(): void {
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
     const { x, y, width } = display.workArea
-    toolbar.setPosition(Math.round(x + (width - DRAW_TOOLBAR_SIZE.width) / 2), y + TOOLBAR_TOP_MARGIN)
+    toolbar.setBounds({ x: Math.round(x + (width - DRAW_TOOLBAR_SIZE.width) / 2), y: y + TOOLBAR_TOP_MARGIN, ...DRAW_TOOLBAR_SIZE })
   }
 
-  const enterDrawing = (): void => {
-    drawing = true
+  // Текст набирают в поле оверлея, ему нужен фокус; остальные инструменты фокус не отбирают
+  function arm(tool: DrawTool): void {
+    style = { ...style, tool }
+    armed = true
     eachOverlay((win) => {
-      win.setFocusable(true)
+      win.setFocusable(tool === 'text')
       win.setIgnoreMouseEvents(false)
-      win.webContents.send('draw:mode', true)
     })
-    placeToolbar()
-    const cursorDisplay = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
-    ;(overlays.get(String(cursorDisplay.id)) ?? overlays.values().next().value)?.focus()
-    toolbar.show()
+    broadcastStyle()
+    eachOverlay((win) => win.webContents.send('draw:mode', true))
     toolbar.moveTop()
-    globalShortcut.register('Escape', exitDrawing)
+    globalShortcut.register('Escape', disarm)
     globalShortcut.register('CommandOrControl+Z', undo)
   }
 
-  function exitDrawing(): void {
-    if (!drawing) return
-    drawing = false
+  function disarm(): void {
+    if (!armed) return
+    armed = false
     globalShortcut.unregister('Escape')
     globalShortcut.unregister('CommandOrControl+Z')
-    toolbar.hide()
     eachOverlay((win) => {
       win.webContents.send('draw:mode', false)
       win.setIgnoreMouseEvents(true)
       win.setFocusable(false)
     })
+    if (!toolbar.isDestroyed()) toolbar.webContents.send('draw:state', { style, armed })
+  }
+
+  // Свёрнутая панель остаётся на месте левым краем; развёрнутая не выходит за край своего монитора
+  function toggleCollapse(): void {
+    collapsed = !collapsed
+    const { x, y } = toolbar.getBounds()
+    const width = collapsed ? DRAW_TOOLBAR_COLLAPSED_WIDTH : DRAW_TOOLBAR_SIZE.width
+    const area = screen.getDisplayNearestPoint({ x, y }).workArea
+    const fittedX = Math.max(area.x, Math.min(x, area.x + area.width - width))
+    toolbar.setBounds({ x: fittedX, y, width, height: DRAW_TOOLBAR_SIZE.height })
+    toolbar.webContents.send('draw:collapsed', collapsed)
   }
 
   const unsubscribers: Array<() => void> = []
@@ -150,26 +164,24 @@ export function createDrawingOverlay({ displayIds, hotkey, onShapeDrawn }: Overl
     unsubscribers.push(() => ipcMain.removeListener(channel, wrapped))
   }
 
+  // Повторный клик по взятому инструменту снимает его
+  listen('draw:toggle-tool', (tool: DrawTool) => (armed && style.tool === tool ? disarm() : arm(tool)))
   listen('draw:set-style', (patch: Partial<DrawStyle>) => { style = { ...style, ...patch }; broadcastStyle() })
+  listen('draw:toggle-collapse', toggleCollapse)
   listen('draw:undo', undo)
   listen('draw:clear', clear)
-  listen('draw:exit', exitDrawing)
   listen('draw:stroke-added', (displayId: string, id: string, shape: Omit<DrawnShape, 'displayId'>) => {
     history.push({ id, displayId })
     onShapeDrawn({ displayId, ...shape })
+    disarm()
   })
   listen('draw:stroke-gone', (id: string) => { history = history.filter((entry) => entry.id !== id) })
 
-  if (!globalShortcut.register(hotkey, () => (drawing ? exitDrawing() : enterDrawing()))) {
-    console.error(`[screen-session] не удалось занять клавишу рисования: ${hotkey}`)
-  }
-
   return {
-    isDrawing: () => drawing,
+    isDrawing: () => armed,
     showClickRing: (displayId, x, y) => overlays.get(displayId)?.webContents.send('draw:ring', { x, y }),
     destroy: () => {
-      exitDrawing()
-      globalShortcut.unregister(hotkey)
+      disarm()
       unsubscribers.forEach((unsubscribe) => unsubscribe())
       eachOverlay((win) => win.destroy())
       if (!toolbar.isDestroyed()) toolbar.destroy()

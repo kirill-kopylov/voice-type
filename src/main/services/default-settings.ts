@@ -17,7 +17,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   meetingHotkey: 'CommandOrControl+Shift+M',
   captureSystemAudio: true,
   screenCaptureMode: 'off',
-  drawHotkey: 'CommandOrControl+Alt+D',
   recordInputEvents: true,
   recordTypedText: true,
   theme: 'sunset',

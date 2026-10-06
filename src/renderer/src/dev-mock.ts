@@ -31,7 +31,7 @@ export function installDevMock(): void {
     autoEnter: true, autoEnterTriggers: 'enter',
     stickyWindow: false, stickyHotkey: '',
     meetingHotkey: '', captureSystemAudio: true, screenCaptureMode: 'off' as const,
-    drawHotkey: 'CommandOrControl+Alt+D', recordInputEvents: true, recordTypedText: true,
+    recordInputEvents: true, recordTypedText: true,
     autoStart: false, theme: 'sunset',
     telegramEnabled: false, telegramBotToken: '', telegramAllowedUserIds: [], telegramRelayChannelId: 0,
     vkEnabled: false, vkCommunityToken: '', vkAllowedUserIds: [],

@@ -14,7 +14,6 @@ export async function startScreenSession(start: ScreenSessionStart, settings: Ap
 
   overlay = createDrawingOverlay({
     displayIds: start.displayIds,
-    hotkey: settings.drawHotkey,
     onShapeDrawn: ({ displayId, tool, color, rect, text }) => recorder?.addDrawing(displayId, tool, color, rect, text)
   })
 

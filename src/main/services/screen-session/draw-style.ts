@@ -23,4 +23,4 @@ export const DRAW_TOOLS: Array<{ id: DrawTool; label: string }> = [
 export const DRAW_COLORS = ['#ef4444', '#facc15', '#22c55e', '#3b82f6', '#ffffff', '#111111']
 export const DRAW_WIDTHS = [2, 4, 8]
 
-export const DEFAULT_DRAW_STYLE: DrawStyle = { tool: 'arrow', color: DRAW_COLORS[0], width: DRAW_WIDTHS[1], fade: false }
+export const DEFAULT_DRAW_STYLE: DrawStyle = { tool: 'arrow', color: DRAW_COLORS[0], width: DRAW_WIDTHS[1], fade: true }

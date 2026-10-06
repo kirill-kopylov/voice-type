@@ -137,8 +137,6 @@ export interface AppSettings {
   meetingHotkey: string
   captureSystemAudio: boolean
   screenCaptureMode: ScreenCaptureMode
-  /** Режим рисования поверх экрана во время записи: включается и выключается этой клавишей */
-  drawHotkey: string
   /** Записывать клики мыши и сочетания клавиш (без набираемого текста) и показывать кольцо на кликах */
   recordInputEvents: boolean
   /** Писать и набираемый текст (в окнах, похожих на ввод пароля, он скрывается) */

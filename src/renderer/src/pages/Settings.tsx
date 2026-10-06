@@ -163,13 +163,9 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
           </div>
           {settings.screenCaptureMode !== 'off' && (
             <>
-              <div>
-                <label className="block text-xs mb-1.5" style={{ color: 'var(--text-4)' }}>Хоткей рисования на экране</label>
-                <HotkeyInput value={settings.drawHotkey} onChange={(v) => onUpdate({ drawHotkey: v })} />
-                <p className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>
-                  Во время записи включает рисование: стрелки, кружки, прямоугольники, свободная рука, маркер, линии, текст. Esc — выйти, Ctrl+Z — отменить. Панель инструментов в видео не попадает, нарисованное — попадает.
-                </p>
-              </div>
+              <p className="text-[10px]" style={{ color: 'var(--text-4)' }}>
+                Во время записи на экране висит панель рисования: выберите инструмент (стрелка, кружок, прямоугольник, свободная рука, маркер, линия, текст) и нарисуйте один рисунок — дальше мышь снова работает как обычно. Esc снимает инструмент. Панель в видео не попадает, нарисованное — попадает.
+              </p>
               <Toggle label="Записывать события: клики, окна, сочетания клавиш, скопированное" checked={settings.recordInputEvents} onChange={() => onUpdate({ recordInputEvents: !settings.recordInputEvents })} />
               {settings.recordInputEvents && (
                 <Toggle label="Записывать набранный текст" checked={settings.recordTypedText} onChange={() => onUpdate({ recordTypedText: !settings.recordTypedText })} />
