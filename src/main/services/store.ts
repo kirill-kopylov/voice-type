@@ -79,6 +79,11 @@ class AppStore {
     this.save()
   }
 
+  replaceHistoryItem(record: TranscriptionRecord): void {
+    this.data.history = this.data.history.map((r) => (r.id === record.id ? record : r))
+    this.save()
+  }
+
   deleteHistory(id: string): void {
     this.data.history = this.data.history.filter((r) => r.id !== id)
     this.save()

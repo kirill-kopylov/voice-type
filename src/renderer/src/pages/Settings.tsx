@@ -22,11 +22,16 @@ const GROQ_MODELS = [
   { id: 'distil-whisper-large-v3-en', name: 'Distil Whisper v3', sub: 'бесплатно — только English, самая быстрая' },
 ]
 
+// Цены — с openrouter.ai/api/v1/models?output_modalities=transcription (у MAI указана за час)
 const OPENROUTER_MODELS = [
-  { id: 'openai/gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe', sub: '$0.003/мин — быстрая и дешёвая' },
+  { id: 'microsoft/mai-transcribe-2', name: 'Microsoft MAI-Transcribe 2', sub: '$0.0017/мин — первая в тесте FLEURS, дёшево' },
+  { id: 'openai/gpt-transcribe', name: 'GPT Transcribe', sub: '$0.0045/мин — новая модель OpenAI, высокая точность' },
   { id: 'openai/gpt-4o-transcribe', name: 'GPT-4o Transcribe', sub: '$0.006/мин — высокая точность' },
-  { id: 'mistralai/voxtral-mini-transcribe', name: 'Voxtral Mini Transcribe', sub: '$0.002/мин — самая быстрая, заточена под голосовые' },
-  { id: 'qwen/qwen3-asr-flash-2026-02-10', name: 'Qwen3 ASR Flash', sub: '$0.002/мин — устойчива к шуму' },
+  { id: 'openai/gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe', sub: '$0.003/мин — быстрая и дешёвая' },
+  { id: 'x-ai/grok-stt-1.0', name: 'Grok STT 1.0', sub: '$0.0017/мин — дёшево, с пунктуацией' },
+  { id: 'deepgram/nova-3', name: 'Deepgram Nova-3', sub: '$0.0043/мин — быстрая' },
+  { id: 'mistralai/voxtral-mini-transcribe', name: 'Voxtral Mini Transcribe', sub: '$0.003/мин — заточена под голосовые' },
+  { id: 'qwen/qwen3-asr-flash-2026-02-10', name: 'Qwen3 ASR Flash', sub: '$0.0021/мин — устойчива к шуму' },
 ]
 
 const SCREEN_CAPTURE_MODES: Array<{ id: ScreenCaptureMode; name: string; sub: string }> = [

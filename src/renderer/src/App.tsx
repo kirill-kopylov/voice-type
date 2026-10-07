@@ -394,9 +394,11 @@ export function App(): JSX.Element {
 
   const handleRetry = async (id: string): Promise<void> => {
     showToast('Повторная транскрипция...', 'success')
-    await window.api.retryTranscription(id)
-    const updated = await window.api.getHistory()
-    setHistory(updated)
+    const result = await window.api.retryTranscription(id)
+    setHistory(await window.api.getHistory())
+    if (!result) showToast('Не нашёл запись или её аудио', 'error')
+    else if (result.status === 'error') showToast(result.error || 'Ошибка транскрипции', 'error')
+    else showToast('Текст обновлён', 'success')
   }
 
   const handleUpdateSettings = async (partial: Partial<AppSettings>): Promise<void> => {

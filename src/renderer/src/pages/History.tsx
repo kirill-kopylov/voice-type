@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { Search, Trash2, Copy, ClipboardPaste, Play, Pause, X, AlertCircle, RotateCcw } from 'lucide-react'
 import type { TranscriptionRecord } from '@shared/types'
 import { formatDateTime, formatDuration } from '../utils/format'
@@ -7,20 +7,35 @@ interface HistoryProps {
   history: TranscriptionRecord[]
   onDelete: (id: string) => void
   onClear: () => void
-  onRetry: (id: string) => void
+  onRetry: (id: string) => Promise<void>
   showToast: (message: string, type: 'success' | 'error') => void
 }
 
+// Записей в истории тысячи: в DOM кладём порциями, иначе вкладка виснет
+const PAGE_SIZE = 50
+
 export function History({ history, onDelete, onClear, onRetry, showToast }: HistoryProps): JSX.Element {
   const [search, setSearch] = useState('')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(null)
+  const [retryingId, setRetryingId] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  const filtered = search.trim()
-    ? history.filter((r) => r.text.toLowerCase().includes(search.toLowerCase()) || r.error?.toLowerCase().includes(search.toLowerCase()))
-    : history
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return history
+    return history.filter((r) => r.text.toLowerCase().includes(query) || r.error?.toLowerCase().includes(query))
+  }, [history, search])
+  const visible = filtered.slice(0, visibleCount)
+
+  const handleSearch = (value: string): void => { setSearch(value); setVisibleCount(PAGE_SIZE) }
+
+  const handleRetry = async (id: string): Promise<void> => {
+    setRetryingId(id)
+    try { await onRetry(id) } finally { setRetryingId(null) }
+  }
 
   const handleCopy = async (text: string): Promise<void> => { await window.api.copyText(text); showToast('Скопировано', 'success') }
   const handleRePaste = async (id: string): Promise<void> => { await window.api.rePaste(id); showToast('Вставлено', 'success') }
@@ -57,10 +72,10 @@ export function History({ history, onDelete, onClear, onRetry, showToast }: Hist
       {history.length > 0 && (
         <div className="relative">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-4)' }} />
-          <input type="text" placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)}
+          <input type="text" placeholder="Поиск..." value={search} onChange={(e) => handleSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 glass rounded-xl text-sm"
             style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-1)' }} />
-          {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-4)' }}><X size={14} /></button>}
+          {search && <button onClick={() => handleSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-4)' }}><X size={14} /></button>}
         </div>
       )}
 
@@ -70,7 +85,7 @@ export function History({ history, onDelete, onClear, onRetry, showToast }: Hist
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((record) => (
+          {visible.map((record) => (
             <div key={record.id} className="glass rounded-xl overflow-hidden transition-colors"
               style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={() => setExpandedId(expandedId === record.id ? null : record.id)}>
@@ -95,9 +110,9 @@ export function History({ history, onDelete, onClear, onRetry, showToast }: Hist
                       <Btn onClick={() => handleCopy(record.text)} icon={Copy}>Копировать</Btn>
                       <Btn onClick={() => handleRePaste(record.id)} icon={ClipboardPaste} accent>Вставить</Btn>
                     </>}
-                    {record.status === 'error' && (
-                      <Btn onClick={() => onRetry(record.id)} icon={RotateCcw} accent>Повторить</Btn>
-                    )}
+                    <Btn onClick={() => handleRetry(record.id)} icon={RotateCcw} accent={record.status === 'error'} disabled={retryingId !== null}>
+                      {retryingId === record.id ? 'Распознаю…' : 'Повторить транскрибацию'}
+                    </Btn>
                     <button onClick={() => onDelete(record.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ml-auto hover:bg-red-500/15"
                       style={{ color: 'var(--text-4)' }}><Trash2 size={13} />Удалить</button>
                   </div>
@@ -105,6 +120,13 @@ export function History({ history, onDelete, onClear, onRetry, showToast }: Hist
               )}
             </div>
           ))}
+          {filtered.length > visible.length && (
+            <button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+              className="w-full py-2.5 text-sm rounded-xl transition-colors"
+              style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}>
+              Показать ещё ({filtered.length - visible.length})
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -124,9 +146,9 @@ function audioMimeFor(fileName: string): string {
   }
 }
 
-function Btn({ onClick, icon: Icon, accent, children }: { onClick: () => void; icon: typeof Play; accent?: boolean; children: React.ReactNode }): JSX.Element {
+function Btn({ onClick, icon: Icon, accent, disabled, children }: { onClick: () => void; icon: typeof Play; accent?: boolean; disabled?: boolean; children: React.ReactNode }): JSX.Element {
   return (
-    <button onClick={onClick} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
+    <button onClick={onClick} disabled={disabled} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50"
       style={{ background: accent ? 'var(--accent-bg-hover)' : 'var(--accent-bg)', color: 'var(--text-2)' }}>
       <Icon size={13} />{children}
     </button>

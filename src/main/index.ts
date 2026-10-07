@@ -728,7 +728,6 @@ function setupIpcHandlers(): void {
 
     const result = await transcribeAudio(audioBuffer, settings)
 
-    // Обновляем запись в истории
     const updated = {
       ...item,
       text: result.text,
@@ -738,16 +737,17 @@ function setupIpcHandlers(): void {
       model: settings.model
     }
 
-    store.deleteHistory(id)
-    store.addHistory(updated)
+    // Удачную запись неудачный повтор не портит: сохранённый текст остаётся, ошибка уходит только вызывающему
+    const keepsGoodText = item.status === 'success' && result.error
+    if (!keepsGoodText) store.replaceHistoryItem(updated)
     refreshTrayMenu()
 
-    if (!result.error && settings.autoPaste && result.text.trim()) {
+    // Автовставка — для записи, которая только что не удалась; ручной повтор готовой записи ничего не вставляет
+    if (!result.error && item.status === 'error' && settings.autoPaste && result.text.trim()) {
       pasteText(result.text, settings.keepInClipboard)
     }
 
     showOverlay('hidden')
-    mainWindow?.webContents.send('transcription-complete', updated)
 
     return updated
   })

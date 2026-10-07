@@ -192,7 +192,7 @@ export interface VoiceTypeAPI {
   deleteHistoryItem: (id: string) => Promise<void>
   clearHistory: () => Promise<void>
   rePaste: (id: string) => Promise<void>
-  retryTranscription: (id: string) => Promise<TranscriptionRecord>
+  retryTranscription: (id: string) => Promise<TranscriptionRecord | null>
   /** videoOffsetMs — на сколько видео стартовало позже аудио; null, если экран не писался */
   submitMeeting: (audioData: ArrayBuffer, durationMs: number, videoOffsetMs: number | null) => Promise<MeetingRecord>
   getMeetings: () => Promise<MeetingRecord[]>
