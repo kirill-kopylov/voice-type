@@ -40,9 +40,6 @@ export function installDevMock(): void {
     remoteControlKey: ''
   }
 
-  // Валидный WAV с тишиной на 15 секунд — decodeAudioData разберёт
-  const fakeAudio = makeSilentWav(15, 16000)
-
   const noop = async (): Promise<void> => {}
   const unsub = (): (() => void) => () => {}
 
@@ -51,7 +48,6 @@ export function installDevMock(): void {
     getMeetings: async () => [mockMeeting],
     getSettings: async () => mockSettings,
     getVoiceProfiles: async () => [],
-    getMeetingAudio: async () => fakeAudio,
     createVoiceProfileFromMeeting: async (meetingId, _speaker, name) => ({
       profile: {
         id: 'p-' + Date.now(),
@@ -67,9 +63,9 @@ export function installDevMock(): void {
     getVoiceProfileAudio: async () => null,
     copyText: noop,
     renameMeetingSpeaker: noop,
-    addMeetingNote: async (_id, text) => ({
+    addMeetingNote: async (_id, text, atSec) => ({
       ...mockMeeting,
-      notes: [{ id: 'n-' + Date.now(), text, source: 'user' as const, author: 'Я', createdAt: new Date().toISOString() }]
+      notes: [{ id: 'n-' + Date.now(), text, source: 'user' as const, author: 'Я', createdAt: new Date().toISOString(), atSec }]
     }),
     updateMeetingNote: async () => null,
     deleteMeetingNote: async () => ({ ...mockMeeting, notes: [] }),
@@ -111,30 +107,4 @@ export function installDevMock(): void {
 
   ;(window as unknown as { api: VoiceTypeAPI }).api = api
   console.log('[dev-mock] window.api installed')
-}
-
-function makeSilentWav(seconds: number, sampleRate: number): ArrayBuffer {
-  const numSamples = seconds * sampleRate
-  const byteLength = numSamples * 2
-  const buffer = new ArrayBuffer(44 + byteLength)
-  const view = new DataView(buffer)
-
-  const writeString = (o: number, s: string): void => {
-    for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i))
-  }
-  writeString(0, 'RIFF')
-  view.setUint32(4, 36 + byteLength, true)
-  writeString(8, 'WAVE')
-  writeString(12, 'fmt ')
-  view.setUint32(16, 16, true)
-  view.setUint16(20, 1, true)
-  view.setUint16(22, 1, true)
-  view.setUint32(24, sampleRate, true)
-  view.setUint32(28, sampleRate * 2, true)
-  view.setUint16(32, 2, true)
-  view.setUint16(34, 16, true)
-  writeString(36, 'data')
-  view.setUint32(40, byteLength, true)
-  // PCM уже нулевой (тишина)
-  return buffer
 }

@@ -31,10 +31,9 @@ const api: VoiceTypeAPI = {
   deleteMeetingVideo: (id) => ipcRenderer.invoke('delete-meeting-video', id),
   revealMeetingVideo: (id) => ipcRenderer.invoke('reveal-meeting-video', id),
   renameMeetingSpeaker: (id, oldName, newName) => ipcRenderer.invoke('rename-meeting-speaker', id, oldName, newName),
-  addMeetingNote: (meetingId, text) => ipcRenderer.invoke('add-meeting-note', meetingId, text),
+  addMeetingNote: (meetingId, text, atSec) => ipcRenderer.invoke('add-meeting-note', meetingId, text, atSec),
   updateMeetingNote: (meetingId, noteId, text) => ipcRenderer.invoke('update-meeting-note', meetingId, noteId, text),
   deleteMeetingNote: (meetingId, noteId) => ipcRenderer.invoke('delete-meeting-note', meetingId, noteId),
-  getMeetingAudio: (fileName) => ipcRenderer.invoke('get-meeting-audio', fileName),
   generateMeetingSummary: (id) => ipcRenderer.invoke('generate-meeting-summary', id),
   retryMeeting: (id) => ipcRenderer.invoke('retry-meeting', id),
 

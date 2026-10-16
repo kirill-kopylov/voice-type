@@ -129,7 +129,7 @@ class AppStore {
   }
 
   // Заметки к встрече: возвращают обновлённую встречу или undefined, если встречи/заметки нет
-  addMeetingNote(meetingId: string, input: Pick<MeetingNote, 'text' | 'source' | 'author'>): MeetingRecord | undefined {
+  addMeetingNote(meetingId: string, input: Pick<MeetingNote, 'text' | 'source' | 'author' | 'atSec'>): MeetingRecord | undefined {
     const meeting = this.getMeeting(meetingId)
     if (!meeting) return undefined
     const note: MeetingNote = { id: randomUUID(), createdAt: new Date().toISOString(), ...input }

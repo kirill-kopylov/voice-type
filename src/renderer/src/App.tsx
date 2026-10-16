@@ -334,8 +334,8 @@ export function App(): JSX.Element {
     setMeetings((prev) => prev.map((m) => (m.id === meetingId ? { ...m, notes } : m)))
   }
 
-  const handleAddNote = async (meetingId: string, text: string): Promise<void> => {
-    applyNotes(meetingId, await window.api.addMeetingNote(meetingId, text))
+  const handleAddNote = async (meetingId: string, text: string, atSec?: number): Promise<void> => {
+    applyNotes(meetingId, await window.api.addMeetingNote(meetingId, text, atSec))
   }
 
   const handleUpdateNote = async (meetingId: string, noteId: string, text: string): Promise<void> => {

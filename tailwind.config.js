@@ -44,11 +44,17 @@ module.exports = {
       },
       animation: {
         'pulse-recording': 'pulse-recording 1.5s ease-in-out infinite',
+        'rise-in': 'rise-in 180ms ease-out',
       },
       keyframes: {
         'pulse-recording': {
           '0%, 100%': { opacity: '1', transform: 'scale(1)' },
           '50%': { opacity: '0.6', transform: 'scale(1.1)' }
+        },
+        // Через translate, а не transform: не сбивает -translate-x-1/2 у элементов по центру
+        'rise-in': {
+          from: { opacity: '0', translate: '0 6px' },
+          to: { opacity: '1', translate: '0 0' }
         },
       }
     }

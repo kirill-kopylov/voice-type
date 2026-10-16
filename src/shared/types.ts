@@ -13,12 +13,22 @@ export interface MeetingDecision {
   text: string
   assignee?: string
   deadline?: string
+  /** Момент встречи, где договорились, — секунды от начала */
+  atSec?: number
+}
+
+/** Глава встречи — смена темы разговора; start в секундах от начала */
+export interface MeetingChapter {
+  start: number
+  title: string
 }
 
 export interface MeetingSummary {
   brief: string                              // 2-3 предложения
   topics: string[]
   decisions: MeetingDecision[]
+  /** Оглавление по времени: пусто — встреча короткая или на одну тему; нет поля — саммари сделано до появления глав */
+  chapters?: MeetingChapter[]
   guessedNames?: Record<string, string>      // raw speaker -> guessed name
 }
 
@@ -30,6 +40,8 @@ export interface MeetingNote {
   author: string
   createdAt: string
   updatedAt?: string
+  /** Заметка к моменту встречи — секунды от начала */
+  atSec?: number
 }
 
 /** Что снимать на видео во время встречи */
@@ -221,10 +233,10 @@ export interface VoiceTypeAPI {
   deleteMeetingVideo: (id: string) => Promise<MeetingRecord | null>
   revealMeetingVideo: (id: string) => Promise<void>
   renameMeetingSpeaker: (id: string, oldName: string, newName: string) => Promise<void>
-  addMeetingNote: (meetingId: string, text: string) => Promise<MeetingRecord | null>
+  /** atSec — заметка к моменту встречи */
+  addMeetingNote: (meetingId: string, text: string, atSec?: number) => Promise<MeetingRecord | null>
   updateMeetingNote: (meetingId: string, noteId: string, text: string) => Promise<MeetingRecord | null>
   deleteMeetingNote: (meetingId: string, noteId: string) => Promise<MeetingRecord | null>
-  getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
   generateMeetingSummary: (id: string) => Promise<MeetingRecord | null>
   /** Расшифровка с нуля в фоне; ход — в onMeetingUpdated */
   retryMeeting: (id: string) => Promise<void>

@@ -5,17 +5,12 @@ import {
   type SearchDocType, type SearchMode
 } from '../../shared/search'
 import { describeEvents, eventsBetween } from '../../shared/screen-events'
+import { formatClock } from '../../shared/meeting-timeline'
 import type { MeetingDecision, MeetingNote, MeetingRecord, ScreenEvent, TranscriptionRecord } from '../../shared/types'
 import { formatLocalDate, formatLocalDateTime, isInRange, type DateRange } from './dates'
 
 // Внутренний запас: сортировка по дате применяется к лучшим совпадениям, а не к первым попавшимся
 const SEARCH_CANDIDATES = 500
-
-export const formatClock = (seconds: number): string => {
-  const total = Math.floor(seconds)
-  const minutes = Math.floor(total / 60)
-  return `${String(minutes).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-}
 
 const minutesOf = (durationMs: number): number => Math.round(durationMs / 6000) / 10
 
@@ -184,6 +179,8 @@ export interface NoteView {
   author: string
   date: string
   edited?: boolean
+  /** Момент встречи, к которому привязана заметка */
+  at?: string
 }
 
 export interface TranscriptView {
@@ -199,9 +196,26 @@ export interface MeetingView extends Omit<MeetingListItem, 'brief' | 'topics' | 
   status: MeetingRecord['status']
   error?: string
   summaryStatus?: MeetingRecord['summaryStatus']
-  summary?: { brief: string; topics: string[]; decisions: MeetingDecision[] }
+  summary?: SummaryView
   notes?: NoteView[]
   transcript?: TranscriptView
+}
+
+/** Времена — «мм:сс», как в расшифровке: агенту проще сопоставлять */
+export interface SummaryView {
+  brief: string
+  topics: string[]
+  decisions: Array<Omit<MeetingDecision, 'atSec'> & { at?: string }>
+  chapters?: string[]
+}
+
+function toSummaryView({ brief, topics, decisions, chapters }: NonNullable<MeetingRecord['summary']>): SummaryView {
+  return {
+    brief,
+    topics,
+    decisions: decisions.map(({ atSec, ...decision }) => ({ ...decision, at: atSec === undefined ? undefined : formatClock(atSec) })),
+    chapters: chapters?.map((chapter) => `${formatClock(chapter.start)} ${chapter.title}`)
+  }
 }
 
 export const DEFAULT_TRANSCRIPT_CHARS = 20000
@@ -213,7 +227,8 @@ export function toNoteView(note: MeetingNote): NoteView {
     source: note.source,
     author: note.author,
     date: formatLocalDateTime(note.createdAt),
-    edited: note.updatedAt ? true : undefined
+    edited: note.updatedAt ? true : undefined,
+    at: note.atSec === undefined ? undefined : formatClock(note.atSec)
   }
 }
 
@@ -227,7 +242,7 @@ export function getMeetingView(meeting: MeetingRecord, params: MeetingViewParams
     date: formatLocalDateTime(createdAt),
     durationMin: minutesOf(durationMs),
     speakers: meetingSpeakers(meeting),
-    summary: include.includes('summary') ? meeting.summary : undefined,
+    summary: include.includes('summary') && meeting.summary ? toSummaryView(meeting.summary) : undefined,
     notes: include.includes('notes') ? (meeting.notes ?? []).map(toNoteView) : undefined,
     transcript: include.includes('transcript') ? formatTranscript(meeting, params) : undefined
   }

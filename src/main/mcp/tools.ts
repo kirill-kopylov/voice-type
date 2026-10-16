@@ -6,9 +6,10 @@ import type { MeetingNote, MeetingRecord } from '../../shared/types'
 import { store } from '../services/store'
 import { extractFrames } from '../services/video-frames'
 import { loadEvents, videoPath } from '../services/video-storage'
+import { formatClock, parseClock } from '../../shared/meeting-timeline'
 import { DateInputError, resolveDateRange } from './dates'
 import {
-  buildDigest, formatClock, getDictationView, getMeetingView, listDictations, listMeetings, screenEventEntries, searchRecords, toNoteView
+  buildDigest, getDictationView, getMeetingView, listDictations, listMeetings, screenEventEntries, searchRecords, toNoteView
 } from './queries'
 
 const SERVER_INSTRUCTIONS = [
@@ -261,14 +262,17 @@ export function createMcpServer(host: McpToolsHost): McpServer {
     inputSchema: {
       meeting_id: z.string(),
       text: z.string().min(1).max(MAX_NOTE_CHARS),
-      author: z.string().max(60).optional().describe('Who writes it — your name, e.g. "Claude Code". Default: agent.')
+      author: z.string().max(60).optional().describe('Who writes it — your name, e.g. "Claude Code". Default: agent.'),
+      at: z.string().regex(/^(\d+:)?\d+:\d{1,2}$/).optional()
+        .describe('Moment of the meeting the note is about, "mm:ss" as in the transcript. The user sees it as a mark on the player timeline.')
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
   }, (args) => {
     const updated = store.addMeetingNote(args.meeting_id, {
       text: args.text.trim(),
       source: 'agent',
-      author: args.author?.trim() || AGENT_AUTHOR
+      author: args.author?.trim() || AGENT_AUTHOR,
+      atSec: args.at ? parseClock(args.at) ?? undefined : undefined
     })
     if (!updated) return fail(`Meeting ${args.meeting_id} not found`)
     notifyNotes(host, updated)

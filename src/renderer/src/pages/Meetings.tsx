@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw, StickyNote, Bot, Plus, Video, FolderOpen, MousePointerClick, Keyboard, Type, Clipboard, Pencil, PanelTop, Eye, EyeOff, Upload } from 'lucide-react'
-import type { MeetingRecord, MeetingNote, DialogSegment, VoiceProfile, ScreenEvent } from '@shared/types'
-import { describeEvents, type EventLine } from '@shared/screen-events'
+import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw, StickyNote, Bot, Plus, FolderOpen, Upload, ListVideo } from 'lucide-react'
+import type { MeetingRecord, MeetingNote, VoiceProfile } from '@shared/types'
+import { chapterRanges, formatClock, matchingSegments, speakerShares } from '@shared/meeting-timeline'
 import { formatDateTime, formatDuration } from '../utils/format'
 import { MeetingLevelMeter } from '../components/MeetingLevelMeter'
-import { useMeetingAudio } from '../hooks/useMeetingAudio'
-import { meetingVideoUrl, useMeetingVideo, type MeetingVideo } from '../hooks/useMeetingVideo'
+import { useMediaPlayer } from '../hooks/useMediaPlayer'
+import { MeetingPlayer } from '../components/meeting-player/MeetingPlayer'
+import { ChapterList } from '../components/meeting-player/ChapterList'
+import { speakerColors } from '../components/meeting-player/speaker-colors'
+import type { TimelineMarker } from '../components/meeting-player/PlayerTimeline'
+import { MeetingTranscript } from '../components/meeting-transcript/MeetingTranscript'
 
 interface Props {
   meetings: MeetingRecord[]
@@ -14,7 +18,7 @@ interface Props {
   onDelete: (id: string) => void
   onDeleteVideo: (id: string) => void
   onRenameSpeaker: (id: string, oldName: string, newName: string) => void
-  onAddNote: (meetingId: string, text: string) => void
+  onAddNote: (meetingId: string, text: string, atSec?: number) => void
   onUpdateNote: (meetingId: string, noteId: string, text: string) => void
   onDeleteNote: (meetingId: string, noteId: string) => void
   onSaveVoiceProfile: (meetingId: string, speaker: string, name: string) => void
@@ -136,7 +140,7 @@ export function Meetings({
               onDelete={() => onDelete(m.id)}
               onDeleteVideo={() => onDeleteVideo(m.id)}
               onRenameSpeaker={(oldName, newName) => onRenameSpeaker(m.id, oldName, newName)}
-              onAddNote={(text) => onAddNote(m.id, text)}
+              onAddNote={(text, atSec) => onAddNote(m.id, text, atSec)}
               onUpdateNote={(noteId, text) => onUpdateNote(m.id, noteId, text)}
               onDeleteNote={(noteId) => onDeleteNote(m.id, noteId)}
               onSaveVoiceProfile={(speaker, name) => onSaveVoiceProfile(m.id, speaker, name)}
@@ -240,37 +244,25 @@ function VoiceProfileRow({ profile, active, onDelete }: { profile: VoiceProfile;
   )
 }
 
-function MeetingCard({
-  meeting: m, expanded, onToggle, onDelete, onDeleteVideo, onRenameSpeaker, onAddNote, onUpdateNote, onDeleteNote,
-  onSaveVoiceProfile, onGenerateSummary, onRetry, showToast
-}: {
-  meeting: MeetingRecord
-  expanded: boolean
-  onToggle: () => void
+interface MeetingCardActions {
   onDelete: () => void
   onDeleteVideo: () => void
   onRenameSpeaker: (oldName: string, newName: string) => void
-  onAddNote: (text: string) => void
+  onAddNote: (text: string, atSec?: number) => void
   onUpdateNote: (noteId: string, text: string) => void
   onDeleteNote: (noteId: string) => void
   onSaveVoiceProfile: (speaker: string, name: string) => void
   onGenerateSummary: () => void
   onRetry: () => void
   showToast: (message: string, type: 'success' | 'error') => void
-}): JSX.Element {
-  const audio = useMeetingAudio(m.audioFileName)
-  const video = useMeetingVideo()
-  const speakerName = (raw: string): string => m.speakerNames[raw] ?? raw
-  const uniqueSpeakers = Array.from(new Set(m.segments.map((s) => s.speaker)))
-  const [showEvents, setShowEvents] = useState(true)
-  const eventLines = useScreenEventLines(m, expanded)
-  const timeline = useMemo(() => buildTimeline(m.segments, showEvents ? eventLines : []), [m.segments, eventLines, showEvents])
+}
 
-  const handleCopyDialog = (): void => {
-    const text = m.segments.map((s) => `${speakerName(s.speaker)}: ${s.text}`).join('\n\n')
-    window.api.copyText(text)
-    showToast('Диалог скопирован', 'success')
-  }
+function MeetingCard({ meeting: m, expanded, onToggle, ...actions }: MeetingCardActions & {
+  meeting: MeetingRecord
+  expanded: boolean
+  onToggle: () => void
+}): JSX.Element {
+  const speakerCount = new Set(m.segments.map((s) => s.speaker)).size
 
   return (
     <div className="glass rounded-xl overflow-hidden transition-colors" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
@@ -288,7 +280,8 @@ function MeetingCard({
             </p>
           ) : (
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-4)' }}>
-              {m.segments.length} реплик · {uniqueSpeakers.length} {uniqueSpeakers.length === 1 ? 'спикер' : 'спикеров'}
+              {m.segments.length} реплик · {speakerCount} {speakerCount === 1 ? 'спикер' : 'спикеров'}
+              {(m.summary?.chapters?.length ?? 0) > 0 && ` · глав: ${m.summary?.chapters?.length}`}
               {(m.notes?.length ?? 0) > 0 && ` · заметок: ${m.notes?.length}`}
               {m.summaryStatus === 'pending' && ' · саммари готовится...'}
             </p>
@@ -298,149 +291,207 @@ function MeetingCard({
         <span className="text-xs shrink-0" style={{ color: 'var(--text-4)' }}>{formatDateTime(m.createdAt)}</span>
       </div>
 
-      {expanded && (
-        <div className="px-4 py-4 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
-          {/* Панель действий */}
-          <div className="flex items-center gap-2 flex-wrap">
+      {expanded && <MeetingDetails meeting={m} {...actions} />}
+    </div>
+  )
+}
+
+// Короче этого модель глав не делает — и подсказку «пересчитать ради оглавления» не показываем
+const CHAPTERS_MIN_SEC = 240
+
+/**
+ * Раскрытая встреча. Плеер — общий для всего, что ниже: оглавление, договорённости, заметки и диалог
+ * перематывают его, а он подсвечивает, где сейчас запись.
+ */
+function MeetingDetails({
+  meeting: m, onDelete, onDeleteVideo, onRenameSpeaker, onAddNote, onUpdateNote, onDeleteNote,
+  onSaveVoiceProfile, onGenerateSummary, onRetry, showToast
+}: MeetingCardActions & { meeting: MeetingRecord }): JSX.Element {
+  const segments = useMemo(() => [...m.segments].sort((a, b) => a.start - b.start), [m.segments])
+  const player = useMediaPlayer(m.id, m.durationMs / 1000)
+  const colors = useMemo(() => speakerColors(segments), [segments])
+  const shares = useMemo(() => speakerShares(segments), [segments])
+  const chapters = useMemo(() => chapterRanges(m.summary?.chapters ?? [], player.duration), [m.summary?.chapters, player.duration])
+  const [query, setQuery] = useState('')
+  const matches = useMemo(() => matchingSegments(segments, query), [segments, query])
+  const matchTimes = useMemo(() => matches.map((index) => segments[index].start), [matches, segments])
+  const [noteMoment, setNoteMoment] = useState<number | null>(null)
+  const speakerName = (raw: string): string => m.speakerNames[raw] ?? raw
+
+  const markers = useMemo((): TimelineMarker[] => [
+    ...(m.summary?.decisions ?? []).flatMap((d) => (d.atSec === undefined ? [] : [{ atSec: d.atSec, kind: 'decision' as const, label: d.text }])),
+    ...(m.notes ?? []).flatMap((n) => (n.atSec === undefined ? [] : [{ atSec: n.atSec, kind: 'note' as const, label: n.text }]))
+  ], [m.summary?.decisions, m.notes])
+
+  const copy = (text: string, message: string): void => {
+    void window.api.copyText(text)
+    showToast(message, 'success')
+  }
+
+  const handleCopyDialog = (): void => {
+    copy(segments.map((s) => `${speakerName(s.speaker)}: ${s.text}`).join('\n\n'), 'Диалог скопирован')
+  }
+
+  const seekAndPlay = (atSec: number): void => player.seek(atSec, true)
+  // Саммари сделано до появления глав, а встреча достаточно длинная, чтобы они были
+  const chaptersMissing = m.summary !== undefined && m.summary.chapters === undefined && m.summaryStatus !== 'pending' && player.duration >= CHAPTERS_MIN_SEC
+
+  return (
+    <div className="px-4 py-4 space-y-5" style={{ borderTop: '1px solid var(--border)' }}>
+      {/* Панель действий */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {m.status !== 'processing' && (
+          <button
+            onClick={onRetry}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
+            style={{
+              background: m.status === 'error' ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
+              color: m.status === 'error' ? 'var(--accent)' : 'var(--text-3)'
+            }}
+          >
+            <RotateCcw size={12} />
+            {m.status === 'error' ? 'Повторить транскрипцию' : 'Прогнать заново'}
+          </button>
+        )}
+        {m.status === 'success' && (
+          <>
             <button
-              onClick={() => { video.pause(); audio.toggleAll() }}
-              disabled={audio.loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50"
+              onClick={handleCopyDialog}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
               style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
             >
-              {audio.playing === 'all' ? <Pause size={12} /> : <Play size={12} />}
-              {audio.loading ? 'Загрузка...' : audio.playing === 'all' ? 'Пауза' : 'Прослушать'}
+              <Copy size={12} /> Скопировать диалог
             </button>
-            {m.status !== 'processing' && (
+            {(!m.summary || m.summaryStatus === 'error') && (
               <button
-                onClick={onRetry}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
-                style={{
-                  background: m.status === 'error' ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
-                  color: m.status === 'error' ? 'var(--accent)' : 'var(--text-3)'
-                }}
+                onClick={onGenerateSummary}
+                disabled={m.summaryStatus === 'pending'}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50"
+                style={{ background: 'var(--accent-bg-hover)', color: 'var(--accent)' }}
               >
-                <RotateCcw size={12} />
-                {m.status === 'error' ? 'Повторить транскрипцию' : 'Прогнать заново'}
+                {m.summaryStatus === 'pending' ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                {m.summaryStatus === 'error' ? 'Повторить саммари' : 'Сделать саммари'}
               </button>
             )}
-            {m.status === 'success' && (
-              <>
-                <button
-                  onClick={handleCopyDialog}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
-                  style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
-                >
-                  <Copy size={12} /> Скопировать диалог
-                </button>
-                {(!m.summary || m.summaryStatus === 'error') && (
-                  <button
-                    onClick={onGenerateSummary}
-                    disabled={m.summaryStatus === 'pending'}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50"
-                    style={{ background: 'var(--accent-bg-hover)', color: 'var(--accent)' }}
-                  >
-                    {m.summaryStatus === 'pending' ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                    {m.summaryStatus === 'error' ? 'Повторить саммари' : 'Сделать саммари'}
-                  </button>
-                )}
-                {m.summary && (
-                  <button
-                    onClick={onGenerateSummary}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
-                    style={{ background: 'var(--accent-bg)', color: 'var(--text-3)' }}
-                  >
-                    <RotateCcw size={11} /> Пересчитать саммари
-                  </button>
-                )}
-              </>
+            {m.summary && (
+              <button
+                onClick={onGenerateSummary}
+                disabled={m.summaryStatus === 'pending'}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50"
+                style={{ background: 'var(--accent-bg)', color: 'var(--text-3)' }}
+              >
+                <RotateCcw size={11} /> Пересчитать саммари
+              </button>
             )}
-            <button
-              onClick={onDelete}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ml-auto hover:bg-red-500/15"
-              style={{ color: 'var(--text-4)' }}
-            >
-              <Trash2 size={12} /> Удалить
-            </button>
-          </div>
+          </>
+        )}
+        <button
+          onClick={onDelete}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ml-auto hover:bg-red-500/15"
+          style={{ color: 'var(--text-4)' }}
+        >
+          <Trash2 size={12} /> Удалить
+        </button>
+      </div>
 
-          {m.videoFileName && (
-            <MeetingVideoBlock meeting={m} video={video} onDelete={onDeleteVideo} />
-          )}
+      <div className="space-y-2">
+        <MeetingPlayer
+          meeting={m}
+          player={player}
+          segments={segments}
+          chapters={chapters}
+          colors={colors}
+          speakerName={speakerName}
+          markers={markers}
+          matchTimes={matchTimes}
+          onNoteAtMoment={setNoteMoment}
+        />
+        <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-4)' }}>
+          <span>Пробел — пауза, ← → — 5 секунд, J L — 15, N — заметка к моменту</span>
+          {m.videoFileName && <VideoFileActions meetingId={m.id} onDelete={onDeleteVideo} />}
+        </div>
+      </div>
 
-          {/* Саммари */}
-          {m.summaryStatus === 'pending' && (
-            <div className="p-3 rounded-lg flex items-center gap-2 text-xs" style={{ background: 'var(--accent-bg)', color: 'var(--text-3)' }}>
-              <Loader2 size={12} className="animate-spin" /> Готовлю саммари встречи…
-            </div>
-          )}
-          {m.summaryStatus === 'error' && m.summaryError && (
-            <div className="p-3 rounded-lg text-xs" style={{ background: 'rgba(239,68,68,0.1)', color: '#fca5a5' }}>
-              Не получилось сделать саммари: {m.summaryError}
-            </div>
-          )}
-          {m.summary && <SummaryBlock summary={m.summary} speakerName={speakerName} />}
+      {chapters.length > 0 && (
+        <ChapterList
+          chapters={chapters}
+          player={player}
+          segments={segments}
+          speakerName={speakerName}
+          onCopy={(text) => copy(text, 'Глава скопирована')}
+        />
+      )}
+      {chaptersMissing && (
+        <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--accent-bg)', color: 'var(--text-3)' }}>
+          <ListVideo size={13} className="shrink-0" />
+          <span>Оглавления по темам пока нет: саммари этой встречи сделано раньше, чем появились главы.</span>
+          <button
+            onClick={onGenerateSummary}
+            className="ml-auto shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-lg"
+            style={{ background: 'var(--accent-bg-hover)', color: 'var(--accent)' }}
+          >
+            <Sparkles size={12} /> Пересчитать саммари
+          </button>
+        </div>
+      )}
 
-          <NotesBlock notes={m.notes ?? []} onAdd={onAddNote} onUpdate={onUpdateNote} onDelete={onDeleteNote} />
+      {/* Саммари */}
+      {m.summaryStatus === 'pending' && (
+        <div className="p-3 rounded-lg flex items-center gap-2 text-xs" style={{ background: 'var(--accent-bg)', color: 'var(--text-3)' }}>
+          <Loader2 size={12} className="animate-spin" /> Готовлю саммари и оглавление встречи…
+        </div>
+      )}
+      {m.summaryStatus === 'error' && m.summaryError && (
+        <div className="p-3 rounded-lg text-xs" style={{ background: 'rgba(239,68,68,0.1)', color: '#fca5a5' }}>
+          Не получилось сделать саммари: {m.summaryError}
+        </div>
+      )}
+      {m.summary && <SummaryBlock summary={m.summary} speakerName={speakerName} onSeek={seekAndPlay} />}
 
-          {m.status === 'success' && (
-            <>
-              {/* Спикеры — переименование + сохранение голоса */}
-              {uniqueSpeakers.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Спикеры</p>
-                  <div className="flex flex-wrap gap-2">
-                    {uniqueSpeakers.map((s) => (
-                      <SpeakerTag
-                        key={s}
-                        raw={s}
-                        displayName={speakerName(s)}
-                        onRename={(newName) => onRenameSpeaker(s, newName)}
-                        onSaveProfile={(name) => onSaveVoiceProfile(s, name)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+      <NotesBlock
+        notes={m.notes ?? []}
+        moment={noteMoment}
+        onClearMoment={() => setNoteMoment(null)}
+        onAdd={onAddNote}
+        onUpdate={onUpdateNote}
+        onDelete={onDeleteNote}
+        onSeek={seekAndPlay}
+      />
 
-              {/* Диалог */}
-              {eventLines.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Диалог</p>
-                  <button
-                    onClick={() => setShowEvents(!showEvents)}
-                    className="ml-auto flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg transition-colors"
-                    style={{ background: showEvents ? 'var(--accent-bg-hover)' : 'var(--accent-bg)', color: showEvents ? 'var(--accent)' : 'var(--text-3)' }}
-                    title="Клики, окна, набранный и скопированный текст, рисунки — по времени между репликами"
-                  >
-                    {showEvents ? <Eye size={12} /> : <EyeOff size={12} />}
-                    Системные события ({eventLines.length})
-                  </button>
-                </div>
-              )}
-              <div className="space-y-3">
-                {timeline.map((item) => item.type === 'line' ? (
-                  <DialogLine
-                    key={`line-${item.index}`}
-                    segment={item.segment}
-                    speakerName={speakerName(item.segment.speaker)}
-                    playing={audio.playing === item.index}
-                    loading={audio.loading}
-                    onTogglePlay={() => { video.pause(); audio.toggleRange(item.index, item.segment.start, item.segment.end) }}
-                    watching={m.videoFileName ? video.playingLine === item.index : undefined}
-                    onToggleWatch={() => { audio.stop(); video.playLine(item.index, item.segment.start, item.segment.end) }}
-                  />
-                ) : (
-                  <ScreenEventRow
-                    key={`event-${item.line.atMs}-${item.line.kind}`}
-                    line={item.line}
-                    onWatch={() => { audio.stop(); video.playLine(SCREEN_EVENT_LINE, Math.max(0, item.line.atMs / 1000 - 1), item.line.atMs / 1000 + 5) }}
+      {m.status === 'success' && (
+        <>
+          {/* Спикеры — цвет как на таймлайне, доля речи, переименование и сохранение голоса */}
+          {colors.size > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Спикеры</p>
+              <div className="flex flex-wrap gap-2">
+                {[...colors].map(([raw, color]) => (
+                  <SpeakerTag
+                    key={raw}
+                    raw={raw}
+                    displayName={speakerName(raw)}
+                    color={color}
+                    share={shares.get(raw) ?? 0}
+                    onRename={(newName) => onRenameSpeaker(raw, newName)}
+                    onSaveProfile={(name) => onSaveVoiceProfile(raw, name)}
                   />
                 ))}
               </div>
-            </>
+            </div>
           )}
-        </div>
+
+          <MeetingTranscript
+            meeting={m}
+            segments={segments}
+            chapters={chapters}
+            player={player}
+            colors={colors}
+            speakerName={speakerName}
+            query={query}
+            onQueryChange={setQuery}
+            matches={matches}
+          />
+        </>
       )}
     </div>
   )
@@ -453,74 +504,7 @@ const STATUS_DOT_CLASSES: Record<MeetingRecord['status'], string> = {
   error: 'bg-red-300'
 }
 
-// События экрана не реплики: у плеера для них общий номер «строки»
-const SCREEN_EVENT_LINE = -1
-
-type TimelineItem =
-  | { type: 'line'; index: number; segment: DialogSegment }
-  | { type: 'event'; line: EventLine }
-
-/** Реплики и события экрана одной лентой по времени. */
-function buildTimeline(segments: DialogSegment[], events: EventLine[]): TimelineItem[] {
-  const items: Array<TimelineItem & { atSec: number }> = [
-    ...segments.map((segment, index): TimelineItem & { atSec: number } => ({ type: 'line', index, segment, atSec: segment.start })),
-    ...events.map((line): TimelineItem & { atSec: number } => ({ type: 'event', line, atSec: line.atMs / 1000 }))
-  ]
-  return items.sort((a, b) => a.atSec - b.atSec)
-}
-
-/** События экрана встречи с видео: грузятся при раскрытии карточки, пересчитываются в строки. */
-function useScreenEventLines(meeting: MeetingRecord, expanded: boolean): EventLine[] {
-  const [events, setEvents] = useState<ScreenEvent[]>([])
-
-  useEffect(() => {
-    if (!expanded || !meeting.videoFileName) {
-      setEvents([])
-      return
-    }
-    let cancelled = false
-    window.api.getMeetingEvents(meeting.id).then((loaded) => { if (!cancelled) setEvents(loaded) })
-    return () => { cancelled = true }
-  }, [expanded, meeting.id, meeting.videoFileName])
-
-  return useMemo(() => describeEvents(events), [events])
-}
-
-const EVENT_ICONS: Record<ScreenEvent['kind'], typeof Keyboard> = {
-  click: MousePointerClick,
-  key: Keyboard,
-  text: Type,
-  clipboard: Clipboard,
-  window: PanelTop,
-  drawing: Pencil
-}
-
-function ScreenEventRow({ line, onWatch }: { line: EventLine; onWatch: () => void }): JSX.Element {
-  const Icon = EVENT_ICONS[line.kind]
-  const minutes = Math.floor(line.atMs / 60000)
-  const seconds = Math.floor((line.atMs % 60000) / 1000).toString().padStart(2, '0')
-
-  return (
-    <div className="flex gap-3 select-text">
-      <div className="shrink-0 w-24 text-[10px]" style={{ color: 'var(--text-4)' }}>{minutes}:{seconds}</div>
-      <button
-        onClick={onWatch}
-        className="flex-1 flex items-start gap-1.5 text-left text-[11px] leading-snug rounded-md px-2 py-1 transition-colors"
-        style={{ background: 'var(--accent-bg)', color: 'var(--text-3)' }}
-        title="Показать этот момент на видео"
-      >
-        <Icon size={11} className="mt-0.5 shrink-0" style={{ color: 'var(--accent)' }} />
-        <span>{line.text}</span>
-      </button>
-    </div>
-  )
-}
-
-function MeetingVideoBlock({ meeting, video, onDelete }: {
-  meeting: MeetingRecord
-  video: MeetingVideo
-  onDelete: () => void
-}): JSX.Element {
+function VideoFileActions({ meetingId, onDelete }: { meetingId: string; onDelete: () => void }): JSX.Element {
   const [confirming, setConfirming] = useState(false)
 
   // Удаление необратимо — просим второй клик, а если пользователь передумал, кнопка возвращается сама
@@ -531,42 +515,45 @@ function MeetingVideoBlock({ meeting, video, onDelete }: {
   }, [confirming])
 
   return (
-    <div className="space-y-2">
-      <video
-        ref={video.videoRef}
-        onPause={video.onPause}
-        src={meetingVideoUrl(meeting.videoFileName ?? '')}
-        controls
-        preload="metadata"
-        className="w-full rounded-lg bg-black"
-        style={{ maxHeight: 420 }}
-      />
-      <div className="flex items-center gap-2">
-        <Video size={13} style={{ color: 'var(--text-3)' }} />
-        <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Видео встречи</span>
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={() => window.api.revealMeetingVideo(meeting.id)}
-            className="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg transition-colors"
-            style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
-          >
-            <FolderOpen size={12} /> Открыть файл
-          </button>
-          <button
-            onClick={() => (confirming ? onDelete() : setConfirming(true))}
-            className="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg transition-colors hover:bg-red-500/15"
-            style={{ color: confirming ? '#fca5a5' : 'var(--text-4)' }}
-            title="Звук и расшифровка останутся"
-          >
-            <Trash2 size={12} /> {confirming ? 'Точно удалить видео?' : 'Удалить видео'}
-          </button>
-        </div>
-      </div>
+    <div className="ml-auto flex items-center gap-2 shrink-0">
+      <button
+        onClick={() => window.api.revealMeetingVideo(meetingId)}
+        className="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg transition-colors"
+        style={{ background: 'var(--accent-bg)', color: 'var(--text-2)' }}
+      >
+        <FolderOpen size={12} /> Открыть файл
+      </button>
+      <button
+        onClick={() => (confirming ? onDelete() : setConfirming(true))}
+        className="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg transition-colors hover:bg-red-500/15"
+        style={{ color: confirming ? '#fca5a5' : 'var(--text-4)' }}
+        title="Звук и расшифровка останутся"
+      >
+        <Trash2 size={12} /> {confirming ? 'Точно удалить видео?' : 'Удалить видео'}
+      </button>
     </div>
   )
 }
 
-function SummaryBlock({ summary, speakerName }: { summary: NonNullable<MeetingRecord['summary']>; speakerName: (raw: string) => string }): JSX.Element {
+/** Тайм-код, который перематывает запись к моменту и включает её */
+function MomentButton({ atSec, onSeek }: { atSec: number; onSeek: (atSec: number) => void }): JSX.Element {
+  return (
+    <button
+      onClick={() => onSeek(atSec)}
+      className="shrink-0 px-1.5 rounded text-[11px] tabular-nums font-medium transition-colors hover:bg-[var(--accent-bg-hover)]"
+      style={{ color: 'var(--accent)' }}
+      title="Смотреть этот момент"
+    >
+      {formatClock(atSec)}
+    </button>
+  )
+}
+
+function SummaryBlock({ summary, speakerName, onSeek }: {
+  summary: NonNullable<MeetingRecord['summary']>
+  speakerName: (raw: string) => string
+  onSeek: (atSec: number) => void
+}): JSX.Element {
   const topics = summary.topics ?? []
   const decisions = summary.decisions ?? []
 
@@ -599,8 +586,8 @@ function SummaryBlock({ summary, speakerName }: { summary: NonNullable<MeetingRe
           <p className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-3)' }}>Договорённости</p>
           <ul className="space-y-1.5">
             {decisions.map((d, i) => (
-              <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--text-2)' }}>
-                <span style={{ color: 'var(--accent)' }}>•</span>
+              <li key={i} className="text-sm flex items-baseline gap-2" style={{ color: 'var(--text-2)' }}>
+                {d.atSec === undefined ? <span className="w-[42px] text-center shrink-0" style={{ color: 'var(--accent)' }}>•</span> : <MomentButton atSec={d.atSec} onSeek={onSeek} />}
                 <div>
                   <span>{d?.text ?? ''}</span>
                   {(d?.assignee || d?.deadline) && (
@@ -620,18 +607,28 @@ function SummaryBlock({ summary, speakerName }: { summary: NonNullable<MeetingRe
   )
 }
 
-function NotesBlock({ notes, onAdd, onUpdate, onDelete }: {
+function NotesBlock({ notes, moment, onClearMoment, onAdd, onUpdate, onDelete, onSeek }: {
   notes: MeetingNote[]
-  onAdd: (text: string) => void
+  /** Заметку пишут к этому моменту записи; null — к встрече в целом */
+  moment: number | null
+  onClearMoment: () => void
+  onAdd: (text: string, atSec?: number) => void
   onUpdate: (noteId: string, text: string) => void
   onDelete: (noteId: string) => void
+  onSeek: (atSec: number) => void
 }): JSX.Element {
   const [draft, setDraft] = useState('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (moment !== null) textareaRef.current?.focus()
+  }, [moment])
 
   const submit = (): void => {
     if (!draft.trim()) return
-    onAdd(draft.trim())
+    onAdd(draft.trim(), moment ?? undefined)
     setDraft('')
+    onClearMoment()
   }
 
   return (
@@ -642,20 +639,28 @@ function NotesBlock({ notes, onAdd, onUpdate, onDelete }: {
       </div>
 
       {notes.map((note) => (
-        <NoteItem key={note.id} note={note} onUpdate={(text) => onUpdate(note.id, text)} onDelete={() => onDelete(note.id)} />
+        <NoteItem key={note.id} note={note} onUpdate={(text) => onUpdate(note.id, text)} onDelete={() => onDelete(note.id)} onSeek={onSeek} />
       ))}
 
+      {moment !== null && (
+        <div className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--text-3)' }}>
+          Заметка к моменту
+          <MomentButton atSec={moment} onSeek={onSeek} />
+          <button onClick={onClearMoment} style={{ color: 'var(--text-4)' }} title="Писать к встрече целиком"><X size={11} /></button>
+        </div>
+      )}
       <div className="flex items-end gap-2">
         <textarea
+          ref={textareaRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit()
           }}
-          placeholder="Что сделано, какие задачи созданы, ссылки… (Ctrl+Enter — добавить)"
+          placeholder={moment !== null ? 'Что важно в этом месте… (Ctrl+Enter — добавить)' : 'Что сделано, какие задачи созданы, ссылки… (Ctrl+Enter — добавить)'}
           rows={2}
           className="flex-1 text-xs rounded-lg px-3 py-2 resize-y focus:outline-none select-text"
-          style={{ background: 'var(--accent-bg)', color: 'var(--text-1)', border: '1px solid var(--border)' }}
+          style={{ background: 'var(--accent-bg)', color: 'var(--text-1)', border: `1px solid ${moment !== null ? 'var(--accent-border)' : 'var(--border)'}` }}
         />
         <button
           onClick={submit}
@@ -670,10 +675,11 @@ function NotesBlock({ notes, onAdd, onUpdate, onDelete }: {
   )
 }
 
-function NoteItem({ note, onUpdate, onDelete }: {
+function NoteItem({ note, onUpdate, onDelete, onSeek }: {
   note: MeetingNote
   onUpdate: (text: string) => void
   onDelete: () => void
+  onSeek: (atSec: number) => void
 }): JSX.Element {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(note.text)
@@ -688,6 +694,7 @@ function NoteItem({ note, onUpdate, onDelete }: {
       <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-4)' }}>
         {note.source === 'agent' ? <Bot size={11} style={{ color: 'var(--accent)' }} /> : <StickyNote size={11} />}
         <span style={{ color: note.source === 'agent' ? 'var(--accent)' : 'var(--text-3)' }}>{note.author}</span>
+        {note.atSec !== undefined && <MomentButton atSec={note.atSec} onSeek={onSeek} />}
         <span>{formatDateTime(note.createdAt)}{note.updatedAt && ' · изменено'}</span>
         <div className="ml-auto flex items-center gap-1.5">
           {!editing && <button onClick={() => { setValue(note.text); setEditing(true) }} title="Изменить"><Edit2 size={11} /></button>}
@@ -716,10 +723,14 @@ function NoteItem({ note, onUpdate, onDelete }: {
 }
 
 function SpeakerTag({
-  raw, displayName, onRename, onSaveProfile
+  raw, displayName, color, share, onRename, onSaveProfile
 }: {
   raw: string
   displayName: string
+  /** Цвет спикера на таймлайне и в диалоге */
+  color: string
+  /** Доля речи, 0..1 */
+  share: number
   onRename: (name: string) => void
   onSaveProfile: (name: string) => void
 }): JSX.Element {
@@ -763,69 +774,16 @@ function SpeakerTag({
   }
 
   return (
-    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg" style={{ background: 'var(--accent-bg)' }}>
+    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'var(--accent-bg)' }} title={raw}>
+      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
       <span className="text-xs" style={{ color: 'var(--text-2)' }}>{displayName}</span>
+      <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-4)' }} title="Доля времени речи">{Math.round(share * 100)}%</span>
       <button onClick={() => { setValue(displayName); setMode('rename') }} title="Переименовать" style={{ color: 'var(--text-4)' }}>
         <Edit2 size={10} />
       </button>
       <button onClick={startProfile} title="Сохранить голос как профиль" style={{ color: 'var(--accent)' }}>
         <UserPlus size={11} />
       </button>
-    </div>
-  )
-}
-
-function DialogLine({ segment, speakerName, playing, loading, onTogglePlay, watching, onToggleWatch }: {
-  segment: DialogSegment
-  speakerName: string
-  playing: boolean
-  loading: boolean
-  onTogglePlay: () => void
-  /** Есть видео встречи: undefined — кнопки «Смотреть» нет, иначе играет ли сейчас этот кусок на видео */
-  watching?: boolean
-  onToggleWatch: () => void
-}): JSX.Element {
-  const mins = Math.floor(segment.start / 60)
-  const secs = Math.floor(segment.start % 60).toString().padStart(2, '0')
-
-  return (
-    <div className="flex gap-3 select-text">
-      <div className="shrink-0 w-24 pt-0.5">
-        <div className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{speakerName}</div>
-        <div className="text-[10px]" style={{ color: 'var(--text-4)' }}>{mins}:{secs}</div>
-      </div>
-      <div className="flex-1 space-y-1">
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-1)' }}>{segment.text}</p>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={onTogglePlay}
-            disabled={loading}
-            className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-md transition-colors disabled:opacity-50"
-            style={{
-              background: playing ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
-              color: playing ? 'var(--accent)' : 'var(--text-3)'
-            }}
-            title="Прослушать реплику"
-          >
-            {playing ? <Pause size={10} /> : <Play size={10} />}
-            {playing ? 'Пауза' : 'Слушать'}
-          </button>
-          {watching !== undefined && (
-            <button
-              onClick={onToggleWatch}
-              className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-md transition-colors"
-              style={{
-                background: watching ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
-                color: watching ? 'var(--accent)' : 'var(--text-3)'
-              }}
-              title="Показать этот момент на видео"
-            >
-              {watching ? <Pause size={10} /> : <Video size={10} />}
-              {watching ? 'Пауза' : 'Смотреть'}
-            </button>
-          )}
-        </div>
-      </div>
     </div>
   )
 }
