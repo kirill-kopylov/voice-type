@@ -5,6 +5,7 @@ import type { DialogSegment } from '@shared/types'
 import { indexAt } from '@shared/meeting-timeline'
 import { useMediaPaint, useMediaValue, type MediaPlayer } from '../../hooks/useMediaPlayer'
 import { PlayerClock } from './PlayerClock'
+import { OVERLAY_STYLE } from './overlay-style'
 
 interface Props {
   player: MediaPlayer
@@ -19,7 +20,7 @@ interface Props {
 
 /**
  * Плашка внизу окна, пока большой плеер прокручен из виду: читаешь саммари или диалог и не теряешь, что звучит.
- * В портале: карточка встречи со стеклом (backdrop-filter) удерживала бы fixed внутри себя.
+ * В портале: карточка встречи со стеклом темы (backdrop-filter) удерживала бы fixed внутри себя.
  */
 export function MiniPlayer({ player, title, segments, colors, speakerName, onReturn, onClose }: Props): JSX.Element {
   const progressRef = useRef<HTMLDivElement>(null)
@@ -33,13 +34,13 @@ export function MiniPlayer({ player, title, segments, colors, speakerName, onRet
   return createPortal(
     <div
       className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[min(560px,calc(100vw-2rem))] rounded-xl overflow-hidden motion-safe:animate-rise-in"
-      style={{ background: 'var(--surface-strong)', border: '1px solid var(--border-strong)', boxShadow: '0 12px 32px rgba(0,0,0,0.3)', backdropFilter: 'blur(12px)' }}
+      style={{ ...OVERLAY_STYLE, boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }}
     >
       <div className="flex items-center gap-3 px-3 py-2">
         <button
           onClick={player.toggle}
           className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-          style={{ background: 'var(--accent-bg-hover)', color: 'var(--accent-on-bg)' }}
+          style={{ background: 'rgba(255,255,255,0.14)', color: '#fff' }}
           title={player.playing ? 'Пауза' : 'Смотреть'}
         >
           {player.playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" className="ml-0.5" />}

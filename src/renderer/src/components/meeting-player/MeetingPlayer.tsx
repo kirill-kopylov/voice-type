@@ -120,7 +120,7 @@ export function MeetingPlayer({ meeting, player, segments, chapters, colors, spe
     <div
       ref={containerRef}
       className={`overflow-hidden ${fullscreen ? 'flex flex-col bg-black' : 'rounded-xl'}`}
-      style={fullscreen ? undefined : { border: '1px solid var(--border)', background: 'var(--surface-strong)' }}
+      style={fullscreen ? undefined : { border: '1px solid var(--border)' }}
     >
       {videoSrc ? (
         <div className={`relative bg-black ${fullscreen ? 'flex-1 min-h-0' : ''}`}>

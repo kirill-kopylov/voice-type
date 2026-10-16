@@ -3,6 +3,7 @@ import type { DialogSegment } from '@shared/types'
 import { captionIndexAt, formatClock, indexAt, type ChapterRange } from '@shared/meeting-timeline'
 import { useMediaPaint, type MediaPlayer } from '../../hooks/useMediaPlayer'
 import { PREVIEW_WIDTH, useFramePreview } from './useFramePreview'
+import { OVERLAY_STYLE } from './overlay-style'
 
 /** Отметка над таймлайном: договорённость из саммари или заметка к моменту */
 export interface TimelineMarker {
@@ -100,10 +101,8 @@ export function PlayerTimeline({ player, chapters, segments, colors, speakerName
         style={{
           left: hover ? clamp(hover.x, TOOLTIP_HALF_WIDTH, hover.width - TOOLTIP_HALF_WIDTH) : 0,
           visibility: hover ? 'visible' : 'hidden',
-          background: 'var(--surface-strong)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid var(--border-strong)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.25)'
+          ...OVERLAY_STYLE,
+          boxShadow: '0 6px 20px rgba(0,0,0,0.25)'
         }}
       >
         {previewSrc && <canvas ref={canvasRef} width={PREVIEW_WIDTH} height={90} className="w-full rounded bg-black" />}
@@ -124,7 +123,7 @@ export function PlayerTimeline({ player, chapters, segments, colors, speakerName
           <button
             key={`${marker.kind}-${marker.atSec}-${marker.label}`}
             className="absolute top-0.5 w-2 h-2 -translate-x-1/2 rounded-full transition-transform hover:scale-150"
-            style={{ left: `${percent(marker.atSec)}%`, background: MARKER_COLORS[marker.kind], boxShadow: '0 0 0 2px var(--surface-strong)' }}
+            style={{ left: `${percent(marker.atSec)}%`, background: MARKER_COLORS[marker.kind] }}
             title={`${formatClock(marker.atSec)} ${marker.label}`}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => seek(marker.atSec, true)}
@@ -132,30 +131,33 @@ export function PlayerTimeline({ player, chapters, segments, colors, speakerName
         ))}
       </div>
 
-      <div ref={trackRef} className="relative h-[5px] transition-[height] duration-150 group-hover:h-2">
-        {chapters.map((chapter, index) => (
+      {/* Место под полосу постоянное: на наведении она утолщается вверх, а не сдвигает всё ниже */}
+      <div ref={trackRef} className="relative h-2">
+        <div className="absolute inset-x-0 bottom-0 h-[5px] transition-[height] duration-150 group-hover:h-2">
+          {chapters.map((chapter, index) => (
+            <div
+              key={chapter.start}
+              className="absolute inset-y-0 rounded-full overflow-hidden transition-transform duration-150 origin-bottom"
+              style={{
+                left: spaced ? `calc(${percent(chapter.start)}% + 1.5px)` : 0,
+                width: spaced ? `calc(${percent(chapter.end) - percent(chapter.start)}% - 3px)` : '100%',
+                background: 'var(--border-strong)',
+                transform: hoverChapter === index ? 'scaleY(1.6)' : undefined
+              }}
+            >
+              <div ref={(el) => { fillRefs.current[index] = el }} className="absolute inset-y-0 left-0" style={{ background: 'var(--accent)' }} />
+            </div>
+          ))}
+          {matchTimes.map((atSec) => (
+            <div key={atSec} className="absolute -inset-y-0.5 w-0.5 rounded-full pointer-events-none" style={{ left: `${percent(atSec)}%`, background: MATCH_COLOR }} />
+          ))}
+          {hover && <div className="absolute -inset-y-1 w-px pointer-events-none" style={{ left: hover.x, background: 'var(--text-2)' }} />}
           <div
-            key={chapter.start}
-            className="absolute inset-y-0 rounded-full overflow-hidden transition-transform duration-150"
-            style={{
-              left: spaced ? `calc(${percent(chapter.start)}% + 1.5px)` : 0,
-              width: spaced ? `calc(${percent(chapter.end) - percent(chapter.start)}% - 3px)` : '100%',
-              background: 'var(--border-strong)',
-              transform: hoverChapter === index ? 'scaleY(1.6)' : undefined
-            }}
-          >
-            <div ref={(el) => { fillRefs.current[index] = el }} className="absolute inset-y-0 left-0" style={{ background: 'var(--accent)' }} />
-          </div>
-        ))}
-        {matchTimes.map((atSec) => (
-          <div key={atSec} className="absolute -inset-y-0.5 w-0.5 rounded-full pointer-events-none" style={{ left: `${percent(atSec)}%`, background: MATCH_COLOR }} />
-        ))}
-        {hover && <div className="absolute -inset-y-1 w-px pointer-events-none" style={{ left: hover.x, background: 'var(--text-2)' }} />}
-        <div
-          ref={knobRef}
-          className={`absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform duration-150 group-hover:scale-110 ${scrubbing ? 'scale-125' : 'scale-75'}`}
-          style={{ background: 'var(--accent)', boxShadow: '0 0 0 2px var(--surface-strong)' }}
-        />
+            ref={knobRef}
+            className={`absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform duration-150 group-hover:scale-110 ${scrubbing ? 'scale-125' : 'scale-75'}`}
+            style={{ background: 'var(--accent)' }}
+          />
+        </div>
       </div>
 
       {/* Кто говорит: каждая реплика — отрезок цвета спикера */}
