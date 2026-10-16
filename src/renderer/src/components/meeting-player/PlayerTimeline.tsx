@@ -132,17 +132,17 @@ export function PlayerTimeline({ player, chapters, segments, colors, speakerName
       </div>
 
       {/* Место под полосу постоянное: на наведении она утолщается вверх, а не сдвигает всё ниже */}
-      <div ref={trackRef} className="relative h-2">
-        <div className="absolute inset-x-0 bottom-0 h-[5px] transition-[height] duration-150 group-hover:h-2">
+      <div ref={trackRef} className="relative h-2.5">
+        {/* Кругляш центрован по этой полосе — при утолщении едет вместе с её серединой */}
+        <div className="absolute inset-x-0 bottom-0 h-[5px] transition-[height] duration-150 group-hover:h-2.5">
           {chapters.map((chapter, index) => (
             <div
               key={chapter.start}
-              className="absolute inset-y-0 rounded-full overflow-hidden transition-transform duration-150 origin-bottom"
+              className="absolute inset-y-0 rounded-full overflow-hidden transition-colors duration-150"
               style={{
                 left: spaced ? `calc(${percent(chapter.start)}% + 1.5px)` : 0,
                 width: spaced ? `calc(${percent(chapter.end) - percent(chapter.start)}% - 3px)` : '100%',
-                background: 'var(--border-strong)',
-                transform: hoverChapter === index ? 'scaleY(1.6)' : undefined
+                background: hoverChapter === index ? 'var(--text-4)' : 'var(--border-strong)'
               }}
             >
               <div ref={(el) => { fillRefs.current[index] = el }} className="absolute inset-y-0 left-0" style={{ background: 'var(--accent)' }} />
