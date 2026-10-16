@@ -6,6 +6,8 @@ import { meetingMediaUrl, useMediaValue, type MediaPlayer } from '../../hooks/us
 import { PlayerTimeline, type TimelineMarker } from './PlayerTimeline'
 import { PlayerClock } from './PlayerClock'
 import { MiniPlayer } from './MiniPlayer'
+import { OVERLAY_STYLE } from './overlay-style'
+import { useAutoHide } from './useAutoHide'
 
 interface Props {
   meeting: MeetingRecord
@@ -35,7 +37,9 @@ export function MeetingPlayer({ meeting, player, segments, chapters, colors, spe
   const [captions, setCaptions] = useState(() => localStorage.getItem(CAPTIONS_KEY) !== 'off')
   const [inView, setInView] = useState(true)
   const [miniDismissed, setMiniDismissed] = useState(false)
+  const [overControls, setOverControls] = useState(false)
   const { media, playing, duration } = player
+  const { hidden: controlsHidden, wake: showControls } = useAutoHide(fullscreen && playing && !overControls)
 
   const videoSrc = meeting.videoFileName ? meetingMediaUrl('video', meeting.videoFileName) : null
   const timelineChapters = chapters.length > 0 ? chapters : [{ start: 0, end: duration, title: '' }]
@@ -103,10 +107,11 @@ export function MeetingPlayer({ meeting, player, segments, chapters, colors, spe
       if (!action) return
       e.preventDefault()
       action()
+      showControls()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [showControls])
 
   if (player.failed) {
     return (
@@ -119,11 +124,12 @@ export function MeetingPlayer({ meeting, player, segments, chapters, colors, spe
   return (
     <div
       ref={containerRef}
-      className={`overflow-hidden ${fullscreen ? 'flex flex-col bg-black' : 'rounded-xl'}`}
+      className={`overflow-hidden ${fullscreen ? 'relative bg-black' : 'rounded-xl'}`}
       style={fullscreen ? undefined : { border: '1px solid var(--border)' }}
+      onPointerMove={fullscreen ? showControls : undefined}
     >
       {videoSrc ? (
-        <div className={`relative bg-black ${fullscreen ? 'flex-1 min-h-0' : ''}`}>
+        <div className={`bg-black ${fullscreen ? 'absolute inset-0' : 'relative'}`}>
           <video
             ref={player.attach}
             src={videoSrc}
@@ -131,7 +137,7 @@ export function MeetingPlayer({ meeting, player, segments, chapters, colors, spe
             playsInline
             onClick={player.toggle}
             onDoubleClick={toggleFullscreen}
-            className={`block w-full object-contain cursor-pointer ${fullscreen ? 'h-full' : 'max-h-[460px]'}`}
+            className={`block w-full object-contain ${controlsHidden ? 'cursor-none' : 'cursor-pointer'} ${fullscreen ? 'h-full' : 'max-h-[460px]'}`}
           />
           {captions && <Captions media={media} segments={segments} colors={colors} speakerName={speakerName} large={fullscreen} />}
           {!playing && (
@@ -149,7 +155,13 @@ export function MeetingPlayer({ meeting, player, segments, chapters, colors, spe
         </>
       )}
 
-      <div className="px-3 pb-2" style={fullscreen ? { background: 'var(--surface-strong)' } : undefined}>
+      {/* Во весь экран панель лежит поверх кадра и уезжает вниз — видео и субтитры не двигаются */}
+      <div
+        className={`px-3 pb-2 ${fullscreen ? 'absolute inset-x-0 bottom-0 transition-[opacity,transform] duration-200' : ''} ${controlsHidden ? 'opacity-0 translate-y-full pointer-events-none' : ''}`}
+        style={fullscreen ? OVERLAY_STYLE : undefined}
+        onPointerEnter={() => setOverControls(true)}
+        onPointerLeave={() => setOverControls(false)}
+      >
         <PlayerTimeline
           player={player}
           chapters={timelineChapters}
@@ -237,7 +249,8 @@ function Captions({ media, segments, colors, speakerName, large }: CaptionProps 
 
   const segment = segments[index]
   return (
-    <div className="absolute inset-x-0 bottom-0 pb-4 px-6 flex justify-center pointer-events-none">
+    // Во весь экран — постоянно над местом панели управления, чтобы её появление их не двигало
+    <div className={`absolute inset-x-0 bottom-0 px-6 flex justify-center pointer-events-none ${large ? 'pb-28' : 'pb-4'}`}>
       <p
         className={`max-w-[85%] text-center rounded-md px-3 py-1.5 leading-snug ${large ? 'text-2xl' : 'text-[15px]'}`}
         style={{ background: 'rgba(0,0,0,0.72)', color: '#fff' }}

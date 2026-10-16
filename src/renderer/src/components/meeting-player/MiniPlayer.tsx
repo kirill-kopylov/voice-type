@@ -40,7 +40,7 @@ export function MiniPlayer({ player, title, segments, colors, speakerName, onRet
         <button
           onClick={player.toggle}
           className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-          style={{ background: 'rgba(255,255,255,0.14)', color: '#fff' }}
+          style={{ background: 'var(--accent-bg-hover)', color: 'var(--accent-on-bg)' }}
           title={player.playing ? 'Пауза' : 'Смотреть'}
         >
           {player.playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" className="ml-0.5" />}
