@@ -40,6 +40,17 @@ import { inputInjector } from './services/input-injector'
 // Схему для видео нужно объявить до app.ready
 registerMediaScheme()
 
+// Автозапуск передаёт этот флаг: при входе в Windows приложение стартует свёрнутым в трей
+const START_HIDDEN_FLAG = '--hidden'
+const startHidden = process.argv.includes(START_HIDDEN_FLAG)
+
+// Окно при автозапуске скрыто — повторный запуск ярлыком должен показать его, а не плодить копию
+if (!app.requestSingleInstanceLock()) app.exit()
+app.on('second-instance', () => {
+  mainWindow?.show()
+  mainWindow?.focus()
+})
+
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
 let isRecording = false
@@ -100,7 +111,7 @@ function createMainWindow(): void {
   }
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
+    if (!startHidden) mainWindow?.show()
   })
 
   mainWindow.on('close', (e) => {
@@ -311,7 +322,7 @@ function applyAutoStart(): void {
   if (process.env.ELECTRON_RENDERER_URL) return
 
   const settings = store.getSettings()
-  app.setLoginItemSettings({ openAtLogin: settings.autoStart })
+  app.setLoginItemSettings({ openAtLogin: settings.autoStart, args: [START_HIDDEN_FLAG] })
 }
 
 function applyTelegramBot(): void {
