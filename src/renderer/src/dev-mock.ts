@@ -59,7 +59,10 @@ export function installDevMock(): void {
         sourceMeetingId: meetingId, createdAt: new Date().toISOString()
       }
     }),
-    retryMeeting: async () => null,
+    retryMeeting: noop,
+    pickMeetingFiles: async () => [],
+    importMeetingFiles: async () => [],
+    onMeetingAdded: unsub,
     deleteVoiceProfile: noop,
     getVoiceProfileAudio: async () => null,
     copyText: noop,
@@ -78,7 +81,7 @@ export function installDevMock(): void {
     updateSettings: async (p) => ({ ...mockSettings, ...p } as typeof mockSettings),
     generateMeetingSummary: async () => null,
     submitAudio: async () => mockMeeting as never,
-    submitMeeting: async () => mockMeeting,
+    submitMeeting: noop,
     onRecordingStateChanged: unsub,
     onTranscriptionComplete: unsub,
     onMeetingStateChanged: unsub,

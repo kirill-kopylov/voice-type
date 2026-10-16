@@ -128,10 +128,18 @@ export function App(): JSX.Element {
       }
     })
 
+    const unsubMeetingAdded = window.api.onMeetingAdded((added) => {
+      setMeetings((prev) => [added, ...prev])
+    })
+
+    // Обновления шлют расшифровка (успех или ошибка) и саммари; ход расшифровки виден на карточке
     const unsubMeetingUpdated = window.api.onMeetingUpdated((updated) => {
       setMeetings((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
-      if (updated.summaryStatus === 'done') {
-        showToast('Саммари готово', 'success')
+      if (updated.status === 'processing') return
+      if (updated.status === 'error') showToast(updated.error || 'Ошибка расшифровки встречи', 'error')
+      else if (updated.summaryStatus === 'done') showToast('Саммари готово', 'success')
+      else if (updated.status === 'success' && updated.summaryStatus !== 'error') {
+        showToast(`Встреча расшифрована: ${updated.segments.length} реплик`, 'success')
       }
     })
 
@@ -142,6 +150,7 @@ export function App(): JSX.Element {
     return () => {
       unsubNotes()
       unsubMeetingUpdated()
+      unsubMeetingAdded()
       unsubMeeting()
       unsubRecording()
       unsubTranscription()
@@ -290,14 +299,7 @@ export function App(): JSX.Element {
       void meetingAudioContextRef.current?.close()
       meetingAudioContextRef.current = null
 
-      const record = await window.api.submitMeeting(arrayBuffer, durationMs, videoOffsetMs)
-      setMeetings((prev) => [record, ...prev])
-
-      if (record.status === 'error') {
-        showToast(record.error || 'Ошибка диаризации', 'error')
-      } else {
-        showToast(`Встреча расшифрована: ${record.segments.length} реплик`, 'success')
-      }
+      await window.api.submitMeeting(arrayBuffer, durationMs, videoOffsetMs)
     }
     recorder.stop()
   }
@@ -372,19 +374,14 @@ export function App(): JSX.Element {
   }
 
   const handleRetryMeeting = async (meetingId: string): Promise<void> => {
-    showToast('Повторная транскрипция встречи...', 'success')
-    try {
-      const updated = await window.api.retryMeeting(meetingId)
-      if (!updated) {
-        showToast('Встреча не найдена', 'error')
-        return
-      }
-      setMeetings((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
-      if (updated.status === 'success') showToast('Встреча расшифрована', 'success')
-      else if (updated.error) showToast(updated.error, 'error')
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Не удалось запустить расшифровку', 'error')
-    }
+    await window.api.retryMeeting(meetingId)
+  }
+
+  const handleImportMeetingFiles = async (paths: string[]): Promise<void> => {
+    if (paths.length === 0) return
+    showToast(paths.length === 1 ? 'Загружаю запись...' : `Загружаю записи: ${paths.length}...`, 'success')
+    const errors = await window.api.importMeetingFiles(paths)
+    if (errors.length > 0) showToast(`Не загрузилось — ${errors.join('; ')}`, 'error')
   }
 
   const handleClearHistory = async (): Promise<void> => {
@@ -441,6 +438,7 @@ export function App(): JSX.Element {
           onDeleteVoiceProfile={handleDeleteVoiceProfile}
           onGenerateSummary={handleGenerateSummary}
           onRetryMeeting={handleRetryMeeting}
+          onImportFiles={handleImportMeetingFiles}
           showToast={showToast}
         />
       )}

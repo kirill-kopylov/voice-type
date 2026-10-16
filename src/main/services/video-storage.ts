@@ -67,7 +67,7 @@ export async function saveMeetingVideo(meetingId: string, audioFileName: string,
 }
 
 // События экрана живут рядом с видео и уходят вместе с ним: без картинки они никому не нужны
-const eventsPath = (videoFileName: string): string => videoPath(videoFileName.replace(/\.webm$/, '.events.json'))
+const eventsPath = (videoFileName: string): string => videoPath(`${path.parse(videoFileName).name}.events.json`)
 
 export function saveEvents(videoFileName: string, events: ScreenEvent[]): void {
   if (events.length > 0) fs.writeFileSync(eventsPath(videoFileName), JSON.stringify(events), 'utf-8')

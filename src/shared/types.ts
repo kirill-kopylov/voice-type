@@ -89,7 +89,8 @@ export interface MeetingRecord {
   summaryStatus?: 'pending' | 'done' | 'error'
   summaryError?: string
   notes?: MeetingNote[]
-  status: 'success' | 'error'
+  /** processing — встреча уже в списке, расшифровка идёт в фоне */
+  status: 'processing' | 'success' | 'error'
   error?: string
 }
 
@@ -193,8 +194,15 @@ export interface VoiceTypeAPI {
   clearHistory: () => Promise<void>
   rePaste: (id: string) => Promise<void>
   retryTranscription: (id: string) => Promise<TranscriptionRecord | null>
-  /** videoOffsetMs — на сколько видео стартовало позже аудио; null, если экран не писался */
-  submitMeeting: (audioData: ArrayBuffer, durationMs: number, videoOffsetMs: number | null) => Promise<MeetingRecord>
+  /**
+   * videoOffsetMs — на сколько видео стартовало позже аудио; null, если экран не писался.
+   * Встреча приходит в onMeetingAdded, расшифрованная — в onMeetingUpdated.
+   */
+  submitMeeting: (audioData: ArrayBuffer, durationMs: number, videoOffsetMs: number | null) => Promise<void>
+  /** Окно выбора готовых записей (видео или аудио); пустой список — пользователь передумал */
+  pickMeetingFiles: () => Promise<string[]>
+  /** Разбирает готовые записи как встречи, путь — как у submitMeeting. Возвращает ошибки по файлам, которые не загрузились */
+  importMeetingFiles: (paths: string[]) => Promise<string[]>
   getMeetings: () => Promise<MeetingRecord[]>
   deleteMeeting: (id: string) => Promise<void>
   getScreenDisplays: () => Promise<ScreenDisplay[]>
@@ -218,12 +226,14 @@ export interface VoiceTypeAPI {
   deleteMeetingNote: (meetingId: string, noteId: string) => Promise<MeetingRecord | null>
   getMeetingAudio: (fileName: string) => Promise<ArrayBuffer | null>
   generateMeetingSummary: (id: string) => Promise<MeetingRecord | null>
-  retryMeeting: (id: string) => Promise<MeetingRecord | null>
+  /** Расшифровка с нуля в фоне; ход — в onMeetingUpdated */
+  retryMeeting: (id: string) => Promise<void>
   getVoiceProfiles: () => Promise<VoiceProfile[]>
   createVoiceProfileFromMeeting: (meetingId: string, speaker: string, name: string) => Promise<{ profile?: VoiceProfile; error?: string }>
   deleteVoiceProfile: (id: string) => Promise<void>
   getVoiceProfileAudio: (fileName: string) => Promise<ArrayBuffer | null>
   onMeetingStateChanged: (callback: (isRecording: boolean) => void) => () => void
+  onMeetingAdded: (callback: (record: MeetingRecord) => void) => () => void
   onMeetingUpdated: (callback: (record: MeetingRecord) => void) => () => void
   onMeetingNotesChanged: (callback: (meetingId: string, notes: MeetingNote[]) => void) => () => void
   copyText: (text: string) => Promise<void>

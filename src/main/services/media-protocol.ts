@@ -1,4 +1,5 @@
 import fs from 'fs'
+import path from 'path'
 import { Readable } from 'stream'
 import { protocol } from 'electron'
 import { parseByteRange } from './byte-range'
@@ -18,6 +19,10 @@ export function registerMediaScheme(): void {
 
 const CORS = { 'Access-Control-Allow-Origin': '*' }
 
+// Записанные приложением встречи — webm, загруженные — в своём контейнере; mov и m4v — то же семейство, что mp4
+const VIDEO_CONTENT_TYPES: Record<string, string> = { '.webm': 'video/webm', '.mkv': 'video/x-matroska' }
+const videoContentType = (filePath: string): string => VIDEO_CONTENT_TYPES[path.extname(filePath).toLowerCase()] ?? 'video/mp4'
+
 export function handleMediaProtocol(): void {
   protocol.handle(MEDIA_SCHEME, (request) => {
     const url = new URL(request.url)
@@ -27,7 +32,7 @@ export function handleMediaProtocol(): void {
     if (!fs.existsSync(filePath)) return new Response('Not found', { status: 404 })
 
     const size = fs.statSync(filePath).size
-    const headers = { ...CORS, 'Content-Type': 'video/webm', 'Accept-Ranges': 'bytes' }
+    const headers = { ...CORS, 'Content-Type': videoContentType(filePath), 'Accept-Ranges': 'bytes' }
     const rangeHeader = request.headers.get('range')
     if (!rangeHeader) {
       return new Response(Readable.toWeb(fs.createReadStream(filePath)) as ReadableStream, {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw, StickyNote, Bot, Plus, Video, FolderOpen, MousePointerClick, Keyboard, Type, Clipboard, Pencil, PanelTop, Eye, EyeOff } from 'lucide-react'
+import { Trash2, Users, AlertCircle, Edit2, Check, X, Play, Pause, Copy, UserPlus, Sparkles, Loader2, RotateCcw, StickyNote, Bot, Plus, Video, FolderOpen, MousePointerClick, Keyboard, Type, Clipboard, Pencil, PanelTop, Eye, EyeOff, Upload } from 'lucide-react'
 import type { MeetingRecord, MeetingNote, DialogSegment, VoiceProfile, ScreenEvent } from '@shared/types'
 import { describeEvents, type EventLine } from '@shared/screen-events'
 import { formatDateTime, formatDuration } from '../utils/format'
@@ -21,19 +21,54 @@ interface Props {
   onDeleteVoiceProfile: (id: string) => void
   onGenerateSummary: (meetingId: string) => void
   onRetryMeeting: (meetingId: string) => void
+  /** Готовые записи (видео или аудио) с диска — разобрать как встречи */
+  onImportFiles: (paths: string[]) => void
   showToast: (message: string, type: 'success' | 'error') => void
 }
+
+const draggingFiles = (event: React.DragEvent): boolean => event.dataTransfer.types.includes('Files')
 
 export function Meetings({
   meetings, voiceProfiles, isRecording,
   onDelete, onDeleteVideo, onRenameSpeaker, onAddNote, onUpdateNote, onDeleteNote,
-  onSaveVoiceProfile, onDeleteVoiceProfile, onGenerateSummary, onRetryMeeting, showToast
+  onSaveVoiceProfile, onDeleteVoiceProfile, onGenerateSummary, onRetryMeeting, onImportFiles, showToast
 }: Props): JSX.Element {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showProfiles, setShowProfiles] = useState(false)
+  const [dropActive, setDropActive] = useState(false)
+
+  const pickFiles = async (): Promise<void> => onImportFiles(await window.api.pickMeetingFiles())
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6 min-h-full"
+      onDragOver={(e) => {
+        if (!draggingFiles(e)) return
+        e.preventDefault()
+        setDropActive(true)
+      }}
+      onDragLeave={(e) => {
+        // dragleave приходит и при переходе на дочерний элемент — гасим, только когда курсор ушёл со страницы
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropActive(false)
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDropActive(false)
+        onImportFiles(Array.from(e.dataTransfer.files, (file) => file.path))
+      }}
+    >
+      {dropActive && (
+        // fixed: страница с раскрытой встречей длиннее окна, подсказка должна быть в видимой части
+        <div
+          className="fixed inset-3 z-50 flex flex-col items-center justify-center gap-2 rounded-xl pointer-events-none"
+          style={{ background: 'var(--surface-strong)', backdropFilter: 'blur(8px)', border: '2px dashed var(--accent)', color: 'var(--accent)' }}
+        >
+          <Upload size={28} />
+          <p className="text-sm font-medium">Отпустите — разберу как встречу</p>
+          <p className="text-xs" style={{ color: 'var(--text-3)' }}>Видео или аудио: голоса, реплики, саммари</p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Встречи</h1>
         <div className="flex items-center gap-3">
@@ -53,6 +88,14 @@ export function Meetings({
           >
             <UserPlus size={13} /> Голоса ({voiceProfiles.length})
           </button>
+          <button
+            onClick={() => void pickFiles()}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
+            style={{ background: 'var(--accent-bg-hover)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}
+            title="Видео или аудио готовой встречи — разберу так же, как записанную"
+          >
+            <Upload size={13} /> Загрузить запись
+          </button>
         </div>
       </div>
 
@@ -64,7 +107,10 @@ export function Meetings({
         <div className="flex items-center gap-3">
           <Users size={18} style={{ color: 'var(--accent)' }} />
           <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-            <p>Хоткей по умолчанию <kbd className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'var(--accent-bg)' }}>Ctrl+Shift+M</kbd> — старт/стоп записи. Микрофон + системный звук. Через OpenAI с разделением спикеров и автосаммари.</p>
+            <p>Хоткей по умолчанию <kbd className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'var(--accent-bg)' }}>Ctrl+Shift+M</kbd> — старт/стоп записи. Микрофон + системный звук. С разделением спикеров и автосаммари.</p>
+            <p className="mt-1.5 text-xs" style={{ color: 'var(--text-3)' }}>
+              Уже есть запись созвона? Перетащите видео или аудио сюда — разберу так же.
+            </p>
             {voiceProfiles.length > 0 && (
               <p className="mt-1.5 text-xs" style={{ color: 'var(--text-3)' }}>
                 Активные голосовые профили: {voiceProfiles.slice(0, 4).map((p) => p.name).join(', ')}
@@ -229,10 +275,14 @@ function MeetingCard({
   return (
     <div className="glass rounded-xl overflow-hidden transition-colors" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
       <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={onToggle}>
-        <div className={`w-2 h-2 rounded-full shrink-0 ${m.status === 'success' ? 'bg-green-300' : 'bg-red-300'}`} />
+        <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT_CLASSES[m.status]}`} style={m.status === 'processing' ? { background: 'var(--accent)' } : undefined} />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate" style={{ color: 'var(--text-1)' }}>{m.title}</p>
-          {m.status === 'error' ? (
+          {m.status === 'processing' ? (
+            <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--text-3)' }}>
+              <Loader2 size={11} className="animate-spin" /> Расшифровываю: голоса, реплики, потом саммари…
+            </p>
+          ) : m.status === 'error' ? (
             <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: '#fca5a5' }}>
               <AlertCircle size={11} /> {m.error}
             </p>
@@ -261,17 +311,19 @@ function MeetingCard({
               {audio.playing === 'all' ? <Pause size={12} /> : <Play size={12} />}
               {audio.loading ? 'Загрузка...' : audio.playing === 'all' ? 'Пауза' : 'Прослушать'}
             </button>
-            <button
-              onClick={onRetry}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
-              style={{
-                background: m.status === 'error' ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
-                color: m.status === 'error' ? 'var(--accent)' : 'var(--text-3)'
-              }}
-            >
-              <RotateCcw size={12} />
-              {m.status === 'error' ? 'Повторить транскрипцию' : 'Прогнать заново'}
-            </button>
+            {m.status !== 'processing' && (
+              <button
+                onClick={onRetry}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors"
+                style={{
+                  background: m.status === 'error' ? 'var(--accent-bg-hover)' : 'var(--accent-bg)',
+                  color: m.status === 'error' ? 'var(--accent)' : 'var(--text-3)'
+                }}
+              >
+                <RotateCcw size={12} />
+                {m.status === 'error' ? 'Повторить транскрипцию' : 'Прогнать заново'}
+              </button>
+            )}
             {m.status === 'success' && (
               <>
                 <button
@@ -392,6 +444,13 @@ function MeetingCard({
       )}
     </div>
   )
+}
+
+// Цвет «в работе» — акцент темы, задаётся стилем; классом — только пульсация
+const STATUS_DOT_CLASSES: Record<MeetingRecord['status'], string> = {
+  processing: 'animate-pulse',
+  success: 'bg-green-300',
+  error: 'bg-red-300'
 }
 
 // События экрана не реплики: у плеера для них общий номер «строки»

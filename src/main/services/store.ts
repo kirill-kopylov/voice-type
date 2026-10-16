@@ -23,6 +23,12 @@ function migrateSettings(settings: StoreSchema['settings']): StoreSchema['settin
   return settings
 }
 
+// Расшифровка живёт в памяти процесса: закрыли приложение посреди неё — встреча навсегда осталась бы «в работе»
+function failInterrupted(meeting: MeetingRecord): MeetingRecord {
+  if (meeting.status !== 'processing') return meeting
+  return { ...meeting, status: 'error', error: 'Расшифровка прервалась: приложение закрыли. Повторите транскрипцию' }
+}
+
 class AppStore {
   private filePath: string
   private data: StoreSchema
@@ -46,7 +52,7 @@ class AppStore {
       return {
         settings: migrateSettings({ ...defaults.settings, ...parsed.settings }),
         history: parsed.history ?? [],
-        meetings: parsed.meetings ?? [],
+        meetings: (parsed.meetings ?? []).map(failInterrupted),
         voiceProfiles: parsed.voiceProfiles ?? []
       }
     } catch {

@@ -9,7 +9,8 @@ export function runFfmpeg(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!ffmpegPath) return reject(new Error('ffmpeg-static не найден'))
 
-    const proc = spawn(ffmpegPath, args)
+    // stdout не читаем: непрочитанный вывод в '-' забил бы канал и подвесил ffmpeg
+    const proc = spawn(ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] })
     let stderr = ''
     proc.stderr.on('data', (chunk) => { stderr += chunk.toString() })
     proc.on('error', reject)

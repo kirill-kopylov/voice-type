@@ -16,6 +16,8 @@ const api: VoiceTypeAPI = {
   retryTranscription: (id) => ipcRenderer.invoke('retry-transcription', id),
 
   submitMeeting: (audioData, durationMs, videoOffsetMs) => ipcRenderer.invoke('submit-meeting', audioData, durationMs, videoOffsetMs),
+  pickMeetingFiles: () => ipcRenderer.invoke('pick-meeting-files'),
+  importMeetingFiles: (paths) => ipcRenderer.invoke('import-meeting-files', paths),
   getMeetings: () => ipcRenderer.invoke('get-meetings'),
   deleteMeeting: (id) => ipcRenderer.invoke('delete-meeting', id),
   getScreenDisplays: () => ipcRenderer.invoke('get-screen-displays'),
@@ -48,6 +50,14 @@ const api: VoiceTypeAPI = {
     }
     ipcRenderer.on('meeting-state-changed', handler)
     return () => ipcRenderer.removeListener('meeting-state-changed', handler)
+  },
+
+  onMeetingAdded: (callback) => {
+    const handler = (_event: Electron.IpcRendererEvent, record: MeetingRecord): void => {
+      callback(record)
+    }
+    ipcRenderer.on('meeting-added', handler)
+    return () => ipcRenderer.removeListener('meeting-added', handler)
   },
 
   onMeetingUpdated: (callback) => {

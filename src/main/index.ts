@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   desktopCapturer,
+  dialog,
   globalShortcut,
   ipcMain,
   clipboard,
@@ -18,7 +19,7 @@ import { transcribeAudio, testConnection } from './services/transcription'
 import { transcribeDiarized, KnownSpeaker } from './services/diarization'
 import { generateSummary } from './services/summary'
 import { extractSpeakerSegments } from './services/extract-speaker'
-import type { AppSettings, MeetingLevels, MeetingRecord, VoiceProfile, TranscriptionRecord, McpStatus, ScreenDisplay, ScreenSessionStart } from '../shared/types'
+import type { AppSettings, DialogSegment, MeetingLevels, MeetingRecord, VoiceProfile, TranscriptionRecord, McpStatus, ScreenDisplay, ScreenSessionStart } from '../shared/types'
 import { pasteText, simulateEnter } from './services/paste'
 import { captureWindow, pasteToStickyWindow, getStickyHwnd, clearStickyWindow } from './services/sticky-window'
 import { saveAudio, loadAudio, deleteAudio, saveProfileAudio, loadProfileAudio, deleteProfileAudio } from './services/audio-storage'
@@ -34,6 +35,7 @@ import { appendVideoChunk, beginVideoRecording, deleteVideo, loadEvents, saveEve
 import { endScreenSession, startScreenSession, takeRecordedEvents } from './services/screen-session'
 import { handleMediaProtocol, registerMediaScheme } from './services/media-protocol'
 import { selectScreenRegion } from './services/region-selector'
+import { importMeetingMedia, MEETING_MEDIA_EXTENSIONS } from './services/meeting-import'
 import { remoteControl } from './services/remote-control'
 import { inputInjector } from './services/input-injector'
 
@@ -109,6 +111,9 @@ function createMainWindow(): void {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
+
+  // Файл, брошенный мимо зоны загрузки встреч, иначе открылся бы в окне вместо приложения
+  mainWindow.webContents.on('will-navigate', (event) => event.preventDefault())
 
   mainWindow.on('ready-to-show', () => {
     if (!startHidden) mainWindow?.show()
@@ -272,6 +277,12 @@ function toggleRecording(): void {
   }
 }
 
+function notifyMeetingUpdated(id: string): MeetingRecord | null {
+  const updated = store.getMeeting(id)
+  if (updated) mainWindow?.webContents.send('meeting-updated', updated)
+  return updated ?? null
+}
+
 async function runSummary(meetingId: string): Promise<MeetingRecord | null> {
   const meeting = store.getMeeting(meetingId)
   if (!meeting || meeting.segments.length === 0) return null
@@ -280,9 +291,7 @@ async function runSummary(meetingId: string): Promise<MeetingRecord | null> {
   const apiKey = settings.openRouterApiKey
   if (!apiKey) {
     store.updateMeeting(meetingId, { summaryStatus: 'error', summaryError: 'OpenRouter ключ не задан' })
-    const updated = store.getMeeting(meetingId)
-    if (updated) mainWindow?.webContents.send('meeting-updated', updated)
-    return updated ?? null
+    return notifyMeetingUpdated(meetingId)
   }
 
   store.updateMeeting(meetingId, { summaryStatus: 'pending', summaryError: undefined })
@@ -312,9 +321,88 @@ async function runSummary(meetingId: string): Promise<MeetingRecord | null> {
     store.updateMeeting(meetingId, patch)
   }
 
-  const updated = store.getMeeting(meetingId)
-  if (updated) mainWindow?.webContents.send('meeting-updated', updated)
-  return updated ?? null
+  return notifyMeetingUpdated(meetingId)
+}
+
+// Первые 4 профиля голосов — эталоны для сопоставления с голосами встречи
+function loadKnownSpeakers(): KnownSpeaker[] {
+  return store.getVoiceProfiles().slice(0, 4).flatMap((profile) => {
+    const audio = loadProfileAudio(profile.audioFileName)
+    return audio ? [{ name: profile.name, audio }] : []
+  })
+}
+
+/** Новая встреча сразу появляется в списке; расшифровку запускает вызывающий. */
+function addMeeting(media: Pick<MeetingRecord, 'id' | 'audioFileName' | 'videoFileName' | 'durationMs' | 'createdAt'>): void {
+  const record: MeetingRecord = {
+    ...media,
+    title: `Встреча ${new Date(media.createdAt).toLocaleString('ru-RU')}`,
+    segments: [],
+    speakerNames: {},
+    status: 'processing'
+  }
+  store.addMeeting(record)
+  mainWindow?.webContents.send('meeting-added', record)
+}
+
+async function diarizeMeeting(meeting: MeetingRecord): Promise<{ segments: DialogSegment[]; error?: string }> {
+  const { openRouterApiKey, language } = store.getSettings()
+  if (!openRouterApiKey) return { segments: [], error: 'OpenRouter API ключ не задан (нужен для диаризации встреч)' }
+
+  const audioBuffer = loadAudio(meeting.audioFileName)
+  if (!audioBuffer) return { segments: [], error: `Аудиофайл встречи не найден: ${meeting.audioFileName}` }
+
+  console.log(`[meeting] Расшифровка ${meeting.id}, аудио ${Math.round(audioBuffer.length / 1024)} КБ`)
+  return transcribeDiarized(audioBuffer, openRouterApiKey, language, loadKnownSpeakers())
+}
+
+/** Расшифровка встречи с нуля; удачная уходит на саммари в фоне. */
+async function transcribeMeeting(id: string): Promise<void> {
+  const meeting = store.getMeeting(id)
+  if (!meeting) return
+
+  const { segments, error } = await diarizeMeeting(meeting)
+  const hasDialog = !error && segments.length > 0
+  store.updateMeeting(id, {
+    segments,
+    // Старые переименования относились к прежним меткам. Названные голоса (профиль, имя из разговора) саммари не переименует
+    speakerNames: Object.fromEntries(segments.filter((s) => !s.speaker.startsWith('Speaker')).map((s) => [s.speaker, s.speaker])),
+    summary: undefined,
+    summaryStatus: hasDialog ? 'pending' : undefined,
+    summaryError: undefined,
+    status: error ? 'error' : 'success',
+    error
+  })
+  notifyMeetingUpdated(id)
+
+  if (hasDialog) runSummary(id).catch((err) => console.error('[summary] background:', err))
+}
+
+/** Встречи расшифровываются по очереди: параллельные запросы STT провайдер режет по 429. */
+async function transcribeMeetings(ids: string[]): Promise<void> {
+  showOverlay('processing')
+  for (const id of ids) {
+    await transcribeMeeting(id).catch((err) => console.error(`[meeting] Расшифровка ${id}:`, err))
+  }
+  showOverlay('hidden')
+}
+
+/** Готовые записи — в список встреч сразу, расшифровка — в фоне. Возвращает ошибки по файлам, которые не загрузились. */
+async function importMeetingFiles(paths: string[]): Promise<string[]> {
+  const imported: string[] = []
+  const errors: string[] = []
+  for (const sourcePath of paths) {
+    const id = randomUUID()
+    try {
+      addMeeting({ id, ...(await importMeetingMedia(id, sourcePath)) })
+      imported.push(id)
+    } catch (error) {
+      console.error(`[meeting] Импорт ${sourcePath}:`, error)
+      errors.push(`${path.basename(sourcePath)}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  if (imported.length > 0) void transcribeMeetings(imported)
+  return errors
 }
 
 function applyAutoStart(): void {
@@ -478,74 +566,27 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('submit-meeting', async (_event, audioData: ArrayBuffer, durationMs: number, videoOffsetMs: number | null) => {
     console.log(`[meeting] submit: ${audioData.byteLength} байт, ${durationMs}мс, видео: ${videoOffsetMs === null ? 'нет' : `сдвиг ${videoOffsetMs}мс`}`)
-    const settings = store.getSettings()
     const id = randomUUID()
-    const audioBuffer = Buffer.from(audioData)
-    const audioFileName = saveAudio(id, audioBuffer)
+    const audioFileName = saveAudio(id, Buffer.from(audioData))
     const videoFileName = videoOffsetMs === null ? undefined : (await saveMeetingVideo(id, audioFileName, videoOffsetMs)) ?? undefined
     const screenEvents = takeRecordedEvents()
     if (videoFileName) saveEvents(videoFileName, screenEvents)
 
-    const apiKey = settings.openRouterApiKey
-    if (!apiKey) {
-      const record: MeetingRecord = {
-        id, title: `Встреча ${new Date().toLocaleString('ru-RU')}`,
-        audioFileName, videoFileName, durationMs,
-        createdAt: new Date().toISOString(),
-        segments: [], speakerNames: {},
-        status: 'error', error: 'OpenRouter API ключ не задан (нужен для диаризации встреч)'
-      }
-      store.addMeeting(record)
-      showOverlay('hidden')
-      return record
-    }
-
-    // Подгружаем голосовые профили — до 4
-    const profiles = store.getVoiceProfiles().slice(0, 4)
-    const knownSpeakers: KnownSpeaker[] = []
-    for (const p of profiles) {
-      const audio = loadProfileAudio(p.audioFileName)
-      if (audio) knownSpeakers.push({ name: p.name, audio })
-    }
-    if (knownSpeakers.length > 0) {
-      console.log(`[meeting] Использую ${knownSpeakers.length} голосовых профилей`)
-    }
-
-    const result = await transcribeDiarized(audioBuffer, apiKey, settings.language, knownSpeakers)
-
-    // Если профили использованы — speaker уже содержит имя, копируем в speakerNames
-    const initialSpeakerNames: Record<string, string> = {}
-    if (knownSpeakers.length > 0) {
-      for (const seg of result.segments) {
-        if (seg.speaker && !seg.speaker.startsWith('Speaker')) {
-          initialSpeakerNames[seg.speaker] = seg.speaker
-        }
-      }
-    }
-
-    const record: MeetingRecord = {
-      id,
-      title: `Встреча ${new Date().toLocaleString('ru-RU')}`,
-      audioFileName, videoFileName, durationMs,
-      createdAt: new Date().toISOString(),
-      segments: result.segments,
-      speakerNames: initialSpeakerNames,
-      summaryStatus: result.error ? undefined : 'pending',
-      status: result.error ? 'error' : 'success',
-      error: result.error
-    }
-
-    store.addMeeting(record)
-    showOverlay('hidden')
-    mainWindow?.webContents.send('meeting-complete', record)
-
-    // Авто-саммари в фоне, не блокируем ответ
-    if (!result.error && result.segments.length > 0) {
-      runSummary(record.id).catch((err) => console.error('[summary] background:', err))
-    }
-
-    return record
+    addMeeting({ id, audioFileName, videoFileName, durationMs, createdAt: new Date().toISOString() })
+    void transcribeMeetings([id])
   })
+
+  ipcMain.handle('pick-meeting-files', async () => {
+    if (!mainWindow) return []
+    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Запись встречи',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Видео и аудио', extensions: MEETING_MEDIA_EXTENSIONS }]
+    })
+    return filePaths
+  })
+
+  ipcMain.handle('import-meeting-files', (_event, paths: string[]) => importMeetingFiles(paths))
 
   // Воспроизведение саммари по требованию (или повторно)
   ipcMain.handle('generate-meeting-summary', async (_event, id: string) => {
@@ -602,62 +643,14 @@ function setupIpcHandlers(): void {
     return buf ? buf.buffer : null
   })
 
-  ipcMain.handle('retry-meeting', async (_event, id: string) => {
+  ipcMain.handle('retry-meeting', (_event, id: string) => {
     const meeting = store.getMeeting(id)
-    if (!meeting) return null
-
-    const audioBuffer = loadAudio(meeting.audioFileName)
-    if (!audioBuffer) throw new Error(`Аудиофайл встречи не найден: ${meeting.audioFileName}`)
-
-    const settings = store.getSettings()
-    const apiKey = settings.openRouterApiKey
-    if (!apiKey) {
-      store.updateMeeting(id, { status: 'error', error: 'OpenRouter API ключ не задан' })
-      return store.getMeeting(id)
-    }
-
-    console.log(`[meeting] Повторная расшифровка ${id}, аудио ${Math.round(audioBuffer.length / 1024)} КБ`)
-    showOverlay('processing')
-
-    const profiles = store.getVoiceProfiles().slice(0, 4)
-    const knownSpeakers: KnownSpeaker[] = []
-    for (const p of profiles) {
-      const audio = loadProfileAudio(p.audioFileName)
-      if (audio) knownSpeakers.push({ name: p.name, audio })
-    }
-
-    const result = await transcribeDiarized(audioBuffer, apiKey, settings.language, knownSpeakers)
-
-    const initialSpeakerNames: Record<string, string> = {}
-    if (knownSpeakers.length > 0) {
-      for (const seg of result.segments) {
-        if (seg.speaker && !seg.speaker.startsWith('Speaker')) {
-          initialSpeakerNames[seg.speaker] = seg.speaker
-        }
-      }
-    }
-
-    store.updateMeeting(id, {
-      segments: result.segments,
-      // Прогон с нуля: старые переименования относились к прежним меткам и новым голосам не подходят
-      speakerNames: initialSpeakerNames,
-      summary: undefined,
-      summaryStatus: result.error ? undefined : 'pending',
-      summaryError: undefined,
-      status: result.error ? 'error' : 'success',
-      error: result.error
-    })
-
-    showOverlay('hidden')
-
-    const updated = store.getMeeting(id)
-    if (updated) mainWindow?.webContents.send('meeting-updated', updated)
-
-    if (!result.error && result.segments.length > 0) {
-      runSummary(id).catch((err) => console.error('[summary] retry:', err))
-    }
-
-    return updated ?? null
+    // Повтор посреди расшифровки запустил бы вторую такую же
+    if (!meeting || meeting.status === 'processing') return
+    // Саммари относится к прежней расшифровке — новая сделает своё
+    store.updateMeeting(id, { status: 'processing', error: undefined, summary: undefined, summaryStatus: undefined, summaryError: undefined })
+    notifyMeetingUpdated(id)
+    void transcribeMeetings([id])
   })
 
   ipcMain.handle('get-meetings', () => store.getMeetings())
