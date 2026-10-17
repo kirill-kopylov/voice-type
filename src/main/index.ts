@@ -353,7 +353,7 @@ async function diarizeMeeting(meeting: MeetingRecord): Promise<{ segments: Dialo
   if (!audioBuffer) return { segments: [], error: `Аудиофайл встречи не найден: ${meeting.audioFileName}` }
 
   console.log(`[meeting] Расшифровка ${meeting.id}, аудио ${Math.round(audioBuffer.length / 1024)} КБ`)
-  return transcribeDiarized(audioBuffer, openRouterApiKey, language, loadKnownSpeakers())
+  return transcribeDiarized(audioBuffer, meeting.durationMs, openRouterApiKey, language, loadKnownSpeakers())
 }
 
 /** Расшифровка встречи с нуля; удачная уходит на саммари в фоне. */

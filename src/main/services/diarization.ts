@@ -12,6 +12,11 @@ import type { DialogSegment } from '../../shared/types'
 const VOICES_STT_MODEL = 'fish-audio/transcribe-1-pro'
 const TEXT_STT_MODEL = 'microsoft/mai-transcribe-2'
 const TEXT_CHUNK_SEC = 600
+// fish принимает файл не длиннее 60 минут и не больше 20 МБ (на 70-минутной записи — 400 «Provider returned 400»).
+// Более длинную запись ускоряем до 58 минут (запас на неточную длительность), а времена слов растягиваем обратно;
+// 40 кбит/с держат 58 минут в 17 МБ
+const VOICES_MAX_SEC = 58 * 60
+const VOICES_BITRATE = '40k'
 // Включает у mai времена отрезков; голоса mai не используем — они нестабильны между кусками
 const TEXT_STT_OPTIONS = { provider: { options: { azure: { diarization: { enabled: true } } } } }
 const STT_URL = 'https://openrouter.ai/api/v1/audio/transcriptions'
@@ -42,6 +47,7 @@ class DiarizationError extends Error {}
  */
 export async function transcribeDiarized(
   audioBuffer: Buffer,
+  durationMs: number,
   apiKey: string,
   language: string,
   knownSpeakers: KnownSpeaker[] = []
@@ -50,7 +56,7 @@ export async function transcribeDiarized(
   const cache = new SttCache()
   try {
     console.log(`[diarize] Известных голосов: ${knownSpeakers.length}`)
-    const turns = await diarize(audioBuffer, apiKey, language, cache)
+    const turns = await diarize(audioBuffer, durationMs / 1000, apiKey, language, cache)
 
     const names = await nameSpeakers(apiKey, audioBuffer, knownSpeakers, turns)
     const segments = mergeNeighbors(turns.map((turn) => ({
@@ -76,8 +82,13 @@ export async function transcribeDiarized(
 }
 
 /** Голоса и времена — от fish, текст — от mai: fish путает слова, зато лучше всех отличает людей. */
-async function diarize(audioBuffer: Buffer, apiKey: string, language: string, cache: SttCache): Promise<SpeakerTurn[]> {
-  const [[whole], chunks] = await Promise.all([encodeMp3Chunks(audioBuffer), encodeMp3Chunks(audioBuffer, TEXT_CHUNK_SEC)])
+async function diarize(audioBuffer: Buffer, durationSec: number, apiKey: string, language: string, cache: SttCache): Promise<SpeakerTurn[]> {
+  // Округление вверх: ускоренная запись не длиннее лимита
+  const tempo = Math.max(1, Math.ceil((durationSec / VOICES_MAX_SEC) * 100) / 100)
+  const [[whole], chunks] = await Promise.all([
+    encodeMp3Chunks(audioBuffer, { tempo, bitrate: VOICES_BITRATE }),
+    encodeMp3Chunks(audioBuffer, { chunkSec: TEXT_CHUNK_SEC })
+  ])
   const [voices, texts] = await Promise.all([
     transcribe<VoicesResponse>(whole, apiKey, language, VOICES_STT_MODEL, cache, (response) => Boolean(response.text)),
     transcribeText(chunks, apiKey, language, cache)
@@ -85,7 +96,9 @@ async function diarize(audioBuffer: Buffer, apiKey: string, language: string, ca
   if (!voices.text) throw new DiarizationError('STT не вернул разметку голосов')
   if (texts.length === 0) throw new DiarizationError('STT не вернул текст')
 
-  const turns = parseFishTranscript(voices.text, voices.words ?? [])
+  if (tempo > 1) console.log(`[diarize] Голоса размечены по записи, ускоренной в ${tempo} раза`)
+  const words = (voices.words ?? []).map((w) => ({ ...w, start: w.start * tempo, end: w.end * tempo }))
+  const turns = parseFishTranscript(voices.text, words)
   const labelled = assignSpeakers(texts, turns)
   console.log(`[diarize] Отрезков текста: ${labelled.length}, голосов: ${new Set(labelled.map((t) => t.speaker)).size}`)
   return labelled
