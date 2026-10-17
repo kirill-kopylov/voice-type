@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Eye, EyeOff, CheckCircle, XCircle, Loader2, Copy, RefreshCw } from 'lucide-react'
-import type { AppSettings, McpStatus, RemoteControlStatus, ScreenCaptureMode } from '@shared/types'
+import type { AppSettings, McpStatus, Provider, RemoteControlStatus, ScreenCaptureMode } from '@shared/types'
+import { PROVIDER_LABELS, PROVIDERS } from '@shared/providers'
 import { Select } from '../components/Select'
 import { HotkeyInput } from '../components/HotkeyInput'
 
@@ -34,6 +35,17 @@ const OPENROUTER_MODELS = [
   { id: 'qwen/qwen3-asr-flash-2026-02-10', name: 'Qwen3 ASR Flash', sub: '$0.0021/мин — устойчива к шуму' },
 ]
 
+const LOCAL_MODELS = [
+  { id: 'gigaam-v3', name: 'GigaAM v3', sub: 'бесплатно, без сети — только русский, с пунктуацией' },
+]
+
+const PROVIDER_MODELS: Record<Provider, Array<{ id: string; name: string; sub: string }>> = {
+  openai: OPENAI_MODELS,
+  openrouter: OPENROUTER_MODELS,
+  groq: GROQ_MODELS,
+  local: LOCAL_MODELS
+}
+
 const SCREEN_CAPTURE_MODES: Array<{ id: ScreenCaptureMode; name: string; sub: string }> = [
   { id: 'off', name: 'Не записывать', sub: 'только звук' },
   { id: 'screen', name: 'Весь экран', sub: 'основной монитор' },
@@ -66,7 +78,13 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
     setTesting(true); setTestResult(null)
     const r = await window.api.testConnection()
     setTestResult(r); setTesting(false)
-    showToast(r.ok ? 'Подключение ОК' : `Ошибка: ${r.error}`, r.ok ? 'success' : 'error')
+    showToast(r.ok ? (settings.provider === 'local' ? 'Модели загружены' : 'Подключение ОК') : `Ошибка: ${r.error}`, r.ok ? 'success' : 'error')
+  }
+
+  // Модель общая на всех провайдеров: чужую для нового провайдера заменяем его первой
+  const chooseProvider = (provider: Provider): void => {
+    const models = PROVIDER_MODELS[provider]
+    onUpdate({ provider, model: models.some((m) => m.id === settings.model) ? settings.model : models[0].id })
   }
 
   return (
@@ -75,18 +93,25 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
 
       <Section title="Провайдер">
         <div className="flex gap-3">
-          <ChoiceBtn label="OpenAI" active={settings.provider === 'openai'} onClick={() => onUpdate({ provider: 'openai' })} />
-          <ChoiceBtn label="OpenRouter" active={settings.provider === 'openrouter'} onClick={() => onUpdate({ provider: 'openrouter' })} />
-          <ChoiceBtn label="Groq" active={settings.provider === 'groq'} onClick={() => onUpdate({ provider: 'groq' })} />
+          {PROVIDERS.map((provider) => (
+            <ChoiceBtn key={provider} label={PROVIDER_LABELS[provider]} active={settings.provider === provider} onClick={() => chooseProvider(provider)} />
+          ))}
         </div>
       </Section>
 
-      <Section title="API ключи">
-        <div className="space-y-4">
-          <KeyInput label="OpenAI" value={settings.openAiApiKey} show={showKey1} toggle={() => setShowKey1(!showKey1)} onChange={(v) => onUpdate({ openAiApiKey: v })} ph="sk-..." active={settings.provider === 'openai'} />
-          <KeyInput label="OpenRouter" value={settings.openRouterApiKey} show={showKey2} toggle={() => setShowKey2(!showKey2)} onChange={(v) => onUpdate({ openRouterApiKey: v })} ph="sk-or-..." active={settings.provider === 'openrouter'} />
-          <KeyInput label="Groq" value={settings.groqApiKey} show={showKey3} toggle={() => setShowKey3(!showKey3)} onChange={(v) => onUpdate({ groqApiKey: v })} ph="gsk_..." active={settings.provider === 'groq'} />
-        </div>
+      <Section title={settings.provider === 'local' ? 'Локальное распознавание' : 'API ключи'}>
+        {settings.provider === 'local' ? (
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-3)' }}>
+            Ключ не нужен: речь распознаёт GigaAM прямо на этом компьютере, звук никуда не уходит.
+            Модели (~230 МБ) скачаются один раз — при первой диктовке или по кнопке «Проверить».
+          </p>
+        ) : (
+          <div className="space-y-4">
+            <KeyInput label="OpenAI" value={settings.openAiApiKey} show={showKey1} toggle={() => setShowKey1(!showKey1)} onChange={(v) => onUpdate({ openAiApiKey: v })} ph="sk-..." active={settings.provider === 'openai'} />
+            <KeyInput label="OpenRouter" value={settings.openRouterApiKey} show={showKey2} toggle={() => setShowKey2(!showKey2)} onChange={(v) => onUpdate({ openRouterApiKey: v })} ph="sk-or-..." active={settings.provider === 'openrouter'} />
+            <KeyInput label="Groq" value={settings.groqApiKey} show={showKey3} toggle={() => setShowKey3(!showKey3)} onChange={(v) => onUpdate({ groqApiKey: v })} ph="gsk_..." active={settings.provider === 'groq'} />
+          </div>
+        )}
         <button onClick={handleTest} disabled={testing}
           className="mt-4 flex items-center gap-2 px-4 py-2 text-sm rounded-xl disabled:opacity-50 transition-colors"
           style={{ background: 'var(--accent-bg)', borderColor: 'var(--accent-border)', color: 'var(--text-1)' }}>
@@ -98,7 +123,7 @@ export function Settings({ settings, onUpdate, showToast }: SettingsProps): JSX.
       <Section title="Модель">
         <Select
           value={settings.model}
-          options={(settings.provider === 'openai' ? OPENAI_MODELS : settings.provider === 'groq' ? GROQ_MODELS : OPENROUTER_MODELS).map((m) => ({ value: m.id, label: m.name, sub: m.sub }))}
+          options={PROVIDER_MODELS[settings.provider].map((m) => ({ value: m.id, label: m.name, sub: m.sub }))}
           onChange={(v) => onUpdate({ model: v })}
           placeholder="Выбрать модель"
         />

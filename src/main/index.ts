@@ -471,7 +471,7 @@ function recordTranscription(
     audioFileName,
     durationMs,
     createdAt: new Date().toISOString(),
-    provider: settings.provider as TranscriptionRecord['provider'],
+    provider: settings.provider,
     model: settings.model,
     status: result.error ? 'error' : 'success',
     error: result.error

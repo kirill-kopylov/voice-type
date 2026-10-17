@@ -1,6 +1,7 @@
 // Типы, общие для main, preload и renderer: данные приложения и контракт IPC.
 
-export type Provider = 'openai' | 'openrouter' | 'groq'
+/** local — GigaAM на этом компьютере, без сети и ключа */
+export type Provider = 'openai' | 'openrouter' | 'groq' | 'local'
 
 export interface DialogSegment {
   speaker: string   // "Speaker 1", "Speaker 2" или пользовательское имя

@@ -1,17 +1,21 @@
 import type { AppSettings, Provider } from '../../shared/types'
+import { providerApiKey } from '../../shared/providers'
 import { randomUUID } from 'crypto'
 import { net } from 'electron'
 import { encodeMp3Chunks } from './encode-audio'
 import { fetchWithRetry } from './fetch-retry'
+import { LOCAL_MODEL, localTranscriber } from './local-transcriber'
 
-// Все три провайдера принимают OpenAI-совместимый multipart на /audio/transcriptions
-const PROVIDER_BASE_URLS: Record<Provider, string> = {
+type CloudProvider = Exclude<Provider, 'local'>
+
+// Все облачные провайдеры принимают OpenAI-совместимый multipart на /audio/transcriptions
+const PROVIDER_BASE_URLS: Record<CloudProvider, string> = {
   openai: 'https://api.openai.com/v1',
   openrouter: 'https://openrouter.ai/api/v1',
   groq: 'https://api.groq.com/openai/v1'
 }
 
-const DEFAULT_MODELS: Record<Provider, string> = {
+const DEFAULT_MODELS: Record<CloudProvider, string> = {
   openai: 'whisper-1',
   openrouter: 'openai/gpt-4o-mini-transcribe',
   groq: 'whisper-large-v3-turbo'
@@ -34,10 +38,16 @@ const MP3_AUDIO_FORMAT: AudioFormat = { filename: 'recording.mp3', mimeType: 'au
 // Проверено запросом на /audio/transcriptions: на webm отвечают 400, на mp3 — 200
 const MP3_ONLY_MODELS = ['microsoft/mai-transcribe-2']
 
-function getApiKey(settings: AppSettings): string {
-  if (settings.provider === 'groq') return settings.groqApiKey
-  if (settings.provider === 'openrouter') return settings.openRouterApiKey
-  return settings.openAiApiKey
+// Формат записи не важен: ffmpeg сам перекодирует её в отсчёты для GigaAM
+async function transcribeLocally(audioBuffer: Buffer): Promise<TranscriptionResult> {
+  console.log(`[transcribe] ${audioBuffer.length} байт, локально, модель: ${LOCAL_MODEL}`)
+  try {
+    return { text: await localTranscriber.transcribe(audioBuffer) }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[transcribe] Локально:', message)
+    return { text: '', error: `Локальное распознавание: ${message}` }
+  }
 }
 
 export async function transcribeAudio(
@@ -45,15 +55,18 @@ export async function transcribeAudio(
   settings: AppSettings,
   format: AudioFormat = DEFAULT_AUDIO_FORMAT
 ): Promise<TranscriptionResult> {
-  const apiKey = getApiKey(settings)
+  const { provider } = settings
+  if (provider === 'local') return transcribeLocally(audioBuffer)
+
+  const apiKey = providerApiKey(settings)
   if (!apiKey) {
-    return { text: '', error: `API ключ для ${settings.provider} не задан` }
+    return { text: '', error: `API ключ для ${provider} не задан` }
   }
 
-  const model = settings.model || DEFAULT_MODELS[settings.provider]
+  const model = settings.model || DEFAULT_MODELS[provider]
 
   // Часть моделей отвергает webm/ogg с 400 — им отдаём тот же звук в mp3
-  if (settings.provider === 'openrouter' && MP3_ONLY_MODELS.includes(model)) {
+  if (provider === 'openrouter' && MP3_ONLY_MODELS.includes(model)) {
     try {
       const [mp3] = await encodeMp3Chunks(audioBuffer)
       audioBuffer = mp3
@@ -63,7 +76,7 @@ export async function transcribeAudio(
       return { text: '', error: `Не удалось перекодировать звук в mp3: ${message}` }
     }
   }
-  console.log(`[transcribe] ${audioBuffer.length} байт, ${settings.provider}, модель: ${model}, формат: ${format.filename}`)
+  console.log(`[transcribe] ${audioBuffer.length} байт, ${provider}, модель: ${model}, формат: ${format.filename}`)
 
   const boundary = `----VoiceType${randomUUID().replace(/-/g, '')}`
   const parts: Buffer[] = []
@@ -75,7 +88,7 @@ export async function transcribeAudio(
   parts.push(Buffer.from(`--${boundary}--\r\n`))
 
   try {
-    const response = await fetchWithRetry(`${PROVIDER_BASE_URLS[settings.provider]}/audio/transcriptions`, {
+    const response = await fetchWithRetry(`${PROVIDER_BASE_URLS[provider]}/audio/transcriptions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -100,13 +113,24 @@ export async function transcribeAudio(
 }
 
 export async function testConnection(settings: AppSettings): Promise<{ ok: boolean; error?: string }> {
-  const apiKey = getApiKey(settings)
+  const { provider } = settings
+  // Для локального распознавания проверка = подготовка: скачать модели и загрузить их
+  if (provider === 'local') {
+    try {
+      await localTranscriber.prepare()
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  }
+
+  const apiKey = providerApiKey(settings)
   if (!apiKey) {
-    return { ok: false, error: `API ключ для ${settings.provider} не задан` }
+    return { ok: false, error: `API ключ для ${provider} не задан` }
   }
 
   try {
-    const response = await net.fetch(`${PROVIDER_BASE_URLS[settings.provider]}/models`, {
+    const response = await net.fetch(`${PROVIDER_BASE_URLS[provider]}/models`, {
       headers: { Authorization: `Bearer ${apiKey}` }
     })
 

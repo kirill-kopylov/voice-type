@@ -1,5 +1,6 @@
 import { Mic, MicOff, Activity, Clock, FileText, AlertCircle } from 'lucide-react'
 import type { TranscriptionRecord, AppSettings } from '@shared/types'
+import { providerApiKey } from '@shared/providers'
 import { formatDuration, formatRelativeDate } from '../utils/format'
 
 interface DashboardProps {
@@ -17,7 +18,7 @@ export function Dashboard({ isRecording, isProcessing, history, settings }: Dash
   const errorCount = history.filter((r) => r.status === 'error').length
   const recentItems = history.slice(0, 5)
 
-  const hasApiKey = settings ? (settings.provider === 'openai' ? !!settings.openAiApiKey : settings.provider === 'groq' ? !!settings.groqApiKey : !!settings.openRouterApiKey) : false
+  const hasApiKey = settings ? providerApiKey(settings) !== '' : false
 
   return (
     <div className="space-y-8">
