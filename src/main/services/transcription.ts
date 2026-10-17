@@ -2,6 +2,7 @@ import type { AppSettings, Provider } from '../../shared/types'
 import { randomUUID } from 'crypto'
 import { net } from 'electron'
 import { encodeMp3Chunks } from './encode-audio'
+import { fetchWithRetry } from './fetch-retry'
 
 // Все три провайдера принимают OpenAI-совместимый multipart на /audio/transcriptions
 const PROVIDER_BASE_URLS: Record<Provider, string> = {
@@ -74,7 +75,7 @@ export async function transcribeAudio(
   parts.push(Buffer.from(`--${boundary}--\r\n`))
 
   try {
-    const response = await net.fetch(`${PROVIDER_BASE_URLS[settings.provider]}/audio/transcriptions`, {
+    const response = await fetchWithRetry(`${PROVIDER_BASE_URLS[settings.provider]}/audio/transcriptions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,

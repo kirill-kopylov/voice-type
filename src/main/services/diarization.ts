@@ -1,5 +1,5 @@
-import { net } from 'electron'
 import { encodeMp3Chunks } from './encode-audio'
+import { fetchWithRetry } from './fetch-retry'
 import { extractSpeakerSegments } from './extract-speaker'
 import { extractJsonObject } from './extract-json'
 import { SttCache } from './stt-cache'
@@ -20,8 +20,6 @@ const VOICES_BITRATE = '40k'
 // Включает у mai времена отрезков; голоса mai не используем — они нестабильны между кусками
 const TEXT_STT_OPTIONS = { provider: { options: { azure: { diarization: { enabled: true } } } } }
 const STT_URL = 'https://openrouter.ai/api/v1/audio/transcriptions'
-const RETRYABLE_STATUSES = [429, 502, 503]
-const MAX_ATTEMPTS = 3
 
 // Имена профилей и имена по контексту — audio-chat модель:
 // STT-эндпоинт OpenRouter не принимает образцы голосов.
@@ -148,20 +146,17 @@ async function requestStt<T>(mp3: Buffer, apiKey: string, language: string, mode
     ...options
   })
 
-  // Провайдер временно отвечает 429/502 — повторяем, запрос не тарифицируется при отказе
-  for (let attempt = 1; ; attempt++) {
-    const response = await net.fetch(STT_URL, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body
-    })
-    if (response.ok) return (await response.json()) as T
+  const response = await postJson(STT_URL, apiKey, body)
+  if (response.ok) return (await response.json()) as T
+  throw new DiarizationError(`STT (${model}) вернул ${response.status}: ${(await response.text()).slice(0, 300)}`)
+}
 
-    if (!RETRYABLE_STATUSES.includes(response.status) || attempt >= MAX_ATTEMPTS) {
-      throw new DiarizationError(`STT (${model}) вернул ${response.status}: ${(await response.text()).slice(0, 300)}`)
-    }
-    await new Promise((resolve) => setTimeout(resolve, attempt * 2000))
-  }
+function postJson(url: string, apiKey: string, body: string): ReturnType<typeof fetchWithRetry> {
+  return fetchWithRetry(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body
+  })
 }
 
 /**
@@ -263,17 +258,13 @@ async function inferNames(apiKey: string, segments: DialogSegment[], unnamed: Se
 }
 
 async function askJson<T>(apiKey: string, content: Array<Record<string, unknown>>, label: string): Promise<T> {
-  const response = await net.fetch(CHAT_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: CHAT_MODEL,
-      messages: [{ role: 'user', content }],
-      response_format: { type: 'json_object' },
-      reasoning: { effort: 'low' },
-      temperature: 0
-    })
-  })
+  const response = await postJson(CHAT_URL, apiKey, JSON.stringify({
+    model: CHAT_MODEL,
+    messages: [{ role: 'user', content }],
+    response_format: { type: 'json_object' },
+    reasoning: { effort: 'low' },
+    temperature: 0
+  }))
   if (!response.ok) {
     const body = await response.text()
     throw new DiarizationError(`${label}: ${response.status}: ${body.slice(0, 300)}`)

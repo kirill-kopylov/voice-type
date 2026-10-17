@@ -1,7 +1,7 @@
-import { net } from 'electron'
 import type { DialogSegment, MeetingDecision, MeetingSummary } from '../../shared/types'
 import { formatClock, normalizeChapters, parseClock } from '../../shared/meeting-timeline'
 import { extractJsonObject } from './extract-json'
+import { fetchWithRetry } from './fetch-retry'
 
 const SUMMARY_MODEL = 'google/gemini-3.1-flash-lite'
 const OPENROUTER_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions'
@@ -80,7 +80,7 @@ export async function generateSummary(
 
   try {
     console.log('[summary] Запрос к', SUMMARY_MODEL)
-    const response = await net.fetch(OPENROUTER_CHAT_URL, {
+    const response = await fetchWithRetry(OPENROUTER_CHAT_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
