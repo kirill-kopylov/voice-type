@@ -2,7 +2,7 @@ import { io, Socket } from 'socket.io-client'
 import { z } from 'zod'
 import type { RemoteControlStatus } from '../../shared/types'
 import { inputInjector, VK } from './input-injector'
-import { lanAddresses, remoteControlLan } from './remote-control-lan'
+import { lanAddresses, phoneLan } from './phone-lan'
 import { remoteCursor } from './remote-cursor'
 
 const SERVER_URL = 'https://api.chatalert.cc/remote-control'
@@ -61,7 +61,7 @@ class RemoteControl {
     }
 
     inputInjector.warmUp()
-    remoteControlLan.start(key, (payload) => this.handle(payload))
+    phoneLan.start(key, (payload) => this.handle(payload))
     // auth — функцией: адреса в сети перечитываются на каждом переподключении (сменился Wi-Fi, новый DHCP)
     const socket = io(SERVER_URL, {
       path: '/socket.io/',
@@ -86,7 +86,7 @@ class RemoteControl {
   stop(): void {
     this.socket?.disconnect()
     this.socket = null
-    remoteControlLan.stop()
+    phoneLan.stop()
     remoteCursor.destroy()
     this.status = 'off'
     void this.releaseAlt()

@@ -813,6 +813,8 @@ declare global {
 app.isQuitting = false
 
 app.whenReady().then(() => {
+  // Уведомления Windows показывает от имени ярлыка с этим id — его ставит установщик (build.appId)
+  app.setAppUserModelId('com.voicetype.app')
   // Разрешаем доступ к микрофону для overlay
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(true))
   session.defaultSession.setPermissionCheckHandler(() => true)

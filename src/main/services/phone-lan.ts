@@ -2,6 +2,7 @@ import { createServer } from 'http'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { networkInterfaces } from 'os'
 import { Server } from 'socket.io'
+import { handlePhoneDrop } from './phone-drop'
 
 const LAN_PORT = 47821
 /** Подпись телефона живёт минуту: хватает на расхождение часов, перехваченную позже не применить */
@@ -21,29 +22,36 @@ export function lanAddresses(): string[] {
     .map((address) => `${address.address}:${LAN_PORT}`)
 }
 
+/** Чем телефон подписывается: пульт — при подключении сокета, «Поделиться → На компьютер» — каждым файлом. */
+export type ProofScope = 'lan' | 'drop'
+
 /**
- * Прямая связь с телефоном в той же сети: задержка — миллисекунды вместо пути через сервер.
+ * Прямая связь с телефоном в той же сети: пульт (socket.io) и файлы из «Поделиться» (HTTP) на одном порту.
  * В домашней сети нет TLS, поэтому ключ пары по ней не передаётся: телефон шлёт HMAC ключа от своей метки
  * времени, и каждая подпись принимается один раз.
  */
-class RemoteControlLan {
+class PhoneLan {
   private server: Server | null = null
   private readonly usedProofs = new Map<string, number>()
 
   start(key: string, onCommand: (payload: object) => void): void {
     this.stop()
-    const http = createServer()
+    // Пути socket.io перехватывает сам, остальные запросы приходят сюда
+    const http = createServer((request, response) =>
+      handlePhoneDrop(request, response, (ts, proof) => this.accepts(key, 'drop', ts, proof)))
+    // Видео в сотни мегабайт идёт по Wi-Fi дольше стандартных 5 минут на запрос
+    http.requestTimeout = 0
     const server = new Server(http, { path: '/socket.io/', transports: ['websocket'], serveClient: false })
     const namespace = server.of('/remote-control')
     namespace.use((socket, next) => {
       const { ts, proof } = socket.handshake.auth as { ts?: number; proof?: string }
-      next(this.accepts(key, ts, proof) ? undefined : new Error('unauthorized'))
+      next(this.accepts(key, 'lan', ts, proof) ? undefined : new Error('unauthorized'))
     })
     namespace.on('connection', (socket) => {
       socket.emit('presence', { desktop: true, lan: [] })
       socket.on('command', (payload: object) => onCommand(payload))
     })
-    http.on('error', (error) => console.warn('[remote] сервер в домашней сети не поднялся:', error.message))
+    http.on('error', (error) => console.warn('[phone-lan] сервер в домашней сети не поднялся:', error.message))
     http.listen(LAN_PORT, '0.0.0.0')
     this.server = server
   }
@@ -54,11 +62,11 @@ class RemoteControlLan {
     this.usedProofs.clear()
   }
 
-  private accepts(key: string, ts: number | undefined, proof: string | undefined): boolean {
+  private accepts(key: string, scope: ProofScope, ts: number | undefined, proof: string | undefined): boolean {
     const now = Date.now()
     if (typeof ts !== 'number' || Math.abs(now - ts) > PROOF_TTL_MS) return false
     if (typeof proof !== 'string' || !PROOF_PATTERN.test(proof) || this.usedProofs.has(proof)) return false
-    const expected = createHmac('sha256', key).update(`lan:${ts}`).digest()
+    const expected = createHmac('sha256', key).update(`${scope}:${ts}`).digest()
     if (!timingSafeEqual(expected, Buffer.from(proof, 'hex'))) return false
 
     for (const [used, expiresAt] of this.usedProofs) if (expiresAt < now) this.usedProofs.delete(used)
@@ -67,4 +75,4 @@ class RemoteControlLan {
   }
 }
 
-export const remoteControlLan = new RemoteControlLan()
+export const phoneLan = new PhoneLan()
