@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { numberedName, safeFileName, textDrop } from './phone-drop-files'
+import { numberedName, safeFileName, textDrop } from './files'
 
 const receivedAt = new Date(2026, 9, 19, 14, 5, 9)
 

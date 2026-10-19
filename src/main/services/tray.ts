@@ -1,6 +1,7 @@
 import { Tray, Menu, nativeImage, BrowserWindow, clipboard } from 'electron'
 import { createCircleIcon } from './icon'
 import { store } from './store'
+import { openPhoneDropFolder, PHONE_DROP_FOLDER_NAME } from './phone-drop/folder'
 
 let tray: Tray | null = null
 let normalIcon: Electron.NativeImage
@@ -84,6 +85,10 @@ export function updateTrayMenu(
           .join('\n\n')
         clipboard.writeText(text)
       }
+    },
+    {
+      label: `Папка «${PHONE_DROP_FOLDER_NAME}»`,
+      click: () => void openPhoneDropFolder()
     },
     { type: 'separator' },
     {

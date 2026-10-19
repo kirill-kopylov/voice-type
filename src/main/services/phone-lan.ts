@@ -2,7 +2,7 @@ import { createServer } from 'http'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { networkInterfaces } from 'os'
 import { Server } from 'socket.io'
-import { handlePhoneDrop } from './phone-drop'
+import { handlePhoneDrop } from './phone-drop/receiver'
 
 const LAN_PORT = 47821
 /** Подпись телефона живёт минуту: хватает на расхождение часов, перехваченную позже не применить */
